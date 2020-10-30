@@ -17,36 +17,59 @@
 
 package bisq.core.btc.setup;
 
+import static bisq.common.util.Preconditions.checkDir;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+
+import bisq.common.config.Config;
 import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.nodes.ProxySocketFactory;
 import bisq.core.btc.wallet.BisqRiskAnalysis;
-
-import bisq.common.config.Config;
-
 import com.google.common.io.Closeables;
-import com.google.common.util.concurrent.*;
-import org.bitcoinj.core.listeners.*;
-import org.bitcoinj.core.*;
-import org.bitcoinj.net.BlockingClientManager;
-import org.bitcoinj.net.discovery.*;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.store.*;
-import org.bitcoinj.wallet.*;
-
+import com.google.common.util.concurrent.AbstractIdleService;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.runjva.sourceforge.jsocks.protocol.Socks5Proxy;
-
-import org.slf4j.*;
-
-import javax.annotation.*;
-import java.io.*;
-import java.net.*;
-import java.util.concurrent.*;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import lombok.Getter;
 import lombok.Setter;
-
-import static bisq.common.util.Preconditions.checkDir;
-import static com.google.common.base.Preconditions.*;
+import monero.common.MoneroRpcConnection;
+import monero.daemon.model.MoneroNetworkType;
+import monero.wallet.MoneroWalletJni;
+import monero.wallet.model.MoneroWalletConfig;
+import org.bitcoinj.core.BlockChain;
+import org.bitcoinj.core.CheckpointManager;
+import org.bitcoinj.core.Context;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.PeerAddress;
+import org.bitcoinj.core.PeerGroup;
+import org.bitcoinj.core.listeners.DownloadProgressTracker;
+import org.bitcoinj.net.BlockingClientManager;
+import org.bitcoinj.net.discovery.DnsDiscovery;
+import org.bitcoinj.net.discovery.PeerDiscovery;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.store.BlockStore;
+import org.bitcoinj.store.BlockStoreException;
+import org.bitcoinj.store.SPVBlockStore;
+import org.bitcoinj.wallet.DeterministicSeed;
+import org.bitcoinj.wallet.KeyChainGroup;
+import org.bitcoinj.wallet.KeyChainGroupStructure;
+import org.bitcoinj.wallet.Protos;
+import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.WalletExtension;
+import org.bitcoinj.wallet.WalletProtobufSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>Utility class that wraps the boilerplate needed to set up a new SPV bitcoinj app. Instantiate it with a directory
@@ -79,11 +102,13 @@ public class WalletConfig extends AbstractIdleService {
     protected final String filePrefix;
     protected volatile BlockChain vChain;
     protected volatile SPVBlockStore vStore;
+    protected volatile MoneroWalletJni vXmrWallet;
     protected volatile Wallet vBtcWallet;
     protected volatile Wallet vBsqWallet;
     protected volatile PeerGroup vPeerGroup;
 
     protected final File directory;
+    protected volatile File vXmrWalletFile;
     protected volatile File vBtcWalletFile;
     protected volatile File vBsqWalletFile;
 
@@ -228,6 +253,30 @@ public class WalletConfig extends AbstractIdleService {
         try {
             File chainFile = new File(directory, filePrefix + ".spvchain");
             boolean chainFileExists = chainFile.exists();
+            
+            // XMR wallet
+            String xmrPrefix = "_XMR";
+            MoneroRpcConnection conn = new MoneroRpcConnection("http://localhost:38081", "superuser", "abctesting123");
+            vXmrWalletFile = new File(directory, filePrefix + xmrPrefix + ".wallet");
+            if (MoneroWalletJni.walletExists(vXmrWalletFile.getPath())) {
+              vXmrWallet = MoneroWalletJni.openWallet(vXmrWalletFile.getPath(), "abctesting123", MoneroNetworkType.STAGENET, conn);
+            } else {
+              vXmrWallet = MoneroWalletJni.createWallet(new MoneroWalletConfig()
+                      .setPath(vXmrWalletFile.getPath())
+                      .setPassword("abctesting123")
+                      .setNetworkType(MoneroNetworkType.STAGENET)
+                      .setServer(conn));
+            }
+            System.out.println("Monero wallet path: " + vXmrWallet.getPath());
+            System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
+            System.out.println("Monero mnemonic: " + vXmrWallet.getMnemonic());
+//            vXmrWallet.rescanSpent();
+//            vXmrWallet.rescanBlockchain();
+            vXmrWallet.sync();
+            vXmrWallet.startSyncing();
+            vXmrWallet.save();
+            System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance());
+            
             String btcPrefix = "_BTC";
             vBtcWalletFile = new File(directory, filePrefix + btcPrefix + ".wallet");
             boolean shouldReplayWallet = (vBtcWalletFile.exists() && !chainFileExists) || restoreFromSeed != null;
@@ -474,6 +523,11 @@ public class WalletConfig extends AbstractIdleService {
         checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
         return vBtcWallet;
     }
+    
+    public MoneroWalletJni getXmrWallet() {
+      checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
+      return vXmrWallet;
+  }
 
     public Wallet bsqWallet() {
         checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
