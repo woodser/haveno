@@ -2,7 +2,7 @@
 
 ## What is Haveno?
 
-Haveno is a private and decentralized way to exchange Monero for national currencies or other cryptocurrencies.  Haveno uses peer-to-peer networking and multi-signature escrow to facilitate trading without a trusted third party custodian.  Disputes can be resolved using human arbitration.
+Haveno is a private and decentralized way to exchange Monero for national currencies or other cryptocurrencies.  Haveno uses peer-to-peer networking and multi-signature escrow to facilitate trading without a trusted third party custodian.  Disputes can be resolved using non-custodial arbitration.
 
 ## Running a local test network
 

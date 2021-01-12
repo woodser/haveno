@@ -1,9 +1,7 @@
-rebase
+configurable daemon for poc
 trade removed from books immediately or when taker pays fee? see ProcessOfferAvailabilityResponse
-trading peer is null in history
 one TraderProtocol which supports maker, taker, buyer, seller methods to prevent duplicate implementations
 script to launch local network
-remove bitcoin-qt dependency
 use "deposit tx" terminology instead of "fund multisig"
 use rpc instead of jni bindings? requires notifications in monero-java
 resume listeners on startup (BisqSetup.start() - init multisig?)
