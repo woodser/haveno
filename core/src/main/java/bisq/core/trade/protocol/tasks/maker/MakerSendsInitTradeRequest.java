@@ -40,7 +40,7 @@ import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
 import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroWalletConfig;
 
 @Slf4j
@@ -64,7 +64,7 @@ public class MakerSendsInitTradeRequest extends TradeTask {
             
 //            // create wallet for multisig
 //            // TODO (woodser): manage in common util, set path, server
-//            MoneroWalletJni multisigWallet = MoneroWalletJni.createWallet(new MoneroWalletConfig()
+//            MoneroWalletFull multisigWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
 //                    .setPassword("abctesting123")
 //                    .setNetworkType(MoneroNetworkType.STAGENET));
 //            

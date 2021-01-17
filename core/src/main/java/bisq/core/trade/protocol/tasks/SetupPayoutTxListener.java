@@ -31,7 +31,7 @@ import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroTransferQuery;
 import monero.wallet.model.MoneroTxQuery;
@@ -58,7 +58,7 @@ public abstract class SetupPayoutTxListener extends TradeTask {
             System.out.println("NEED TO IMPLEMENT PAYOUT TX LISTENER!"); // TODO (woodser): implement SetupPayoutTxListener
 //            if (!trade.isPayoutPublished()) {
 //                XmrWalletService walletService = processModel.getXmrWalletService();
-//                MoneroWalletJni wallet = walletService.getWallet();
+//                MoneroWalletFull wallet = walletService.getWallet();
 //                String payoutTxId = trade.getPayoutTx().getHash();
 //                
 //                

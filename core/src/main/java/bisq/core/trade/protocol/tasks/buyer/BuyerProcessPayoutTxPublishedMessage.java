@@ -29,7 +29,7 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.Validator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 
 @Slf4j
 public class BuyerProcessPayoutTxPublishedMessage extends TradeTask {
@@ -52,7 +52,7 @@ public class BuyerProcessPayoutTxPublishedMessage extends TradeTask {
             
             if (trade.getPayoutTx() == null) {
             	XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-                MoneroWalletJni multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+                MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
                 List<String> txHashes = multisigWallet.submitMultisigTxHex(message.getSignedMultisigTxHex());
                 trade.setPayoutTx(multisigWallet.getTx(txHashes.get(0)));
                 XmrWalletService.printTxs("payoutTx received from peer", trade.getPayoutTx());

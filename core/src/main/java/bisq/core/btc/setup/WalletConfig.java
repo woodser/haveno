@@ -45,7 +45,7 @@ import lombok.Getter;
 import lombok.Setter;
 import monero.common.MoneroRpcConnection;
 import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroWalletConfig;
 import org.bitcoinj.core.BlockChain;
 import org.bitcoinj.core.CheckpointManager;
@@ -102,7 +102,7 @@ public class WalletConfig extends AbstractIdleService {
     protected final String filePrefix;
     protected volatile BlockChain vChain;
     protected volatile SPVBlockStore vStore;
-    protected volatile MoneroWalletJni vXmrWallet;
+    protected volatile MoneroWalletFull vXmrWallet;
     protected volatile Wallet vBtcWallet;
     protected volatile Wallet vBsqWallet;
     protected volatile PeerGroup vPeerGroup;
@@ -258,10 +258,10 @@ public class WalletConfig extends AbstractIdleService {
             String xmrPrefix = "_XMR";
             MoneroRpcConnection conn = new MoneroRpcConnection("http://localhost:38081", "superuser", "abctesting123");
             vXmrWalletFile = new File(directory, filePrefix + xmrPrefix + ".wallet");
-            if (MoneroWalletJni.walletExists(vXmrWalletFile.getPath())) {
-              vXmrWallet = MoneroWalletJni.openWallet(vXmrWalletFile.getPath(), "abctesting123", MoneroNetworkType.STAGENET, conn);
+            if (MoneroWalletFull.walletExists(vXmrWalletFile.getPath())) {
+              vXmrWallet = MoneroWalletFull.openWallet(vXmrWalletFile.getPath(), "abctesting123", MoneroNetworkType.STAGENET, conn);
             } else {
-              vXmrWallet = MoneroWalletJni.createWallet(new MoneroWalletConfig()
+              vXmrWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
                       .setPath(vXmrWalletFile.getPath())
                       .setPassword("abctesting123")
                       .setNetworkType(MoneroNetworkType.STAGENET)
@@ -524,7 +524,7 @@ public class WalletConfig extends AbstractIdleService {
         return vBtcWallet;
     }
     
-    public MoneroWalletJni getXmrWallet() {
+    public MoneroWalletFull getXmrWallet() {
       checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
       return vXmrWallet;
   }

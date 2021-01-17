@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
@@ -80,7 +80,7 @@ public class TradeWalletService {
     @Nullable
     private Wallet wallet;
     @Nullable
-    private MoneroWalletJni xmrWallet;
+    private MoneroWalletFull xmrWallet;
     @Nullable
     private WalletConfig walletConfig;
     @Nullable

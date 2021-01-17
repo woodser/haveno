@@ -45,7 +45,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroTxWallet;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -706,7 +706,7 @@ public abstract class WalletService {
         }
     }
     
-    public static MoneroTxWallet maybeAddNetworkTxToWallet(byte[] serializedTransaction, MoneroWalletJni wallet) throws VerificationException {
+    public static MoneroTxWallet maybeAddNetworkTxToWallet(byte[] serializedTransaction, MoneroWalletFull wallet) throws VerificationException {
         throw new RuntimeException("Not implemented");  // TODO (woodser): need to serialize/deserialize tx for xmr integration?
 //        Transaction tx = new Transaction(wallet.getParams(), serializedTransaction);
 //        Transaction walletTransaction = wallet.getTransaction(tx.getHash());

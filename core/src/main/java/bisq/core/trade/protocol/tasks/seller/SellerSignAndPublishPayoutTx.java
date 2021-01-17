@@ -30,7 +30,7 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.ParsingUtils;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
 import monero.wallet.model.MoneroTxSet;
@@ -51,7 +51,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWalletJni multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
             String buyerSignedPayoutTxHex = processModel.getTradingPeer().getSignedPayoutTxHex();
             Contract contract = trade.getContract();
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");

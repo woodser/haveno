@@ -31,7 +31,7 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.ParsingUtils;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
@@ -66,8 +66,8 @@ public class FundMultisig extends TradeTask {
       
       // collect parameters for transfer to multisig
       XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-      MoneroWalletJni wallet = walletService.getWallet();
-      MoneroWalletJni multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+      MoneroWalletFull wallet = walletService.getWallet();
+      MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
       String multisigAddress = multisigWallet.getPrimaryAddress();
       boolean tradeReserved = trade.getTakerFeeTxId() != null && trade.getState() == Trade.State.TAKER_PUBLISHED_TAKER_FEE_TX;
       

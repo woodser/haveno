@@ -36,7 +36,7 @@ import bisq.core.util.ParsingUtils;
 import lombok.extern.slf4j.Slf4j;
 import monero.common.MoneroError;
 import monero.wallet.MoneroWallet;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroSubaddress;
@@ -65,7 +65,7 @@ public class BuyerCreateAndSignPayoutTx extends TradeTask {
             
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWalletJni multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
             String sellerPayoutAddress = processModel.getTradingPeer().getPayoutAddressString();
             String buyerPayoutAddress = trade instanceof MakerTrade ? trade.getContract().getMakerPayoutAddressString() : trade.getContract().getTakerPayoutAddressString();
             Preconditions.checkNotNull(sellerPayoutAddress, "sellerPayoutAddress must not be null");

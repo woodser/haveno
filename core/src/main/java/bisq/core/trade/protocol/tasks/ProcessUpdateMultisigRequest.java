@@ -31,7 +31,7 @@ import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.messages.UpdateMultisigResponse;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 
 @Slf4j
 public class ProcessUpdateMultisigRequest extends TradeTask {
@@ -49,7 +49,7 @@ public class ProcessUpdateMultisigRequest extends TradeTask {
           UpdateMultisigRequest request = (UpdateMultisigRequest) processModel.getTradeMessage();
           checkNotNull(request);
           checkTradeId(processModel.getOfferId(), request);
-          MoneroWalletJni multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());
+          MoneroWalletFull multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());
           
           System.out.println("PROCESS UPDATE MULTISIG REQUEST");
           System.out.println(request);

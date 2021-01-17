@@ -28,7 +28,7 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
 import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroWalletConfig;
 
 @Slf4j
@@ -49,7 +49,7 @@ public class TakerSendInitMultisigMessages extends TradeTask {
             
             // create wallet for multisig
             // TODO (woodser): assert that wallet does not already exist
-            MoneroWalletJni multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWalletFull multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());
             
             // prepare multisig
             String preparedHex = multisigWallet.prepareMultisig();

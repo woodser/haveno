@@ -28,7 +28,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroWalletListener;
@@ -40,7 +40,7 @@ import monero.wallet.model.MoneroWalletListener;
 @Slf4j
 public final class XmrAddressEntryList implements PersistableEnvelope, PersistedDataHost {
     transient private PersistenceManager<XmrAddressEntryList> persistenceManager;
-    transient private MoneroWalletJni wallet;
+    transient private MoneroWalletFull wallet;
     private final Set<XmrAddressEntry> entrySet = new CopyOnWriteArraySet<>();
 
     @Inject
@@ -91,7 +91,7 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void onWalletReady(MoneroWalletJni wallet) {
+    public void onWalletReady(MoneroWalletFull wallet) {
         this.wallet = wallet;
 
         if (!entrySet.isEmpty()) {

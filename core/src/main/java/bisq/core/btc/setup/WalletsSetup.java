@@ -71,7 +71,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javax.annotation.Nullable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import org.apache.commons.lang3.StringUtils;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.BlockChain;
@@ -458,7 +458,7 @@ public class WalletsSetup {
         return walletConfig.btcWallet();
     }
     
-    public MoneroWalletJni getXmrWallet() {
+    public MoneroWalletFull getXmrWallet() {
       return walletConfig.getXmrWallet();
     }
 

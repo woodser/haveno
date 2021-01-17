@@ -21,7 +21,7 @@ import javax.inject.Inject;
 import lombok.Getter;
 import monero.common.MoneroRpcConnection;
 import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroSubaddress;
@@ -45,17 +45,17 @@ public class XmrWalletService {
   private final XmrAddressEntryList addressEntryList;
   protected final CopyOnWriteArraySet<XmrBalanceListener> balanceListeners = new CopyOnWriteArraySet<>();
   protected final CopyOnWriteArraySet<MoneroWalletListenerI> walletListeners = new CopyOnWriteArraySet<>();
-  private Map<String, MoneroWalletJni> openWallets;
+  private Map<String, MoneroWalletFull> openWallets;
   
   @Getter
-  private MoneroWalletJni wallet;
+  private MoneroWalletFull wallet;
   
   @Inject
   XmrWalletService(WalletsSetup walletsSetup,
                    XmrAddressEntryList addressEntryList) {
     
     this.addressEntryList = addressEntryList;
-    this.openWallets = new HashMap<String, MoneroWalletJni>();
+    this.openWallets = new HashMap<String, MoneroWalletFull>();
 
     walletsSetup.addSetupCompletedHandler(() -> {
       this.directory = walletsSetup.getWalletConfig().directory();
@@ -80,19 +80,19 @@ public class XmrWalletService {
   }
   
   // TODO (woodser): move hard-coded values to config
-  public MoneroWalletJni getOrCreateMultisigWallet(String tradeId) {
+  public MoneroWalletFull getOrCreateMultisigWallet(String tradeId) {
     String path = new File(directory, "xmr_multisig_trade_" + tradeId).getPath();
     MoneroRpcConnection conn = new MoneroRpcConnection("http://localhost:38081", "superuser", "abctesting123");
-    MoneroWalletJni multisigWallet = null;
+    MoneroWalletFull multisigWallet = null;
     if (openWallets.containsKey(tradeId)) return openWallets.get(tradeId);
-    else if (MoneroWalletJni.walletExists(path)) {
-      multisigWallet = MoneroWalletJni.openWallet(new MoneroWalletConfig()
+    else if (MoneroWalletFull.walletExists(path)) {
+      multisigWallet = MoneroWalletFull.openWallet(new MoneroWalletConfig()
               .setPath(path)
               .setPassword("abctesting123")
               .setNetworkType(MoneroNetworkType.STAGENET)
               .setServer(conn));
     } else {
-      multisigWallet = MoneroWalletJni.createWallet(new MoneroWalletConfig()
+      multisigWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
               .setPath(path)
               .setPassword("abctesting123")
               .setNetworkType(MoneroNetworkType.STAGENET)
@@ -302,7 +302,7 @@ public class XmrWalletService {
   public void shutDown() {
     System.out.println("XmrWalletService.shutDown()");
     for (String openWalletKey : openWallets.keySet()) {
-      MoneroWalletJni openWallet = openWallets.get(openWalletKey);
+      MoneroWalletFull openWallet = openWallets.get(openWalletKey);
       new Thread(new Runnable() {
         @Override
         public void run() {

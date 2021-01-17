@@ -32,7 +32,7 @@ import bisq.core.trade.protocol.TradeMessageListener;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletJni;
+import monero.wallet.MoneroWalletFull;
 
 @Slf4j
 public class UpdateMultisigWithTradingPeer extends TradeTask {
@@ -51,7 +51,7 @@ public class UpdateMultisigWithTradingPeer extends TradeTask {
                         
             // fetch relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWalletJni multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
             
             // skip if multisig wallet does not need updated
             if (!multisigWallet.isMultisigImportNeeded()) {
