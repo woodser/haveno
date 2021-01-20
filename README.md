@@ -6,16 +6,18 @@ Haveno is a private and decentralized way to exchange Monero for national curren
 
 ## Running a local test network
 
-1. Download and install [Bitcoin-Qt](https://bitcoin.org/en/download)
-2. Run Bitcoin-Qt in regtest mode, e.g.: `/Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -regtest -peerbloomfilters=1`
-3. In Bitcoin-Qt console, mine BTC regtest blocks: `generatetoaddress 101 bcrt1q6j90vywv8x7eyevcnn2tn2wrlg3vsjlsvt46qz`
-4. Build [monero-java shared libraries with JNI bindings](https://github.com/monero-ecosystem/monero-java#building-jni-shared-libraries-from-source) for your system
-5. Copy the 2 built shared libraries in monero-java/build to the Haveno project root
-7. Download and install [Monero CLI](https://www.getmonero.org/downloads/)
-8. Sync stagenet: `./monerod --stagenet`
-9. Install [git lfs](https://git-lfs.github.com) for your system
-10. `git clone https://github.com/Haveno-Dex/Haveno`
-11. `cd Haveno`
+1. Download and install [Monero CLI](https://www.getmonero.org/downloads/)
+2. Sync stagenet: `./monerod --stagenet`
+3. Download and install [Bitcoin-Qt](https://bitcoin.org/en/download)
+4. Run Bitcoin-Qt in regtest mode, e.g.: `/Applications/Bitcoin-Qt.app/Contents/MacOS/Bitcoin-Qt -regtest -peerbloomfilters=1`
+5. In Bitcoin-Qt console, mine BTC regtest blocks: `generatetoaddress 101 bcrt1q6j90vywv8x7eyevcnn2tn2wrlg3vsjlsvt46qz`
+6. Install [git lfs](https://git-lfs.github.com) for your system<br>
+ Ubuntu: `sudo apt install git-lfs`
+7. `git clone https://github.com/Haveno-Dex/haveno`
+8. Build [monero-java shared libraries with JNI bindings](https://github.com/monero-ecosystem/monero-java#building-jni-shared-libraries-from-source) for your system
+9. Copy the 2 built shared libraries in monero-java/build to the Haveno project root
+10. `export LD_LIBRARY_PATH=path/to/haveno`
+11. `cd haveno`
 12. `./gradlew build`
 13. Start seed node, arbitrator, Alice, and Bob:
     1. `./bisq-seednode --baseCurrencyNetwork=BTC_REGTEST --useLocalhostForP2P=true --useDevPrivilegeKeys=true --nodePort=2002 --appName=bisq-BTC_REGTEST_Seed_2002 --daoActivated=false`
