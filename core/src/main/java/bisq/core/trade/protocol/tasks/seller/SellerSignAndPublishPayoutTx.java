@@ -30,7 +30,7 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.ParsingUtils;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
 import monero.wallet.model.MoneroTxSet;
@@ -51,7 +51,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
             String buyerSignedPayoutTxHex = processModel.getTradingPeer().getSignedPayoutTxHex();
             Contract contract = trade.getContract();
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");
@@ -71,6 +71,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             
             // parse buyer-signed payout tx
             MoneroTxSet parsedTxSet = multisigWallet.parseTxSet(new MoneroTxSet().setMultisigTxHex(buyerSignedPayoutTxHex));
+            if (parsedTxSet.getTxs().get(0).getTxSet() != parsedTxSet) System.out.println("LINKS ARE WRONG STRAIGHT FROM PARSING!!!");
             if (parsedTxSet.getTxs() == null || parsedTxSet.getTxs().size() != 1) throw new RuntimeException("Bad buyer-signed payout tx");	// TODO (woodser): nack
             MoneroTxWallet buyerSignedPayoutTx = parsedTxSet.getTxs().get(0);
             System.out.println("Parsed buyer signed tx hex:\n" + buyerSignedPayoutTx);
@@ -114,10 +115,11 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             
             // update state
             parsedTxSet.setMultisigTxHex(signedMultisigTxHex);
-	        trade.setPayoutTx(parsedTxSet.getTxs().get(0));
-	        trade.setPayoutTxId(parsedTxSet.getTxs().get(0).getHash());
-	        trade.setState(Trade.State.SELLER_PUBLISHED_PAYOUT_TX);
-	        complete();
+            if (parsedTxSet.getTxs().get(0).getTxSet() != parsedTxSet) System.out.println("LINKS ARE WRONG!!!");
+	          trade.setPayoutTx(parsedTxSet.getTxs().get(0));
+	          trade.setPayoutTxId(parsedTxSet.getTxs().get(0).getHash());
+	          trade.setState(Trade.State.SELLER_PUBLISHED_PAYOUT_TX);
+	          complete();
             
 //            checkNotNull(trade.getTradeAmount(), "trade.getTradeAmount() must not be null");
 //

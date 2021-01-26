@@ -38,7 +38,7 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 
 @Slf4j
@@ -57,7 +57,7 @@ public class MakerSendsReadyToFundMultisigResponse extends TradeTask {
             
             // determine if maker is ready to fund to-be-created multisig
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWalletFull wallet = walletService.getWallet();
+            MoneroWallet wallet = walletService.getWallet();
             wallet.sync();
             MoneroTxWallet offerFeeTx = wallet.getTx(trade.getOffer().getOfferFeePaymentTxId());
             if (offerFeeTx.isFailed()) throw new RuntimeException("Offer fee tx has failed"); // TODO (woodser): proper error handling

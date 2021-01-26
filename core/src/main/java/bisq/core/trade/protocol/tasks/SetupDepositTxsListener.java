@@ -22,7 +22,7 @@ import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.Trade.State;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroWalletListener;
 
@@ -45,7 +45,7 @@ public abstract class SetupDepositTxsListener extends TradeTask {
 
       // fetch relevant trade info
       XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-      MoneroWalletFull multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+      MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
       System.out.println("Maker prepared deposit tx id: " + processModel.getMakerPreparedDepositTxId());
       System.out.println("Taker prepared deposit tx id: " + processModel.getTakerPreparedDepositTxId());
 

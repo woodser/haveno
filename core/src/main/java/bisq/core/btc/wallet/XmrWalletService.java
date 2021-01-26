@@ -9,6 +9,7 @@ import bisq.core.util.ParsingUtils;
 import com.google.common.util.concurrent.FutureCallback;
 import java.io.File;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,9 +20,8 @@ import java.util.stream.Stream;
 import javafx.application.Platform;
 import javax.inject.Inject;
 import lombok.Getter;
-import monero.common.MoneroRpcConnection;
-import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletFull;
+import monero.common.MoneroUtils;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroSubaddress;
@@ -41,24 +41,24 @@ import org.slf4j.LoggerFactory;
 public class XmrWalletService {
   private static final Logger log = LoggerFactory.getLogger(XmrWalletService.class);
 
-  private File directory;
+  private WalletsSetup walletsSetup;
   private final XmrAddressEntryList addressEntryList;
   protected final CopyOnWriteArraySet<XmrBalanceListener> balanceListeners = new CopyOnWriteArraySet<>();
   protected final CopyOnWriteArraySet<MoneroWalletListenerI> walletListeners = new CopyOnWriteArraySet<>();
-  private Map<String, MoneroWalletFull> openWallets;
+  private Map<String, MoneroWallet> multisigWallets;
   
   @Getter
-  private MoneroWalletFull wallet;
+  private MoneroWallet wallet;
   
   @Inject
   XmrWalletService(WalletsSetup walletsSetup,
                    XmrAddressEntryList addressEntryList) {
+    this.walletsSetup = walletsSetup;
     
     this.addressEntryList = addressEntryList;
-    this.openWallets = new HashMap<String, MoneroWalletFull>();
+    this.multisigWallets = new HashMap<String, MoneroWallet>();
 
     walletsSetup.addSetupCompletedHandler(() -> {
-      this.directory = walletsSetup.getWalletConfig().directory();
       wallet = walletsSetup.getXmrWallet();
       wallet.addListener(new MoneroWalletListener() {
         @Override
@@ -80,26 +80,21 @@ public class XmrWalletService {
   }
   
   // TODO (woodser): move hard-coded values to config
-  public MoneroWalletFull getOrCreateMultisigWallet(String tradeId) {
-    String path = new File(directory, "xmr_multisig_trade_" + tradeId).getPath();
-    MoneroRpcConnection conn = new MoneroRpcConnection("http://localhost:38081", "superuser", "abctesting123");
-    MoneroWalletFull multisigWallet = null;
-    if (openWallets.containsKey(tradeId)) return openWallets.get(tradeId);
-    else if (MoneroWalletFull.walletExists(path)) {
-      multisigWallet = MoneroWalletFull.openWallet(new MoneroWalletConfig()
+  public MoneroWallet getOrCreateMultisigWallet(String tradeId) {
+    String path = "xmr_multisig_trade_" + tradeId;
+    MoneroWallet multisigWallet = null;
+    if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
+    else if (MoneroUtils.walletExists(new File(walletsSetup.getWalletConfig().directory(), path).getPath())) { // TODO: use monero-wallet-rpc to determine existence?
+      multisigWallet = walletsSetup.getWalletConfig().openWallet(new MoneroWalletConfig()
               .setPath(path)
-              .setPassword("abctesting123")
-              .setNetworkType(MoneroNetworkType.STAGENET)
-              .setServer(conn));
+              .setPassword("abctesting123"));
     } else {
-      multisigWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
+      multisigWallet = walletsSetup.getWalletConfig().createWallet(new MoneroWalletConfig()
               .setPath(path)
-              .setPassword("abctesting123")
-              .setNetworkType(MoneroNetworkType.STAGENET)
-              .setServer(conn));
+              .setPassword("abctesting123"));
     }
-    openWallets.put(tradeId, multisigWallet);
-    multisigWallet.startSyncing();
+    multisigWallets.put(tradeId, multisigWallet);
+    multisigWallet.startSyncing(5000l);
     return multisigWallet;
   }
   
@@ -301,15 +296,38 @@ public class XmrWalletService {
   
   public void shutDown() {
     System.out.println("XmrWalletService.shutDown()");
-    for (String openWalletKey : openWallets.keySet()) {
-      MoneroWalletFull openWallet = openWallets.get(openWalletKey);
-      new Thread(new Runnable() {
+    
+    // collect wallets to shutdown
+    List<MoneroWallet> openWallets = new ArrayList<MoneroWallet>();
+    openWallets.add(wallet);
+    for (String multisigWalletKey : multisigWallets.keySet()) {
+      openWallets.add(multisigWallets.get(multisigWalletKey));
+    }
+    
+    // create shutdown threads
+    List<Thread> threads = new ArrayList<Thread>();
+    for (MoneroWallet openWallet : openWallets) {
+      threads.add(new Thread(new Runnable() {
         @Override
         public void run() {
-          openWallet.close(true);
+          System.out.println("XmrWalletServie.shutDown() closing wallet within thread!!!");
+          System.out.println("Wallet balance: " + wallet.getBalance());
+          try { walletsSetup.getWalletConfig().closeWallet(openWallet); }
+          catch (Exception e) { e.printStackTrace(); }
         }
-      }).run();
+      }));
     }
+    
+    // run shutdown threads in parallel
+    for (Thread thread : threads) thread.start();
+    
+    // wait for all threads
+    System.out.println("Joining threads");
+    for (Thread thread : threads) {
+      try { thread.join(); }
+      catch (InterruptedException e) { e.printStackTrace(); }
+    }
+    System.out.println("Done joining threads");
   }
   
   ///////////////////////////////////////////////////////////////////////////////////////////

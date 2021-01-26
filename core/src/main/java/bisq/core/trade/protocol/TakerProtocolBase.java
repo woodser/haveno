@@ -26,7 +26,7 @@ import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 import java.math.BigInteger;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 import monero.wallet.model.MoneroWalletListener;
 
@@ -87,7 +87,7 @@ public class TakerProtocolBase extends DisputeProtocol implements TakerProtocol 
     // define wallet listener which initiates multisig deposit when trade fee tx unlocked
     // TODO (woodser): this needs run for reserved trades when client is opened
     // TODO (woodser): test initiating multisig when maker offline
-    MoneroWalletFull wallet = processModel.getProvider().getXmrWalletService().getWallet();
+    MoneroWallet wallet = processModel.getProvider().getXmrWalletService().getWallet();
     MoneroWalletListener fundMultisigListener = new MoneroWalletListener() {
       public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
         

@@ -36,7 +36,7 @@ import bisq.core.trade.protocol.TradingPeer;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroMultisigInitResult;
 
 @Slf4j
@@ -45,7 +45,7 @@ public class ProcessInitMultisigMessage extends TradeTask {
     private boolean ack1 = false;
     private boolean ack2 = false;
     private static Object lock = new Object();
-    MoneroWalletFull multisigWallet;
+    MoneroWallet multisigWallet;
   
     @SuppressWarnings({"unused"})
     public ProcessInitMultisigMessage(TaskRunner taskHandler, Trade trade) {

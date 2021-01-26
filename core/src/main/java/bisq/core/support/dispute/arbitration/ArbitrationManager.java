@@ -67,7 +67,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import monero.common.MoneroError;
 import monero.wallet.MoneroWallet;
-import monero.wallet.MoneroWalletFull;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
 import monero.wallet.model.MoneroTxConfig;
@@ -231,7 +230,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
         String errorMessage = null;
         boolean success = true;
         boolean requestUpdatedPayoutTx = false;
-        MoneroWalletFull multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+        MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
         Contract contract = dispute.getContract();
         try {
             // We need to avoid publishing the tx from both traders as it would create problems with zero confirmation withdrawals
@@ -357,7 +356,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
         cleanupRetryMap(uid);
         
         // update multisig wallet
-        MoneroWalletFull multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+        MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
         multisigWallet.importMultisigHex(Arrays.asList(peerPublishedDisputePayoutTxMessage.getUpdatedMultisigHex()));
         
         // parse payout tx
@@ -407,7 +406,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       }
       
       // update arbitrator's multisig wallet with co-signer's multisig hex
-      MoneroWalletFull multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+      MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
       try {
         multisigWallet.importMultisigHex(Arrays.asList(request.getUpdatedMultisigHex()));
       } catch (Exception e) {

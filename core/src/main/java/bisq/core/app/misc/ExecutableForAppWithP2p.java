@@ -90,7 +90,7 @@ public abstract class ExecutableForAppWithP2p extends BisqExecutable {
                         });
                     });
                     injector.getInstance(WalletsSetup.class).shutDown();
-                    injector.getInstance(XmrWalletService.class).shutDown();  // TODO (woodser): this is not actually called, perhaps because WalletsSetup.class completes too quick so its listener calls System.exit(0)
+                    injector.getInstance(XmrWalletService.class).shutDown(); // TODO (woodser): this is not actually called, perhaps because WalletsSetup.class completes too quick so its listener calls System.exit(0)
                     injector.getInstance(BtcWalletService.class).shutDown();
                     injector.getInstance(BsqWalletService.class).shutDown();
                 }));

@@ -48,6 +48,10 @@ public class SellerSendPayoutTxPublishedMessage extends SendMailboxMessageTask {
             accountAgeWitnessService.traderSignAndPublishPeersAccountAgeWitness(trade).ifPresent(witness -> signedWitness = witness);
         }
         
+        System.out.println("Trade.getPayoutTx(): " + trade.getPayoutTx());
+        System.out.println("trade.getPayoutTx().getTxSet(): " + trade.getPayoutTx().getTxSet());
+        System.out.println("trade.getPayoutTx().getTxSet().getMultisigTxHex(): " + trade.getPayoutTx().getTxSet().getMultisigTxHex());
+        
         return new PayoutTxPublishedMessage(
                 id,
                 trade.getPayoutTx().getTxSet().getMultisigTxHex(),

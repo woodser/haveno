@@ -39,13 +39,15 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import lombok.Getter;
 import lombok.Setter;
-import monero.common.MoneroRpcConnection;
+import monero.common.MoneroUtils;
 import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletFull;
+import monero.wallet.MoneroWallet;
+import monero.wallet.MoneroWalletRpc;
 import monero.wallet.model.MoneroWalletConfig;
 import org.bitcoinj.core.BlockChain;
 import org.bitcoinj.core.CheckpointManager;
@@ -97,12 +99,24 @@ public class WalletConfig extends AbstractIdleService {
     private static final int TOR_VERSION_EXCHANGE_TIMEOUT = 125 * 1000;  // 5 sec used in bitcoinj, but since bisq uses Tor we allow more.
 
     protected static final Logger log = LoggerFactory.getLogger(WalletConfig.class);
+    
+    // Monero configuration
+    // TODO: don't hard code configuration, inject into classes?
+    private static final MoneroNetworkType MONERO_NETWORK_TYPE = MoneroNetworkType.STAGENET;
+    private static final String MONERO_DAEMON_URI = "http://localhost:38081";
+    private static final String MONERO_DAEMON_USERNAME = "superuser";
+    private static final String MONERO_DAEMON_PASSWORD = "abctesting123";
+    private static final MoneroWalletRpcManager MONERO_WALLET_RPC_MANAGER = new MoneroWalletRpcManager();
+    private static final String MONERO_WALLET_RPC_PATH = System.getProperty("user.dir") + "/monero-wallet-rpc"; // current working directory
+    private static final String MONERO_WALLET_RPC_USERNAME = "rpc_user";
+    private static final String MONERO_WALLET_RPC_PASSWORD = "abc123";
+    private static final long MONERO_WALLET_SYNC_RATE = 5000l;
 
     protected final NetworkParameters params;
     protected final String filePrefix;
     protected volatile BlockChain vChain;
     protected volatile SPVBlockStore vStore;
-    protected volatile MoneroWalletFull vXmrWallet;
+    protected volatile MoneroWallet vXmrWallet;
     protected volatile Wallet vBtcWallet;
     protected volatile Wallet vBsqWallet;
     protected volatile PeerGroup vPeerGroup;
@@ -244,6 +258,60 @@ public class WalletConfig extends AbstractIdleService {
     protected void onSetupCompleted() {
         // Meant to be overridden by subclasses
     }
+    
+    public MoneroWallet createWallet(MoneroWalletConfig config) {
+      
+      // start monero-wallet-rpc instance
+      MoneroWalletRpc walletRpc = startWalletRpcInstance();
+      
+      // create wallet
+      try {
+        walletRpc.createWallet(config);
+        walletRpc.startSyncing(MONERO_WALLET_SYNC_RATE);
+        return walletRpc;
+      } catch (Exception e) {
+        e.printStackTrace();
+        WalletConfig.MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc);
+        throw e;
+      }
+    }
+    
+    public MoneroWallet openWallet(MoneroWalletConfig config) {
+      
+      // start monero-wallet-rpc instance
+      MoneroWalletRpc walletRpc = startWalletRpcInstance();
+      
+      // open wallet
+      try {
+        walletRpc.openWallet(config);
+        walletRpc.startSyncing(MONERO_WALLET_SYNC_RATE);
+        return walletRpc;
+      } catch (Exception e) {
+        e.printStackTrace();
+        WalletConfig.MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc);
+        throw e;
+      }
+    }
+    
+    private MoneroWalletRpc startWalletRpcInstance() {
+      
+      // check if monero-wallet-rpc exists
+      if (!new File(MONERO_WALLET_RPC_PATH).exists()) throw new Error("monero-wallet-rpc executable doesn't exist at path " + MONERO_WALLET_RPC_PATH + "; copy monero-wallet-rpc to the project root or set WalletConfig.java MONERO_WALLET_RPC_PATH for your system");
+      
+      // start monero-wallet-rpc instance and return connected client
+      return WalletConfig.MONERO_WALLET_RPC_MANAGER.startInstance(Arrays.asList(
+          MONERO_WALLET_RPC_PATH,
+          "--" + MONERO_NETWORK_TYPE.toString().toLowerCase(),
+          "--daemon-address", MONERO_DAEMON_URI,
+          "--daemon-login", MONERO_DAEMON_USERNAME + ":" + MONERO_DAEMON_PASSWORD,
+          "--rpc-login", MONERO_WALLET_RPC_USERNAME + ":" + MONERO_WALLET_RPC_PASSWORD,
+          "--wallet-dir", directory.toString()
+      ));
+    }
+    
+    public void closeWallet(MoneroWallet walletRpc) {
+      WalletConfig.MONERO_WALLET_RPC_MANAGER.stopInstance((MoneroWalletRpc) walletRpc);
+    }
 
     @Override
     protected void startUp() throws Exception {
@@ -256,16 +324,11 @@ public class WalletConfig extends AbstractIdleService {
             
             // XMR wallet
             String xmrPrefix = "_XMR";
-            MoneroRpcConnection conn = new MoneroRpcConnection("http://localhost:38081", "superuser", "abctesting123");
-            vXmrWalletFile = new File(directory, filePrefix + xmrPrefix + ".wallet");
-            if (MoneroWalletFull.walletExists(vXmrWalletFile.getPath())) {
-              vXmrWallet = MoneroWalletFull.openWallet(vXmrWalletFile.getPath(), "abctesting123", MoneroNetworkType.STAGENET, conn);
+            vXmrWalletFile = new File(directory, filePrefix + xmrPrefix); // TODO: *.wallet?
+            if (MoneroUtils.walletExists(vXmrWalletFile.getPath())) {
+              vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"));
             } else {
-              vXmrWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
-                      .setPath(vXmrWalletFile.getPath())
-                      .setPassword("abctesting123")
-                      .setNetworkType(MoneroNetworkType.STAGENET)
-                      .setServer(conn));
+              vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"));
             }
             System.out.println("Monero wallet path: " + vXmrWallet.getPath());
             System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
@@ -273,7 +336,6 @@ public class WalletConfig extends AbstractIdleService {
 //            vXmrWallet.rescanSpent();
 //            vXmrWallet.rescanBlockchain();
             vXmrWallet.sync();
-            vXmrWallet.startSyncing();
             vXmrWallet.save();
             System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance());
             
@@ -524,7 +586,7 @@ public class WalletConfig extends AbstractIdleService {
         return vBtcWallet;
     }
     
-    public MoneroWalletFull getXmrWallet() {
+    public MoneroWallet getXmrWallet() {
       checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
       return vXmrWallet;
   }

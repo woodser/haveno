@@ -17,26 +17,19 @@
 
 package bisq.core.trade.protocol.tasks;
 
-import java.util.List;
-
-import org.bitcoinj.core.TransactionConfidence;
-import org.fxmisc.easybind.EasyBind;
-import org.fxmisc.easybind.Subscription;
-
 import bisq.common.UserThread;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.btc.listeners.AddressConfidenceListener;
 import bisq.core.btc.model.AddressEntry;
-import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWalletFull;
-import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroTransferQuery;
 import monero.wallet.model.MoneroTxQuery;
 import monero.wallet.model.MoneroTxWallet;
-import monero.wallet.model.MoneroWalletListener;
+import org.bitcoinj.core.TransactionConfidence;
+import org.fxmisc.easybind.Subscription;
 
 @Slf4j
 public abstract class SetupPayoutTxListener extends TradeTask {
@@ -58,7 +51,7 @@ public abstract class SetupPayoutTxListener extends TradeTask {
             System.out.println("NEED TO IMPLEMENT PAYOUT TX LISTENER!"); // TODO (woodser): implement SetupPayoutTxListener
 //            if (!trade.isPayoutPublished()) {
 //                XmrWalletService walletService = processModel.getXmrWalletService();
-//                MoneroWalletFull wallet = walletService.getWallet();
+//                MoneroWallet wallet = walletService.getWallet();
 //                String payoutTxId = trade.getPayoutTx().getHash();
 //                
 //                

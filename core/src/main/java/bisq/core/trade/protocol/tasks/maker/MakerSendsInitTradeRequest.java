@@ -20,16 +20,9 @@ package bisq.core.trade.protocol.tasks.maker;
 import static bisq.core.util.Validator.checkTradeId;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import com.google.common.base.Charsets;
-
 import bisq.common.app.Version;
 import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
@@ -38,10 +31,11 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.user.User;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
+import com.google.common.base.Charsets;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import monero.daemon.model.MoneroNetworkType;
-import monero.wallet.MoneroWalletFull;
-import monero.wallet.model.MoneroWalletConfig;
 
 @Slf4j
 public class MakerSendsInitTradeRequest extends TradeTask {
@@ -64,7 +58,7 @@ public class MakerSendsInitTradeRequest extends TradeTask {
             
 //            // create wallet for multisig
 //            // TODO (woodser): manage in common util, set path, server
-//            MoneroWalletFull multisigWallet = MoneroWalletFull.createWallet(new MoneroWalletConfig()
+//            MoneroWallet multisigWallet = MoneroWallet.createWallet(new MoneroWalletConfig()
 //                    .setPassword("abctesting123")
 //                    .setNetworkType(MoneroNetworkType.STAGENET));
 //            
