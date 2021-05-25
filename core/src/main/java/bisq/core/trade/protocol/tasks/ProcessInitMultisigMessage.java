@@ -145,9 +145,9 @@ public class ProcessInitMultisigMessage extends TradeTask {
               }
 
               if (peer1Address == null) throw new RuntimeException("Peer1 address is null");
-              if (peer1PubKeyRing == null) throw new RuntimeException("Peer1 pub key ring");
+              if (peer1PubKeyRing == null) throw new RuntimeException("Peer1 pub key ring is null");
               if (peer2Address == null) throw new RuntimeException("Peer2 address is null");
-              if (peer2PubKeyRing == null) throw new RuntimeException("Peer2 pub key ring");
+              if (peer2PubKeyRing == null) throw new RuntimeException("Peer2 pub key ring null");
 
               // send to peer 1
               sendMultisigMessage(peer1Address, peer1PubKeyRing, new SendDirectMessageListener() {

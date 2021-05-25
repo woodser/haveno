@@ -70,7 +70,7 @@ public class MakerCreateAndSignContract extends TradeTask {
                     processModel.getOffer().getOfferPayload(),
                     checkNotNull(trade.getTradeAmount()).value,
                     trade.getTradePrice().getValue(),
-                    //takerFeeTxId, // TODO (woodser): include taker fee tx id?
+                    //takerFeeTxId, // TODO (woodser): include taker and maker fee tx id?
                     buyerNodeAddress,
                     sellerNodeAddress,
                     trade.getArbitratorNodeAddress(),

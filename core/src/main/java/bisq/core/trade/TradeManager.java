@@ -429,16 +429,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                       getNewProcessModel(offer),
                       UUID.randomUUID().toString());
 
-          TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
-          TradeProtocol prev = tradeProtocolByTradeId.put(trade.getUid(), tradeProtocol);
-          if (prev != null) {
-              log.error("We had already an entry with uid {}", trade.getUid());
-          }
-
+          initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);
-          initTradeAndProtocol(trade, tradeProtocol);
 
-          ((MakerProtocol) tradeProtocol).handleInitTradeRequest(initTradeRequest,  peer, errorMessage -> {
+          ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(initTradeRequest,  peer, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null)
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
           });
