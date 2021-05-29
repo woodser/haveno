@@ -24,6 +24,7 @@ import bisq.desktop.components.TitledGroupBg;
 import bisq.core.offer.availability.tasks.ProcessOfferAvailabilityResponse;
 import bisq.core.offer.availability.tasks.SendOfferAvailabilityRequest;
 import bisq.core.offer.placeoffer.tasks.AddToOfferBook;
+import bisq.core.offer.placeoffer.tasks.MakerReservesTradeFunds;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
@@ -44,7 +45,6 @@ import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerCreatesDepositT
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSendsDepositTxMessage;
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSignsDepositTx;
 import bisq.core.trade.protocol.tasks.maker.MakerCreateAndSignContract;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateFeeTx;
 import bisq.core.trade.protocol.tasks.maker.MakerProcessesInputsForDepositTxRequest;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
 import bisq.core.trade.protocol.tasks.maker.MakerSetsLockTime;
@@ -118,7 +118,7 @@ public class DebugView extends InitializableView<GridPane, Void> {
         addGroup("PlaceOfferProtocol",
                 FXCollections.observableArrayList(Arrays.asList(
                         ValidateOffer.class,
-                        MakerCreateFeeTx.class,
+                        MakerReservesTradeFunds.class,
                         AddToOfferBook.class)
                 ));
 

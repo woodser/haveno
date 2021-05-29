@@ -67,7 +67,7 @@ public class PlaceOfferModel implements Model {
     @Setter
     private Transaction transaction;
     @Setter
-    private MoneroTxWallet xmrTransaction;
+    private MoneroTxWallet reserveTx;
 
     public PlaceOfferModel(Offer offer,
                            Coin reservedFundsForOffer,

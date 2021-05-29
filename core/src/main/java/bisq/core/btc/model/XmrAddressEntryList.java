@@ -213,6 +213,7 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
     // Private
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    // TODO (woodser): this should be removed since only using account 0
     private void maybeAddNewAddressEntry(MoneroOutputWallet output) {
       if (output.getAccountIndex() == 0) return;
       String address = wallet.getAddress(output.getAccountIndex(), output.getSubaddressIndex());

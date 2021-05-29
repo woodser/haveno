@@ -105,6 +105,7 @@ public class XmrWalletService {
     return multisigWallet;
   }
 
+  // TODO (woodser): are any of these necessary now?
   public XmrAddressEntry getArbitratorAddressEntry() {
       XmrAddressEntry.Context context = XmrAddressEntry.Context.ARBITRATOR;
       Optional<XmrAddressEntry> addressEntry = getAddressEntryListAsImmutableList().stream()
@@ -398,6 +399,8 @@ public class XmrWalletService {
 
   /**
    * Wraps a MoneroWalletListener to notify the Haveno application.
+   * 
+   * TODO (woodser): this is no longer necessary since not syncing to thread?
    */
   public class HavenoWalletListener extends MoneroWalletListener {
 
