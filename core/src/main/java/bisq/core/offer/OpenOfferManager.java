@@ -384,15 +384,18 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         PlaceOfferModel model = new PlaceOfferModel(offer,
                 reservedFundsForOffer,
                 useSavingsWallet,
+                p2PService,
                 btcWalletService,
                 xmrWalletService,
                 tradeWalletService,
                 bsqWalletService,
                 offerBookService,
                 arbitratorManager,
+                mediatorManager,
                 tradeStatisticsManager,
                 daoFacade,
                 user,
+                keyRing,
                 filterManager);
         PlaceOfferProtocol placeOfferProtocol = new PlaceOfferProtocol(
                 model,
@@ -647,6 +650,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                     if (openOffer.getState() == OpenOffer.State.AVAILABLE) {
                         Offer offer = openOffer.getOffer();
                         if (preferences.getIgnoreTradersList().stream().noneMatch(fullAddress -> fullAddress.equals(peer.getFullAddress()))) {
+                            
+                            // TODO (woodser): only select new arbitrator if old arbitrator unavailable
                             arbitratorNodeAddress = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
                             openOffer.setArbitratorNodeAddress(arbitratorNodeAddress);
 

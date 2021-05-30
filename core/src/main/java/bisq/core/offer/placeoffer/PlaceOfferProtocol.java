@@ -19,7 +19,7 @@ package bisq.core.offer.placeoffer;
 
 import bisq.core.offer.placeoffer.tasks.AddToOfferBook;
 import bisq.core.offer.placeoffer.tasks.MakerReservesTradeFunds;
-import bisq.core.offer.placeoffer.tasks.MakerSendsInitOfferRequest;
+import bisq.core.offer.placeoffer.tasks.MakerSendsSignOfferRequest;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.handlers.TransactionResultHandler;
 
@@ -56,7 +56,7 @@ public class PlaceOfferProtocol {
 
     public void placeOffer() {
         log.debug("model.offer.id" + model.getOffer().getId());
-        TaskRunner<PlaceOfferModel> taskRunner = new TaskRunner<>(model,
+        TaskRunner<PlaceOfferModel> taskRunner = new TaskRunner<>(model,    // TODO (woodse): do not run this until received signature back from arbitrator
                 () -> {
                     log.debug("sequence at handleRequestTakeOfferMessage completed");
                     resultHandler.handleResult(model.getTransaction());
@@ -79,7 +79,7 @@ public class PlaceOfferProtocol {
         taskRunner.addTasks(
                 ValidateOffer.class,
                 MakerReservesTradeFunds.class,
-                MakerSendsInitOfferRequest.class
+                MakerSendsSignOfferRequest.class
         );
 
         taskRunner.run();

@@ -39,6 +39,7 @@ import bisq.core.network.p2p.inventory.messages.GetInventoryResponse;
 import bisq.core.offer.OfferPayload;
 import bisq.core.offer.messages.OfferAvailabilityRequest;
 import bisq.core.offer.messages.OfferAvailabilityResponse;
+import bisq.core.offer.messages.SignOfferRequest;
 import bisq.core.proto.CoreProtoResolver;
 import bisq.core.support.dispute.arbitration.arbitrator.Arbitrator;
 import bisq.core.support.dispute.arbitration.messages.PeerPublishedDisputePayoutTxMessage;
@@ -132,6 +133,9 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return Ping.fromProto(proto.getPing(), messageVersion);
                 case PONG:
                     return Pong.fromProto(proto.getPong(), messageVersion);
+
+                case SIGN_OFFER_REQUEST:
+                    return SignOfferRequest.fromProto(proto.getSignOfferRequest(), messageVersion);
 
                 case OFFER_AVAILABILITY_REQUEST:
                     return OfferAvailabilityRequest.fromProto(proto.getOfferAvailabilityRequest(), messageVersion);
@@ -265,6 +269,7 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
         }
     }
 
+    @Override
     public NetworkPayload fromProto(protobuf.StorageEntryWrapper proto) {
         if (proto != null) {
             switch (proto.getMessageCase()) {
@@ -282,6 +287,7 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
         }
     }
 
+    @Override
     public NetworkPayload fromProto(protobuf.StoragePayload proto) {
         if (proto != null) {
             switch (proto.getMessageCase()) {

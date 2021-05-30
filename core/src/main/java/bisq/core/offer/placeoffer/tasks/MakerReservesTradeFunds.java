@@ -78,7 +78,7 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             List<String> inputKeyImages = new ArrayList<String>();
             for (MoneroOutput input : reserveTx.getInputs()) {
                 inputKeyImages.add(input.getKeyImage().getHex());
-                wallet.freezeOutput(input.getKeyImage().getHex());
+                //wallet.freezeOutput(input.getKeyImage().getHex()); // TODO: actually freeze funds!
             }
             
             // we delay one render frame to be sure we don't get called before the method call has
@@ -86,7 +86,8 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             UserThread.execute(() -> {
                 if (!completed) {
                     model.setReserveTx(reserveTx);
-                    model.getOffer().setState(Offer.State.OFFER_FEE_RESERVED);
+                    offer.setOfferFeePaymentTxId(reserveTx.getHash());
+                    offer.setState(Offer.State.OFFER_FEE_RESERVED);
                     complete();
                 } else {
                     log.warn("We got the onSuccess callback called after the timeout has been triggered a complete().");
