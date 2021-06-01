@@ -344,7 +344,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
       System.out.println("Arbitrator node address: " + initTradeRequest.getArbitratorNodeAddress());
 
       // handle request as arbitrator
-      boolean isArbitrator = initTradeRequest.getArbitratorNodeAddress().equals(p2PService.getNetworkNode().getNodeAddress());
+      boolean isArbitrator = initTradeRequest.getArbitratorNodeAddress().equals(p2PService.getNetworkNode().getNodeAddress()); // TODO (woodser): verify address is registered arbitrator
       if (isArbitrator) {
 
           // get offer associated with trade

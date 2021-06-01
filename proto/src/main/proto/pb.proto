@@ -81,16 +81,17 @@ message NetworkEnvelope {
 
         GetInventoryRequest get_inventory_request = 52;
         GetInventoryResponse get_inventory_response = 53;
-        
+
         SignOfferRequest sign_offer_request = 1001;
-        InitTradeRequest init_trade_request = 1002;
-        MakerReadyToFundMultisigRequest maker_ready_to_fund_multisig_request = 1003;
-        MakerReadyToFundMultisigResponse maker_ready_to_fund_multisig_response = 1004;
-        InitMultisigMessage init_multisig_message = 1005;
-        UpdateMultisigRequest update_multisig_request = 1006;
-        UpdateMultisigResponse update_multisig_response = 1007;
-        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1008;
-        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1009; 
+        SignOfferResponse sign_offer_response = 1002;
+        InitTradeRequest init_trade_request = 1003;
+        MakerReadyToFundMultisigRequest maker_ready_to_fund_multisig_request = 1004;
+        MakerReadyToFundMultisigResponse maker_ready_to_fund_multisig_response = 1005;
+        InitMultisigMessage init_multisig_message = 1006;
+        UpdateMultisigRequest update_multisig_request = 1007;
+        UpdateMultisigResponse update_multisig_response = 1008;
+        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1009;
+        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1010; 
     }
 }
 
@@ -161,6 +162,23 @@ message GetInventoryResponse {
 }
 
 // offer
+
+message SignOfferRequest {
+    string offer_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string sender_account_id = 4;
+    OfferPayload offer_payload = 5;
+    string uid = 6;
+    int64 current_date = 7;
+    string reserve_tx_hex = 8;
+}
+
+message SignOfferResponse {
+    string offer_id = 1;
+    string uid = 2;
+    string arbitrator_signature = 3;
+}
 
 message OfferAvailabilityRequest {
     string offer_id = 1;
@@ -275,17 +293,6 @@ message InputsForDepositTxResponse {
     bytes account_age_witness_signature_of_prepared_deposit_tx = 12;
     int64 current_date = 13;
     int64 lock_time = 14;
-}
-
-message SignOfferRequest {
-    string offer_id = 1;
-    NodeAddress sender_node_address = 2;
-    PubKeyRing sender_pub_key_ring = 3;
-    string sender_account_id = 4;
-    OfferPayload offer_payload = 5;
-    string uid = 8;
-    int64 current_date = 9;
-    string reserve_tx_hex = 11;
 }
 
 message InitTradeRequest {
@@ -1364,7 +1371,8 @@ message PersistableEnvelope {
         IgnoredMailboxMap ignored_mailbox_map = 33;
         RemovedPayloadsMap removed_payloads_map = 34;
         
-        XmrAddressEntryList xmr_address_entry_list = 100;
+        XmrAddressEntryList xmr_address_entry_list = 1001;
+        SignedOfferList signed_offer_list = 1002;
     }
 }
 
@@ -1493,6 +1501,16 @@ message Offer {
     OfferPayload offer_payload = 1;
 }
 
+message SignedOfferList {
+    repeated SignedOffer signed_offer = 1;
+}
+
+message SignedOffer {
+    string offer_id = 1;
+    string reserve_tx_hex = 2;
+    string arbitrator_signature = 3;
+}
+
 message OpenOffer {
     enum State {
         PB_ERROR = 0;
@@ -1519,6 +1537,8 @@ message Tradable {
         SellerAsMakerTrade seller_as_maker_trade = 4;
         SellerAsTakerTrade seller_as_taker_trade = 5;
         ArbitratorTrade arbitrator_trade = 6;
+        
+        SignedOffer signed_offer = 1001;
     }
 }
 

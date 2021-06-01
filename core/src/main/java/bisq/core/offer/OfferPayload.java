@@ -120,12 +120,8 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
     private final String baseCurrencyCode;
     private final String counterCurrencyCode;
 
-    @Deprecated
-    // Not used anymore but we cannot set it Nullable or remove it to not break backward compatibility (diff. hash)
     private final List<NodeAddress> arbitratorNodeAddresses;
-    @Deprecated
-    // Not used anymore but we cannot set it Nullable or remove it to not break backward compatibility (diff. hash)
-    private final List<NodeAddress> mediatorNodeAddresses;
+    private final List<NodeAddress> mediatorNodeAddresses; // TODO (woodser): delete this field
     private final String paymentMethodId;
     private final String makerPaymentAccountId;
     // Mutable property. Has to be set before offer is save in P2P network as it changes the objects hash!

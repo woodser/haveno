@@ -17,12 +17,13 @@
 
 package bisq.core.offer.placeoffer;
 
+import bisq.core.offer.messages.SignOfferResponse;
 import bisq.core.offer.placeoffer.tasks.AddToOfferBook;
 import bisq.core.offer.placeoffer.tasks.MakerReservesTradeFunds;
 import bisq.core.offer.placeoffer.tasks.MakerSendsSignOfferRequest;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.handlers.TransactionResultHandler;
-
+import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.taskrunner.TaskRunner;
 
@@ -83,5 +84,27 @@ public class PlaceOfferProtocol {
         );
 
         taskRunner.run();
+    }
+    
+    public void handleSignOfferResponse(SignOfferResponse response, NodeAddress sender) {
+      System.out.println("PlaceOfferProtocol.handleSignOfferResponse()");
+//      processModel.setTradeMessage(message);
+//      expect(anyPhase(Trade.Phase.INIT, Trade.Phase.DEPOSIT_PUBLISHED)
+//          .with(message)
+//          .from(sender))
+//          .setup(tasks(
+//                  TakerProcessesMakerDepositTxMessage.class,
+//                  TakerSetupDepositTxsListener.class).
+//                  using(new TradeTaskRunner(trade,
+//                          () -> {
+//                            stopTimeout();
+//                            handleTaskRunnerSuccess(message);
+//                          },
+//                          errorMessage -> {
+//                              errorMessageHandler.handleErrorMessage(errorMessage);
+//                              handleTaskRunnerFault(message, errorMessage);
+//                          }))
+//                  .withTimeout(30))
+//          .executeTasks();
     }
 }

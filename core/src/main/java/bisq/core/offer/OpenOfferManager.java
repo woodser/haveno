@@ -29,6 +29,8 @@ import bisq.core.locale.Res;
 import bisq.core.offer.availability.DisputeAgentSelection;
 import bisq.core.offer.messages.OfferAvailabilityRequest;
 import bisq.core.offer.messages.OfferAvailabilityResponse;
+import bisq.core.offer.messages.SignOfferRequest;
+import bisq.core.offer.messages.SignOfferResponse;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.offer.placeoffer.PlaceOfferProtocol;
 import bisq.core.provider.price.PriceFeedService;
@@ -65,6 +67,7 @@ import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.proto.network.NetworkEnvelope;
+import bisq.common.proto.persistable.PersistableListAsObservable;
 import bisq.common.proto.persistable.PersistedDataHost;
 import bisq.common.util.Tuple2;
 
@@ -76,11 +79,13 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -126,6 +131,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private final PersistenceManager<TradableList<OpenOffer>> persistenceManager;
     private final Map<String, OpenOffer> offersToBeEdited = new HashMap<>();
     private final TradableList<OpenOffer> openOffers = new TradableList<>();
+    private final SignedOfferList signedOffers = new SignedOfferList();
+    private final PersistenceManager<SignedOfferList> signedOfferPersistenceManager;
     private boolean stopped;
     private Timer periodicRepublishOffersTimer, periodicRefreshOffersTimer, retryRepublishOffersTimer;
     @Getter
@@ -157,7 +164,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                             DaoFacade daoFacade,
                             FilterManager filterManager,
                             Broadcaster broadcaster,
-                            PersistenceManager<TradableList<OpenOffer>> persistenceManager) {
+                            PersistenceManager<TradableList<OpenOffer>> persistenceManager,
+                            PersistenceManager<SignedOfferList> signedOfferPersistenceManager) {
         this.coreContext = coreContext;
         this.createOfferService = createOfferService;
         this.keyRing = keyRing;
@@ -179,16 +187,26 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         this.filterManager = filterManager;
         this.broadcaster = broadcaster;
         this.persistenceManager = persistenceManager;
+        this.signedOfferPersistenceManager = signedOfferPersistenceManager;
 
         this.persistenceManager.initialize(openOffers, "OpenOffers", PersistenceManager.Source.PRIVATE);
+        this.signedOfferPersistenceManager.initialize(signedOffers, "SignedOffers", PersistenceManager.Source.PRIVATE);
     }
 
     @Override
     public void readPersisted(Runnable completeHandler) {
+        
+        // read open offers
         persistenceManager.readPersisted(persisted -> {
                     openOffers.setAll(persisted.getList());
                     openOffers.forEach(openOffer -> openOffer.getOffer().setPriceFeedService(priceFeedService));
-                    completeHandler.run();
+                    
+                    // read signed offers
+                    signedOfferPersistenceManager.readPersisted(signedOfferPersisted -> {
+                        signedOffers.setAll(signedOfferPersisted.getList());
+                        completeHandler.run();
+                    },
+                    completeHandler);
                 },
                 completeHandler);
     }
@@ -286,7 +304,9 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         // We get an encrypted message but don't do the signature check as we don't know the peer yet.
         // A basic sig check is in done also at decryption time
         NetworkEnvelope networkEnvelope = decryptedMessageWithPubKey.getNetworkEnvelope();
-        if (networkEnvelope instanceof OfferAvailabilityRequest) {
+        if (networkEnvelope instanceof SignOfferRequest) {
+            handleSignOfferRequest((SignOfferRequest) networkEnvelope, peerNodeAddress);
+        } else if (networkEnvelope instanceof OfferAvailabilityRequest) {
             handleOfferAvailabilityRequest((OfferAvailabilityRequest) networkEnvelope, peerNodeAddress);
         } else if (networkEnvelope instanceof AckMessage) {
             AckMessage ackMessage = (AckMessage) networkEnvelope;
@@ -594,6 +614,80 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         return openOffers.stream().filter(e -> e.getId().equals(offerId)).findFirst();
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Arbitrator Signs Offer
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    private void handleSignOfferRequest(SignOfferRequest request, NodeAddress peer) {
+        log.info("Received SignOfferRequest from {} with offerId {} and uid {}",
+                peer, request.getOfferId(), request.getUid());
+        
+        String errorMessage = null;
+        try {
+            
+            // verify this node is an arbitrator
+            
+            // verify offer not seen before
+            Optional<OpenOffer> openOfferOptional = getOpenOfferById(request.offerId);
+            if (openOfferOptional.isPresent()) {
+                errorMessage = "We already got a request to sign offer id " + request.offerId;
+                log.info(errorMessage);
+                sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
+                return;
+            }
+            
+            // verify maker's reserve tx (double spend, trade fee, trade amount, mining fee)
+                    
+            // create signature to certify arbitrator has seen valid reserve tx
+            String signature = "zdvaArbitrator123!";
+            
+            // create record of maker's signed offer
+            SignedOffer signedOffer = new SignedOffer(request.getOfferPayload().getId(), request.getReserveTxHex(), signature);
+            signedOffers.add(signedOffer);
+            requestPersistence();
+            
+            // send ack
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), true, errorMessage);
+            
+            // send response with signature
+            SignOfferResponse response = new SignOfferResponse(request.getOfferId(),
+                    UUID.randomUUID().toString(),
+                    Version.getP2PMessageVersion(),
+                    signature);
+            p2PService.sendEncryptedDirectMessage(peer,
+                    request.getPubKeyRing(),
+                    response,
+                    new SendDirectMessageListener() {
+                        @Override
+                        public void onArrived() {
+                            log.info("{} arrived at peer: offerId={}; uid={}",
+                                    response.getClass().getSimpleName(),
+                                    response.getOfferId(),
+                                    response.getUid());
+                        }
+
+                        @Override
+                        public void onFault(String errorMessage) {
+                            log.error("Sending {} failed: uid={}; peer={}; error={}",
+                                    response.getClass().getSimpleName(),
+                                    response.getUid(),
+                                    peer,
+                                    errorMessage);
+                        }
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = "Exception at handleSignOfferRequest " + e.getMessage();
+            log.error(errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
+        }
+    }
+    
+    private void handleSignOfferResponse(SignOfferResponse response, NodeAddress peer) {
+        log.info("Received SignOfferResponse from {} with offerId {} and uid {}",
+                peer, response.getOfferId(), response.getUid());
+        throw new RuntimeException("SignOfferResponse() not implemented!");
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // OfferPayload Availability
@@ -609,7 +703,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         if (!p2PService.isBootstrapped()) {
             errorMessage = "We got a handleOfferAvailabilityRequest but we have not bootstrapped yet.";
             log.info(errorMessage);
-            sendAckMessage(request, peer, false, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
             return;
         }
 
@@ -617,14 +711,14 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         if (!btcWalletService.isChainHeightSyncedWithinTolerance()) {
             errorMessage = "We got a handleOfferAvailabilityRequest but our chain is not synced.";
             log.info(errorMessage);
-            sendAckMessage(request, peer, false, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
             return;
         }
 
         if (stopped) {
             errorMessage = "We have stopped already. We ignore that handleOfferAvailabilityRequest call.";
             log.debug(errorMessage);
-            sendAckMessage(request, peer, false, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
             return;
         }
 
@@ -634,7 +728,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         } catch (Throwable t) {
             errorMessage = "Message validation failed. Error=" + t.toString() + ", Message=" + request.toString();
             log.warn(errorMessage);
-            sendAckMessage(request, peer, false, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
             return;
         }
 
@@ -730,7 +824,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             log.error(errorMessage);
             t.printStackTrace();
         } finally {
-            sendAckMessage(request, peer, result, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
         }
     }
 
@@ -738,44 +832,43 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         return preferences.isDenyApiTaker() && request.isTakerApiUser();
     }
 
-    private void sendAckMessage(OfferAvailabilityRequest message,
+    private void sendAckMessage(Class<?> reqClass,
                                 NodeAddress sender,
+                                PubKeyRing senderPubKeyRing,
+                                String offerId,
+                                String uid,
                                 boolean result,
                                 String errorMessage) {
-        String offerId = message.getOfferId();
-        String sourceUid = message.getUid();
+        String sourceUid = uid;
         AckMessage ackMessage = new AckMessage(p2PService.getNetworkNode().getNodeAddress(),
                 AckMessageSourceType.OFFER_MESSAGE,
-                message.getClass().getSimpleName(),
+                reqClass.getSimpleName(),
                 sourceUid,
                 offerId,
                 result,
                 errorMessage);
 
-        final NodeAddress takersNodeAddress = sender;
-        PubKeyRing takersPubKeyRing = message.getPubKeyRing();
-        log.info("Send AckMessage for OfferAvailabilityRequest to peer {} with offerId {} and sourceUid {}",
-                takersNodeAddress, offerId, ackMessage.getSourceUid());
+        log.info("Send AckMessage for {} to peer {} with offerId {} and sourceUid {}",
+                reqClass.getSimpleName(), sender, offerId, ackMessage.getSourceUid());
         p2PService.sendEncryptedDirectMessage(
-                takersNodeAddress,
-                takersPubKeyRing,
+                sender,
+                senderPubKeyRing,
                 ackMessage,
                 new SendDirectMessageListener() {
                     @Override
                     public void onArrived() {
-                        log.info("AckMessage for OfferAvailabilityRequest arrived at takersNodeAddress {}. offerId={}, sourceUid={}",
-                                takersNodeAddress, offerId, ackMessage.getSourceUid());
+                        log.info("AckMessage for {} arrived at sender {}. offerId={}, sourceUid={}",
+                                reqClass.getSimpleName(), sender, offerId, ackMessage.getSourceUid());
                     }
 
                     @Override
                     public void onFault(String errorMessage) {
-                        log.error("AckMessage for OfferAvailabilityRequest failed. AckMessage={}, takersNodeAddress={}, errorMessage={}",
-                                ackMessage, takersNodeAddress, errorMessage);
+                        log.error("AckMessage for {} failed. AckMessage={}, sender={}, errorMessage={}",
+                                reqClass.getSimpleName(), ackMessage, sender, errorMessage);
                     }
                 }
         );
     }
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Update persisted offer if a new capability is required after a software update
@@ -1029,6 +1122,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
 
     private void requestPersistence() {
         persistenceManager.requestPersistence();
+        signedOfferPersistenceManager.requestPersistence();
     }
 
 

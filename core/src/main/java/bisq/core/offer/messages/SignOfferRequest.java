@@ -19,8 +19,6 @@ package bisq.core.offer.messages;
 
 import bisq.common.crypto.PubKeyRing;
 import bisq.core.offer.OfferPayload;
-import bisq.core.payment.payload.PaymentAccountPayload;
-import bisq.core.proto.CoreProtoResolver;
 import bisq.network.p2p.DirectMessage;
 import bisq.network.p2p.NodeAddress;
 import lombok.EqualsAndHashCode;
@@ -30,7 +28,7 @@ import lombok.Value;
 @Value
 public final class SignOfferRequest extends OfferMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
-    private final PubKeyRing senderPubKeyRing;
+    private final PubKeyRing pubKeyRing;
     private final String senderAccountId;
     private final OfferPayload offerPayload;
     private final long currentDate;
@@ -38,7 +36,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
 
     public SignOfferRequest(String offerId,
                                      NodeAddress senderNodeAddress,
-                                     PubKeyRing senderPubKeyRing,
+                                     PubKeyRing pubKeyRing,
                                      String senderAccountId,
                                      OfferPayload offerPayload,
                                      String uid,
@@ -47,7 +45,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                                      String reserveTxHex) {
         super(messageVersion, offerId, uid);
         this.senderNodeAddress = senderNodeAddress;
-        this.senderPubKeyRing = senderPubKeyRing;
+        this.pubKeyRing = pubKeyRing;
         this.senderAccountId = senderAccountId;
         this.offerPayload = offerPayload;
         this.currentDate = currentDate;
@@ -64,7 +62,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
         protobuf.SignOfferRequest.Builder builder = protobuf.SignOfferRequest.newBuilder()
                 .setOfferId(offerId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
-                .setSenderPubKeyRing(senderPubKeyRing.toProtoMessage())
+                .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setSenderAccountId(senderAccountId)
                 .setOfferPayload(offerPayload.toProtoMessage().getOfferPayload())
                 .setUid(uid)
@@ -78,7 +76,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                                                       int messageVersion) {
         return new SignOfferRequest(proto.getOfferId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
-                PubKeyRing.fromProto(proto.getSenderPubKeyRing()),
+                PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getSenderAccountId(),
                 OfferPayload.fromProto(proto.getOfferPayload()),
                 proto.getUid(),
@@ -91,7 +89,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
     public String toString() {
         return "SignOfferRequest {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
-                ",\n     pubKeyRing=" + senderPubKeyRing +
+                ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +
                 ",\n     reserveTxHex='" + reserveTxHex +
                 "\n} " + super.toString();
