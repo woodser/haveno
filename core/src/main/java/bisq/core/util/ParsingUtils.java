@@ -21,17 +21,27 @@ public class ParsingUtils {
      * Multiplier to convert centineros (the base XMR unit of Coin) to atomic units.
      */
     private static BigInteger CENTINEROS_AU_MULTIPLIER = BigInteger.valueOf(10000);
+    
+    /**
+     * Convert Coin (denominated in centineros) to atomic units.
+     *
+     * @param coin has an amount denominated in centineros
+     * @return BigInteger the coin amount denominated in atomic units
+     */
+    public static BigInteger coinToAtomicUnits(Coin coin) {
+        return centinerosToAtomicUnits(coin.value);
+    }
 
     /**
-     * Convert centineros (the base XMR unit of Coin) to atomic units.
+     * Convert centineros (the base unit of Coin) to atomic units.
      *
      * @param centineros denominates an amount of XMR in centineros
      * @return BigInteger the amount denominated in atomic units
      */
-    public static BigInteger satoshisToXmrAtomicUnits(long centineros) {
+    public static BigInteger centinerosToAtomicUnits(long centineros) {
         return BigInteger.valueOf(centineros).multiply(ParsingUtils.CENTINEROS_AU_MULTIPLIER);
     }
-
+    
     public static Coin parseToCoin(String input, CoinFormatter coinFormatter) {
         return parseToCoin(input, coinFormatter.getMonetaryFormat());
     }

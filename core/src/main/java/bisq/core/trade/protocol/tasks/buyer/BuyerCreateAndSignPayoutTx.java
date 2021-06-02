@@ -76,7 +76,7 @@ public class BuyerCreateAndSignPayoutTx extends TradeTask {
             Preconditions.checkNotNull(buyerPayoutAddress, "buyerPayoutAddress must not be null");
             BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTakerPreparedDepositTxId() : processModel.getMakerPreparedDepositTxId()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
             BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMakerPreparedDepositTxId() : processModel.getTakerPreparedDepositTxId()).getIncomingAmount();
-            BigInteger tradeAmount = ParsingUtils.satoshisToXmrAtomicUnits(trade.getTradeAmount().value);
+            BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(trade.getTradeAmount());
             BigInteger buyerPayoutAmount = buyerDepositAmount.add(tradeAmount);
             BigInteger sellerPayoutAmount = sellerDepositAmount.subtract(tradeAmount);
 

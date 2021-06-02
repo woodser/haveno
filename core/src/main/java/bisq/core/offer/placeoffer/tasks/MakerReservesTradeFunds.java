@@ -56,8 +56,8 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             // collect fields for reserve transaction
             String returnAddress = wallet.getPrimaryAddress();
             String feeAddress = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM"; // TODO (woodser): don't hardcode
-            BigInteger makerFee = ParsingUtils.satoshisToXmrAtomicUnits(offer.getMakerFee().value);
-            BigInteger reservedFundsForOffer = ParsingUtils.satoshisToXmrAtomicUnits(model.getReservedFundsForOffer().value);
+            BigInteger makerFee = ParsingUtils.coinToAtomicUnits(offer.getMakerFee());
+            BigInteger reservedFundsForOffer = ParsingUtils.coinToAtomicUnits(model.getReservedFundsForOffer());
             
             // create transaction to reserve outputs for trade
             MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()

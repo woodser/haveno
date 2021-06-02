@@ -103,8 +103,8 @@ public class FundMultisig extends TradeTask {
           MoneroTxWallet tx = wallet.createTx(new MoneroTxConfig()
                   .setAccountIndex(0)
                   .setDestinations(
-                          new MoneroDestination(tradeFeeAddress, ParsingUtils.satoshisToXmrAtomicUnits(trade.getTakerFee().value)),
-                          new MoneroDestination(multisigAddress, ParsingUtils.satoshisToXmrAtomicUnits(processModel.getFundsNeededForTradeAsLong())))
+                          new MoneroDestination(tradeFeeAddress, ParsingUtils.coinToAtomicUnits(trade.getTakerFee())),
+                          new MoneroDestination(multisigAddress, ParsingUtils.coinToAtomicUnits(processModel.getFundsNeededForTrade())))
                   .setRelay(true));
           System.out.println("SUCCESSFULLY TRANSFERRED FROM ACCOUNT 0 TO MULTISIG AND PAID FEE");
           System.out.println(tx);

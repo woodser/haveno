@@ -358,7 +358,7 @@ public class XmrWalletService {
       MoneroTxWallet tx = wallet.createTx(new MoneroTxConfig()
           .setAccountIndex(fromAccountIndex)
           .setAddress(toAddress)
-          .setAmount(ParsingUtils.satoshisToXmrAtomicUnits(receiverAmount.value))
+          .setAmount(ParsingUtils.coinToAtomicUnits(receiverAmount))
           .setRelay(true));
       callback.onSuccess(tx);
       printTxs("sendFunds", tx);

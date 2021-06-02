@@ -596,8 +596,8 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       String sellerPayoutAddress = contract.isBuyerMakerAndSellerTaker() ? contract.getTakerPayoutAddressString() : contract.getMakerPayoutAddressString();
       Preconditions.checkNotNull(buyerPayoutAddress, "buyerPayoutAddress must not be null");
       Preconditions.checkNotNull(sellerPayoutAddress, "sellerPayoutAddress must not be null");
-      BigInteger buyerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(disputeResult.getBuyerPayoutAmount().value);
-      BigInteger sellerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(disputeResult.getSellerPayoutAmount().value);
+      BigInteger buyerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getBuyerPayoutAmount());
+      BigInteger sellerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getSellerPayoutAmount());
 
       //System.out.println("buyerPayoutAddress: " + buyerPayoutAddress);
       //System.out.println("buyerPayoutAmount: " + buyerPayoutAmount);
@@ -668,8 +668,8 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
 //    BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getMakerDepositTxId() : trade.getTakerDepositTxId()).getIncomingAmount();   // TODO (woodser): use contract instead of trade to get deposit tx ids when contract has deposit tx ids
 //    BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getTakerDepositTxId() : trade.getMakerDepositTxId()).getIncomingAmount();
 //    BigInteger tradeAmount = BigInteger.valueOf(contract.getTradeAmount().value).multiply(ParsingUtils.XMR_SATOSHI_MULTIPLIER);
-      BigInteger buyerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(disputeResult.getBuyerPayoutAmount().value);
-      BigInteger sellerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(disputeResult.getSellerPayoutAmount().value);
+      BigInteger buyerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getBuyerPayoutAmount());
+      BigInteger sellerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getSellerPayoutAmount());
       System.out.println("Buyer payout amount (with multiplier): " + buyerPayoutAmount);
       System.out.println("Seller payout amount (with multiplier): " + sellerPayoutAmount);
 

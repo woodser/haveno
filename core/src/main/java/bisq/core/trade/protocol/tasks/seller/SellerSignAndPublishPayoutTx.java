@@ -62,16 +62,16 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");
             BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMakerPreparedDepositTxId() : processModel.getTakerPreparedDepositTxId()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
             BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTakerPreparedDepositTxId() : processModel.getMakerPreparedDepositTxId()).getIncomingAmount();
-            BigInteger tradeAmount = ParsingUtils.satoshisToXmrAtomicUnits(trade.getTradeAmount().value);
+            BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(trade.getTradeAmount());
 
             System.out.println("SELLER VERIFYING PAYOUT TX");
             System.out.println("Trade amount: " + trade.getTradeAmount());
             System.out.println("Buyer deposit amount: " + buyerDepositAmount);
             System.out.println("Seller deposit amount: " + sellerDepositAmount);
 
-            BigInteger buyerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(offer.getBuyerSecurityDeposit().add(trade.getTradeAmount()).value);
+            BigInteger buyerPayoutAmount = ParsingUtils.coinToAtomicUnits(offer.getBuyerSecurityDeposit().add(trade.getTradeAmount()));
             System.out.println("Buyer payout amount (with multiplier): " + buyerPayoutAmount);
-            BigInteger sellerPayoutAmount = ParsingUtils.satoshisToXmrAtomicUnits(offer.getSellerSecurityDeposit().value);
+            BigInteger sellerPayoutAmount = ParsingUtils.coinToAtomicUnits(offer.getSellerSecurityDeposit());
             System.out.println("Seller payout amount (with multiplier): " + sellerPayoutAmount);
 
             // parse buyer-signed payout tx
@@ -93,7 +93,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             if (!buyerPayoutDestination.getAddress().equals(contract.getBuyerPayoutAddressString())) throw new RuntimeException("Buyer payout address does not match contract");
             if (!sellerPayoutDestination.getAddress().equals(contract.getSellerPayoutAddressString())) throw new RuntimeException("Seller payout address does not match contract");
 
-            // verify change address is multisig's primary address // TODO (woodser): ideally change amount is 0, seen with 0 conf payout tx 
+            // verify change address is multisig's primary address // TODO (woodser): ideally change amount is 0, seen with 0 conf payout tx
             if (!buyerSignedPayoutTx.getChangeAmount().equals(new BigInteger("0")) && !buyerSignedPayoutTx.getChangeAddress().equals(multisigWallet.getPrimaryAddress())) throw new RuntimeException("Change address is not multisig wallet's primary address");
 
             // verify sum of outputs = destination amounts + change amount
