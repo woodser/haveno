@@ -40,6 +40,7 @@ import bisq.core.offer.OfferPayload;
 import bisq.core.offer.messages.OfferAvailabilityRequest;
 import bisq.core.offer.messages.OfferAvailabilityResponse;
 import bisq.core.offer.messages.SignOfferRequest;
+import bisq.core.offer.messages.SignOfferResponse;
 import bisq.core.proto.CoreProtoResolver;
 import bisq.core.support.dispute.arbitration.arbitrator.Arbitrator;
 import bisq.core.support.dispute.arbitration.messages.PeerPublishedDisputePayoutTxMessage;
@@ -136,6 +137,8 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
 
                 case SIGN_OFFER_REQUEST:
                     return SignOfferRequest.fromProto(proto.getSignOfferRequest(), messageVersion);
+                case SIGN_OFFER_RESPONSE:
+                    return SignOfferResponse.fromProto(proto.getSignOfferResponse(), messageVersion);
 
                 case OFFER_AVAILABILITY_REQUEST:
                     return OfferAvailabilityRequest.fromProto(proto.getOfferAvailabilityRequest(), messageVersion);

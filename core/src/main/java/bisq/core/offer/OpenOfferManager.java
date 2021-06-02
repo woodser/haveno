@@ -79,7 +79,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +137,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private final TradableList<OpenOffer> openOffers = new TradableList<>();
     private final SignedOfferList signedOffers = new SignedOfferList();
     private final PersistenceManager<SignedOfferList> signedOfferPersistenceManager;
+    private final Map<String, PlaceOfferProtocol> placeOfferProtocols = new HashMap<String, PlaceOfferProtocol>();
     private boolean stopped;
     private Timer periodicRepublishOffersTimer, periodicRefreshOffersTimer, retryRepublishOffersTimer;
     @Getter
@@ -311,6 +311,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         NetworkEnvelope networkEnvelope = decryptedMessageWithPubKey.getNetworkEnvelope();
         if (networkEnvelope instanceof SignOfferRequest) {
             handleSignOfferRequest((SignOfferRequest) networkEnvelope, peerNodeAddress);
+        } if (networkEnvelope instanceof SignOfferResponse) {
+            handleSignOfferResponse((SignOfferResponse) networkEnvelope, peerNodeAddress);
         } else if (networkEnvelope instanceof OfferAvailabilityRequest) {
             handleOfferAvailabilityRequest((OfferAvailabilityRequest) networkEnvelope, peerNodeAddress);
         } else if (networkEnvelope instanceof AckMessage) {
@@ -405,6 +407,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 offer.getAmount(),
                 buyerSecurityDeposit,
                 createOfferService.getSellerSecurityDepositAsDouble(buyerSecurityDeposit));
+        
+        if (placeOfferProtocols.containsKey(offer.getId())) {
+            log.warn("We already have a place offer protocol for offer " + offer.getId() + ", ignoring");
+            throw new RuntimeException("We already have a place offer protocol for offer " + offer.getId() + ", ignoring");
+        }
 
         PlaceOfferModel model = new PlaceOfferModel(offer,
                 reservedFundsForOffer,
@@ -438,6 +445,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 },
                 errorMessageHandler
         );
+        
+        placeOfferProtocols.put(offer.getId(), placeOfferProtocol);
         placeOfferProtocol.placeOffer();
     }
 
@@ -738,7 +747,16 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private void handleSignOfferResponse(SignOfferResponse response, NodeAddress peer) {
         log.info("Received SignOfferResponse from {} with offerId {} and uid {}",
                 peer, response.getOfferId(), response.getUid());
-        throw new RuntimeException("SignOfferResponse() not implemented!");
+        
+        // get previously created protocol
+        PlaceOfferProtocol protocol = placeOfferProtocols.get(response.getOfferId());
+        if (protocol == null) {
+            log.warn("No place offer protocol created for offer " + response.getOfferId());
+            return;
+        }
+        
+        // handle response
+        protocol.handleSignOfferResponse(response, peer);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
