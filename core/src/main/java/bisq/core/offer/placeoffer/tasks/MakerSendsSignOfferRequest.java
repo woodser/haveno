@@ -52,8 +52,6 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
         try {
             runInterceptHook();
 
-            String offerId = model.getOffer().getId();
-
             // select signing arbitrator
             Mediator arbitrator = DisputeAgentSelection.getLeastUsedArbitrator(model.getTradeStatisticsManager(), model.getMediatorManager()); // TODO (woodser): using mediator manager for arbitrators
             NodeAddress arbitratorNodeAddress = arbitrator.getNodeAddress();
@@ -69,18 +67,21 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     new Date().getTime(),
-                    model.getReserveTx().getMetadata());
+                    model.getReserveTx().getHash(),
+                    model.getReserveTx().getFullHex(),
+                    model.getReserveTx().getKey(),
+                    model.getXmrWalletService().getWallet().getPrimaryAddress());
 
             // send request
             model.getP2PService().sendEncryptedDirectMessage(arbitratorNodeAddress, arbitratorPubKeyRing, request, new SendDirectMessageListener() {
                 @Override
                 public void onArrived() {
-                    log.info("{} arrived: arbitrator={}; offerId={}; uid={}", request.getClass().getSimpleName(), arbitratorNodeAddress, offerId);
+                    log.info("{} arrived: arbitrator={}; offerId={}; uid={}", request.getClass().getSimpleName(), arbitratorNodeAddress, offer.getId());
                     complete();
                 }
                 @Override
                 public void onFault(String errorMessage) {
-                    log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), arbitratorNodeAddress, offerId, errorMessage);
+                    log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), arbitratorNodeAddress, offer.getId(), errorMessage);
                     appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
                     failed();
                 }

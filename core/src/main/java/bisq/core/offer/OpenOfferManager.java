@@ -43,6 +43,7 @@ import bisq.core.trade.handlers.TransactionResultHandler;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.Preferences;
 import bisq.core.user.User;
+import bisq.core.util.ParsingUtils;
 import bisq.core.util.Validator;
 
 import bisq.network.p2p.AckMessage;
@@ -55,7 +56,7 @@ import bisq.network.p2p.P2PService;
 import bisq.network.p2p.SendDirectMessageListener;
 import bisq.network.p2p.peers.Broadcaster;
 import bisq.network.p2p.peers.PeerManager;
-
+import common.utils.JsonUtils;
 import bisq.common.Timer;
 import bisq.common.UserThread;
 import bisq.common.app.Capabilities;
@@ -67,7 +68,6 @@ import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.proto.network.NetworkEnvelope;
-import bisq.common.proto.persistable.PersistableListAsObservable;
 import bisq.common.proto.persistable.PersistedDataHost;
 import bisq.common.util.Tuple2;
 
@@ -77,7 +77,7 @@ import javax.inject.Inject;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -93,7 +93,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
-
+import monero.common.MoneroError;
+import monero.daemon.MoneroDaemon;
+import monero.daemon.model.MoneroSubmitTxResult;
+import monero.daemon.model.MoneroTx;
+import monero.wallet.MoneroWallet;
+import monero.wallet.model.MoneroCheckTx;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -636,12 +641,15 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 return;
             }
             
+            // verify reserve tx not signed before
+            
             // verify maker's reserve tx (double spend, trade fee, trade amount, mining fee)
+            verifyReserveTx(request);
                     
             // create signature to certify arbitrator has seen valid reserve tx
             String signature = "zdvaArbitrator123!";
             
-            // create record of maker's signed offer
+            // create record of signed offer
             SignedOffer signedOffer = new SignedOffer(request.getOfferPayload().getId(), request.getReserveTxHex(), signature);
             signedOffers.add(signedOffer);
             requestPersistence();
@@ -681,6 +689,51 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             log.error(errorMessage);
             sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
         }
+    }
+    
+    private void verifyReserveTx(SignOfferRequest request) {
+        
+        // use wallet and daemon to verify reserve tx
+        MoneroWallet wallet = xmrWalletService.getWallet();
+        MoneroDaemon daemon = xmrWalletService.getDaemon();
+        
+        try {
+            
+            // get reserve tx from daemon
+            MoneroTx tx = daemon.getTx(request.getReserveTxHash()); // TODO (woodser): return null if tx not found instead of throwing?
+            
+            // reserve tx must not be relayed
+            if (tx.isRelayed()) throw new RuntimeException("Reserve tx must not be relayed");
+        } catch (MoneroError e) {
+            
+            // submit reserve tx to daemon but do not relay
+            MoneroSubmitTxResult result = daemon.submitTxHex(request.getReserveTxHex(), true);
+            if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
+        }
+
+        // verify maker trade fee
+        Offer offer = new Offer(request.getOfferPayload());
+        String feeAddress = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM"; // TODO (woodser): don't hardcode
+        MoneroCheckTx check = wallet.checkTxKey(request.getReserveTxHash(), request.getReserveTxKey(), feeAddress);
+        if (!check.isGood()) throw new RuntimeException("Invalid proof of maker trade fee");
+        if (!check.getReceivedAmount().equals(ParsingUtils.satoshisToXmrAtomicUnits(offer.getMakerFee().value))) throw new RuntimeException("Reserved trade fee is incorrect");
+
+        // verify mining fee
+        BigInteger feeEstimate = daemon.getFeeEstimate().multiply(BigInteger.valueOf(request.getReserveTxHex().length())); // TODO (woodser): fee estimates are too high, use more accurate estimate
+        BigInteger feeThreshold = feeEstimate.multiply(BigInteger.valueOf(1l)).divide(BigInteger.valueOf(2l)); // must be at least 50% of estimated fee
+        MoneroTx tx = daemon.getTx(request.getReserveTxHash());
+        System.out.println("Fee: " + tx.getFee() + " vs " + feeEstimate + " " + feeThreshold);
+        if (tx.getFee().compareTo(feeThreshold) < 0) {
+            log.info("Reserve tx fee is not enough, needed " + feeThreshold + " but was " + tx.getFee());
+            throw new RuntimeException("Reserve tx fee is not enough");
+        }
+        
+        // verify deposit amount
+        check = wallet.checkTxKey(request.getReserveTxHash(), request.getReserveTxKey(), request.getReturnAddress());
+        if (!check.isGood()) throw new RuntimeException("Invalid proof of deposit amount");
+        BigInteger depositAmount = ParsingUtils.satoshisToXmrAtomicUnits(offer.getDirection() == OfferPayload.Direction.SELL ? offer.getAmount().value + offer.getSellerSecurityDeposit().value : offer.getBuyerSecurityDeposit().value);
+        BigInteger depositThreshold = depositAmount.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
+        if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough");
     }
     
     private void handleSignOfferResponse(SignOfferResponse response, NodeAddress peer) {

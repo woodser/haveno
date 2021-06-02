@@ -171,7 +171,10 @@ message SignOfferRequest {
     OfferPayload offer_payload = 5;
     string uid = 6;
     int64 current_date = 7;
-    string reserve_tx_hex = 8;
+    string reserve_tx_hash = 8;
+    string reserve_tx_hex = 9;
+    string reserve_tx_key = 10;
+    string return_address = 11;
 }
 
 message SignOfferResponse {

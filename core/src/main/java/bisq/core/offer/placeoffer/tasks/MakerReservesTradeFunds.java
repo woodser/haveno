@@ -20,16 +20,16 @@ package bisq.core.offer.placeoffer.tasks;
 import bisq.common.UserThread;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.btc.wallet.TradeWalletService;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.offer.Offer;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.util.ParsingUtils;
+import common.utils.JsonUtils;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroOutput;
+import monero.daemon.model.MoneroSubmitTxResult;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
     private static final Logger log = LoggerFactory.getLogger(MakerReservesTradeFunds.class);
 
-    @SuppressWarnings({"unused"})
     public MakerReservesTradeFunds(TaskRunner taskHandler, PlaceOfferModel model) {
         super(taskHandler, model);
     }
@@ -48,38 +47,41 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
     protected void run() {
 
         Offer offer = model.getOffer();
-        String offerId = model.getOffer().getId();
-        XmrWalletService walletService = model.getXmrWalletService();
         MoneroWallet wallet = model.getXmrWalletService().getWallet();
+        MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
 
         try {
             runInterceptHook();
             
             // collect fields for reserve transaction
             String returnAddress = wallet.getPrimaryAddress();
-            String feeReceiver = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM"; // TODO (woodser): don't hardcode
+            String feeAddress = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM"; // TODO (woodser): don't hardcode
             BigInteger makerFee = ParsingUtils.satoshisToXmrAtomicUnits(offer.getMakerFee().value);
             BigInteger reservedFundsForOffer = ParsingUtils.satoshisToXmrAtomicUnits(model.getReservedFundsForOffer().value);
             
             // create transaction to reserve outputs for trade
             MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
-                    .addDestination(feeReceiver, makerFee)
+                    .addDestination(feeAddress, makerFee)
                     .addDestination(returnAddress, reservedFundsForOffer));
 
             // reserve additional funds to account for fluctuations in mining fee
-            BigInteger extraMiningFee = prepareTx.getFee().multiply(BigInteger.valueOf(2l)); // add twice the mining fee
-            final MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
+            BigInteger extraMiningFee = prepareTx.getFee().multiply(BigInteger.valueOf(3l)); // add thrice the mining fee
+            MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
-                    .addDestination(feeReceiver, makerFee)
+                    .addDestination(feeAddress, makerFee)
                     .addDestination(returnAddress, reservedFundsForOffer.add(extraMiningFee)));
-
+            
             // freeze trade funds
             List<String> inputKeyImages = new ArrayList<String>();
             for (MoneroOutput input : reserveTx.getInputs()) {
                 inputKeyImages.add(input.getKeyImage().getHex());
                 //wallet.freezeOutput(input.getKeyImage().getHex()); // TODO: actually freeze funds!
             }
+            
+            // submit but do not relay reserve tx to daemon
+            MoneroSubmitTxResult result = daemon.submitTxHex(reserveTx.getFullHex(), true);
+            if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
             
             // we delay one render frame to be sure we don't get called before the method call has
             // returned (tradeFeeTx would be null in that case)

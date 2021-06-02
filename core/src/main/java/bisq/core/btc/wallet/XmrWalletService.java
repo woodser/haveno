@@ -36,6 +36,7 @@ import lombok.Getter;
 
 
 import monero.common.MoneroUtils;
+import monero.daemon.MoneroDaemon;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroOutputWallet;
@@ -58,6 +59,8 @@ public class XmrWalletService {
   private Map<String, MoneroWallet> multisigWallets;
 
   @Getter
+  private MoneroDaemon daemon;
+  @Getter
   private MoneroWallet wallet;
 
   @Inject
@@ -69,19 +72,20 @@ public class XmrWalletService {
     this.multisigWallets = new HashMap<String, MoneroWallet>();
 
     walletsSetup.addSetupCompletedHandler(() -> {
-      wallet = walletsSetup.getXmrWallet();
-      wallet.addListener(new MoneroWalletListener() {
-        @Override
-        public void onSyncProgress(long height, long startHeight, long endHeight, double percentDone, String message) { }
+        daemon = walletsSetup.getXmrDaemon();
+        wallet = walletsSetup.getXmrWallet();
+        wallet.addListener(new MoneroWalletListener() {
+            @Override
+            public void onSyncProgress(long height, long startHeight, long endHeight, double percentDone, String message) { }
 
-        @Override
-        public void onNewBlock(long height) { }
+            @Override
+            public void onNewBlock(long height) { }
 
-        @Override
-        public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
-          notifyBalanceListeners();
-        }
-      });
+            @Override
+            public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
+              notifyBalanceListeners();
+            }
+        });
     });
   }
 
