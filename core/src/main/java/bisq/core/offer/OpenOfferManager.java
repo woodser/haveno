@@ -64,13 +64,14 @@ import bisq.common.app.Capability;
 import bisq.common.app.Version;
 import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.Sig;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.proto.network.NetworkEnvelope;
 import bisq.common.proto.persistable.PersistedDataHost;
 import bisq.common.util.Tuple2;
-
+import bisq.common.util.Utilities;
 import org.bitcoinj.core.Coin;
 
 import javax.inject.Inject;
@@ -447,7 +448,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         );
         
         placeOfferProtocols.put(offer.getId(), placeOfferProtocol);
-        placeOfferProtocol.placeOffer();
+        placeOfferProtocol.placeOffer(); // TODO (woodser): if error placing offer (e.g. bad signature), remove protocol and unfreeze trade funds
     }
 
     // Remove from offerbook
@@ -651,21 +652,22 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             }
             
             // verify reserve tx not signed before
-            
+
             // verify maker's reserve tx (double spend, trade fee, trade amount, mining fee)
             verifyReserveTx(request);
-                    
-            // create signature to certify arbitrator has seen valid reserve tx
-            String signature = "zdvaArbitrator123!";
+
+            // create signature to certify arbitrator has valid reserve tx
+            String offerPayloadAsJson = Utilities.objectToJson(request.getOfferPayload());
+            String signature = Sig.sign(keyRing.getSignatureKeyPair().getPrivate(), offerPayloadAsJson);
             
             // create record of signed offer
             SignedOffer signedOffer = new SignedOffer(request.getOfferPayload().getId(), request.getReserveTxHex(), signature);
             signedOffers.add(signedOffer);
             requestPersistence();
-            
+
             // send ack
             sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), true, errorMessage);
-            
+
             // send response with signature
             SignOfferResponse response = new SignOfferResponse(request.getOfferId(),
                     UUID.randomUUID().toString(),

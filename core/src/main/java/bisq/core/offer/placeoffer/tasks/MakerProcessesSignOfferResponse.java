@@ -20,17 +20,17 @@ package bisq.core.offer.placeoffer.tasks;
 import bisq.core.offer.Offer;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.trade.messages.TradeMessage;
-
+import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
-
+import bisq.common.util.Utilities;
 import org.bitcoinj.core.Coin;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class ValidateArbitratorSignature extends Task<PlaceOfferModel> {
-    public ValidateArbitratorSignature(TaskRunner<PlaceOfferModel> taskHandler, PlaceOfferModel model) {
+public class MakerProcessesSignOfferResponse extends Task<PlaceOfferModel> {
+    public MakerProcessesSignOfferResponse(TaskRunner<PlaceOfferModel> taskHandler, PlaceOfferModel model) {
         super(taskHandler, model);
     }
 
@@ -40,7 +40,13 @@ public class ValidateArbitratorSignature extends Task<PlaceOfferModel> {
         try {
             runInterceptHook();
             
-            // TODO (woodser): implement ValidateArbitratorSignature
+            // get offer payload as json string
+            String offerPayloadAsJson = Utilities.objectToJson(offer.getOfferPayload());
+            
+            // verify arbitrator signature
+            Sig.verify(model.getArbitrator().getPubKeyRing().getSignaturePubKey(),
+                    offerPayloadAsJson,
+                    model.getSignOfferResponse().getArbitratorSignature());
             
             complete();
         } catch (Exception e) {

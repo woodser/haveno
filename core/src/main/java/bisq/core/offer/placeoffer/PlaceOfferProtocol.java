@@ -21,7 +21,7 @@ import bisq.core.offer.messages.SignOfferResponse;
 import bisq.core.offer.placeoffer.tasks.AddToOfferBook;
 import bisq.core.offer.placeoffer.tasks.MakerReservesTradeFunds;
 import bisq.core.offer.placeoffer.tasks.MakerSendsSignOfferRequest;
-import bisq.core.offer.placeoffer.tasks.ValidateArbitratorSignature;
+import bisq.core.offer.placeoffer.tasks.MakerProcessesSignOfferResponse;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.handlers.TransactionResultHandler;
 import bisq.network.p2p.NodeAddress;
@@ -80,6 +80,13 @@ public class PlaceOfferProtocol {
     // TODO (woodser): switch to fluent
     public void handleSignOfferResponse(SignOfferResponse response, NodeAddress sender) {
       log.debug("handleSignOfferResponse() " + model.getOffer().getId());
+      model.setSignOfferResponse(response);
+      
+      if (!model.getArbitrator().getNodeAddress().equals(sender)) {
+          log.warn("Ignoring sign offer response from different sender");
+          return;
+      }
+      
       TaskRunner<PlaceOfferModel> taskRunner = new TaskRunner<>(model,
               () -> {
                   log.debug("sequence at handleSignOfferResponse completed");
@@ -100,7 +107,7 @@ public class PlaceOfferProtocol {
               }
       );
       taskRunner.addTasks(
-              ValidateArbitratorSignature.class,
+              MakerProcessesSignOfferResponse.class,
               AddToOfferBook.class
       );
 

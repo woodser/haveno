@@ -25,7 +25,9 @@ import bisq.core.dao.DaoFacade;
 import bisq.core.filter.FilterManager;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookService;
+import bisq.core.offer.messages.SignOfferResponse;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.User;
@@ -74,6 +76,10 @@ public class PlaceOfferModel implements Model {
     private Transaction transaction;
     @Setter
     private MoneroTxWallet reserveTx;
+    @Setter
+    private Mediator arbitrator;
+    @Setter
+    private SignOfferResponse signOfferResponse;
 
     public PlaceOfferModel(Offer offer,
                            Coin reservedFundsForOffer,
