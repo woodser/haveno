@@ -18,23 +18,20 @@
 package bisq.core.offer.placeoffer.tasks;
 
 import bisq.common.app.Version;
-import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.offer.Offer;
-import bisq.core.offer.availability.DisputeAgentSelection;
 import bisq.core.offer.messages.SignOfferRequest;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
-import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
 import bisq.network.p2p.SendDirectMessageListener;
 import java.util.Date;
 import java.util.UUID;
-import monero.wallet.MoneroWallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
     private static final Logger log = LoggerFactory.getLogger(MakerSendsSignOfferRequest.class);
@@ -51,10 +48,6 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
 
         try {
             runInterceptHook();
-
-            // select signing arbitrator
-            Mediator arbitrator = DisputeAgentSelection.getLeastUsedArbitrator(model.getTradeStatisticsManager(), model.getMediatorManager()); // TODO (woodser): using mediator manager for arbitrators
-            model.setArbitrator(arbitrator);
             
             // create request for arbitrator to sign offer
             SignOfferRequest request = new SignOfferRequest(
@@ -70,6 +63,9 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
                     model.getReserveTx().getFullHex(),
                     model.getReserveTx().getKey(),
                     model.getXmrWalletService().getWallet().getPrimaryAddress());
+            
+            // get signing arbitrator
+            Mediator arbitrator = checkNotNull(model.getUser().getAcceptedMediatorByAddress(offer.getOfferPayload().getArbitratorSigner()), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null");
 
             // send request
             model.getP2PService().sendEncryptedDirectMessage(arbitrator.getNodeAddress(), arbitrator.getPubKeyRing(), request, new SendDirectMessageListener() {

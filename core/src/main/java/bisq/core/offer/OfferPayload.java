@@ -170,6 +170,13 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
     @Nullable
     private final Map<String, String> extraDataMap;
     private final int protocolVersion;
+    
+    // address and signature of signing arbitrator
+    @Setter
+    private NodeAddress arbitratorSigner;
+    @Nullable
+    @Setter
+    private String arbitratorSignature;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +220,9 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                         boolean isPrivateOffer,
                         @Nullable String hashOfChallenge,
                         @Nullable Map<String, String> extraDataMap,
-                        int protocolVersion) {
+                        int protocolVersion,
+                        NodeAddress arbitratorSigner,
+                        @Nullable String arbitratorSignature) {
         this.id = id;
         this.date = date;
         this.ownerNodeAddress = ownerNodeAddress;
@@ -252,6 +261,8 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
         this.hashOfChallenge = hashOfChallenge;
         this.extraDataMap = ExtraDataMapValidator.getValidatedExtraDataMap(extraDataMap);
         this.protocolVersion = protocolVersion;
+        this.arbitratorSigner = arbitratorSigner;
+        this.arbitratorSignature = arbitratorSignature;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -306,6 +317,9 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
         Optional.ofNullable(acceptedCountryCodes).ifPresent(builder::addAllAcceptedCountryCodes);
         Optional.ofNullable(hashOfChallenge).ifPresent(builder::setHashOfChallenge);
         Optional.ofNullable(extraDataMap).ifPresent(builder::putAllExtraData);
+        
+        builder.setArbitratorSigner(arbitratorSigner.toProtoMessage());
+        Optional.ofNullable(arbitratorSignature).ifPresent(builder::setArbitratorSignature);
 
         return protobuf.StoragePayload.newBuilder().setOfferPayload(builder).build();
     }
@@ -361,7 +375,9 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 proto.getIsPrivateOffer(),
                 hashOfChallenge,
                 extraDataMapMap,
-                proto.getProtocolVersion());
+                proto.getProtocolVersion(),
+                NodeAddress.fromProto(proto.getArbitratorSigner()),
+                proto.getArbitratorSignature());
     }
 
 
@@ -427,6 +443,8 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 ",\n     hashOfChallenge='" + hashOfChallenge + '\'' +
                 ",\n     extraDataMap=" + extraDataMap +
                 ",\n     protocolVersion=" + protocolVersion +
+                ",\n     arbitratorSigner=" + arbitratorSigner +
+                ",\n     arbitratorSignature=" + arbitratorSignature +
                 "\n}";
     }
 }

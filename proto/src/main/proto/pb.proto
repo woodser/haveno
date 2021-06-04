@@ -180,7 +180,7 @@ message SignOfferRequest {
 message SignOfferResponse {
     string offer_id = 1;
     string uid = 2;
-    string arbitrator_signature = 3;
+    OfferPayload signed_offer_payload = 3;
 }
 
 message OfferAvailabilityRequest {
@@ -903,6 +903,9 @@ message OfferPayload {
     string hash_of_challenge = 36;
     map<string, string> extra_data = 37;
     int32 protocol_version = 38;
+    
+    NodeAddress arbitrator_signer = 1001;
+    string arbitrator_signature = 1002;
 }
 
 message AccountAgeWitness {

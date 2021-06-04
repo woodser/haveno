@@ -77,7 +77,9 @@ public class OfferMaker {
                     false,
                     null,
                     null,
-                    0));
+                    0,
+                    null,
+                    null));
 
     public static final Maker<Offer> btcUsdOffer = a(Offer);
     public static final Maker<Offer> btcBCHCOffer = a(Offer).but(with(counterCurrencyCode, "BCHC"));

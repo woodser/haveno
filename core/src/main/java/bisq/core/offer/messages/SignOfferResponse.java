@@ -17,23 +17,22 @@
 
 package bisq.core.offer.messages;
 
-import bisq.common.crypto.PubKeyRing;
+import bisq.core.offer.OfferPayload;
 import bisq.network.p2p.DirectMessage;
-import bisq.network.p2p.NodeAddress;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
 public final class SignOfferResponse extends OfferMessage implements DirectMessage {
-    private final String arbitratorSignature;
+    private final OfferPayload signedOfferPayload;
 
     public SignOfferResponse(String offerId,
                                      String uid,
                                      int messageVersion,
-                                     String arbitratorSignature) {
+                                     OfferPayload signedOfferPayload) {
         super(messageVersion, offerId, uid);
-        this.arbitratorSignature = arbitratorSignature;
+        this.signedOfferPayload = signedOfferPayload;
     }
 
 
@@ -46,7 +45,7 @@ public final class SignOfferResponse extends OfferMessage implements DirectMessa
         protobuf.SignOfferResponse.Builder builder = protobuf.SignOfferResponse.newBuilder()
                 .setOfferId(offerId)
                 .setUid(uid)
-                .setArbitratorSignature(arbitratorSignature);
+                .setSignedOfferPayload(signedOfferPayload.toProtoMessage().getOfferPayload());
 
         return getNetworkEnvelopeBuilder().setSignOfferResponse(builder).build();
     }
@@ -56,13 +55,13 @@ public final class SignOfferResponse extends OfferMessage implements DirectMessa
         return new SignOfferResponse(proto.getOfferId(),
                 proto.getUid(),
                 messageVersion,
-                proto.getArbitratorSignature());
+                OfferPayload.fromProto(proto.getSignedOfferPayload()));
     }
 
     @Override
     public String toString() {
         return "SignOfferResponse {" +
-                ",\n     offerSignature='" + arbitratorSignature +
+                ",\n     arbitratorSignature='" + signedOfferPayload.getArbitratorSignature() +
                 "\n} " + super.toString();
     }
 }

@@ -35,6 +35,7 @@ import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.offer.placeoffer.PlaceOfferProtocol;
 import bisq.core.provider.price.PriceFeedService;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.support.dispute.refund.refundagent.RefundAgentManager;
 import bisq.core.trade.TradableList;
@@ -641,6 +642,23 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         try {
             
             // verify this node is an arbitrator
+            Mediator thisArbitrator = user.getRegisteredMediator();
+            NodeAddress thisAddress = p2PService.getNetworkNode().getNodeAddress();
+            if (thisArbitrator == null || !thisArbitrator.getNodeAddress().equals(thisAddress)) {
+              errorMessage = "Cannot sign offer because we are not a registered arbitrator";
+              log.info(errorMessage);
+              sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
+              return;
+            }
+            
+            // verify arbitrator is signer of offer payload
+            // TODO (woodser): different arbitrator can sign offer if original arbitrator is offline
+            if (!request.getOfferPayload().getArbitratorSigner().equals(thisAddress)) {
+                errorMessage = "Cannot sign offer because offer payload is for a different arbitrator";
+                log.info(errorMessage);
+                sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
+                return;
+            }
             
             // verify offer not seen before
             Optional<OpenOffer> openOfferOptional = getOpenOfferById(request.offerId);
@@ -656,12 +674,14 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             // verify maker's reserve tx (double spend, trade fee, trade amount, mining fee)
             verifyReserveTx(request);
 
-            // create signature to certify arbitrator has valid reserve tx
+            // sign offer to certify arbitrator has valid reserve tx
             String offerPayloadAsJson = Utilities.objectToJson(request.getOfferPayload());
             String signature = Sig.sign(keyRing.getSignatureKeyPair().getPrivate(), offerPayloadAsJson);
+            OfferPayload signedOfferPayload = request.getOfferPayload();
+            signedOfferPayload.setArbitratorSignature(signature);
             
             // create record of signed offer
-            SignedOffer signedOffer = new SignedOffer(request.getOfferPayload().getId(), request.getReserveTxHex(), signature);
+            SignedOffer signedOffer = new SignedOffer(signedOfferPayload.getId(), request.getReserveTxHex(), signature); // TODO (woodser): no need for signature to be part of SignedOffer?
             signedOffers.add(signedOffer);
             requestPersistence();
 
@@ -672,7 +692,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             SignOfferResponse response = new SignOfferResponse(request.getOfferId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
-                    signature);
+                    signedOfferPayload);
             p2PService.sendEncryptedDirectMessage(peer,
                     request.getPubKeyRing(),
                     response,
@@ -1033,7 +1053,9 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                         originalOfferPayload.isPrivateOffer(),
                         originalOfferPayload.getHashOfChallenge(),
                         updatedExtraDataMap,
-                        protocolVersion);
+                        protocolVersion,
+                        originalOfferPayload.getArbitratorSigner(),
+                        originalOfferPayload.getArbitratorSignature());
 
                 // Save states from original data to use for the updated
                 Offer.State originalOfferState = originalOffer.getState();

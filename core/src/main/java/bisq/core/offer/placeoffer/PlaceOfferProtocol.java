@@ -82,7 +82,7 @@ public class PlaceOfferProtocol {
       log.debug("handleSignOfferResponse() " + model.getOffer().getId());
       model.setSignOfferResponse(response);
       
-      if (!model.getArbitrator().getNodeAddress().equals(sender)) {
+      if (!model.getOffer().getOfferPayload().getArbitratorSigner().equals(sender)) {
           log.warn("Ignoring sign offer response from different sender");
           return;
       }
