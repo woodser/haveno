@@ -18,16 +18,14 @@
 package bisq.core.offer.placeoffer.tasks;
 
 import bisq.core.offer.Offer;
-import bisq.core.offer.OfferPayload;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
+import bisq.core.trade.TradeUtils;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.common.util.Utilities;
 
 public class MakerProcessesSignOfferResponse extends Task<PlaceOfferModel> {
     public MakerProcessesSignOfferResponse(TaskRunner<PlaceOfferModel> taskHandler, PlaceOfferModel model) {
@@ -40,24 +38,14 @@ public class MakerProcessesSignOfferResponse extends Task<PlaceOfferModel> {
         try {
             runInterceptHook();
             
-            // get signed offer payload
-            OfferPayload signedOfferPayload = model.getSignOfferResponse().getSignedOfferPayload();
+            // validate arbitrator signature
+            Mediator arbitrator = checkNotNull(model.getUser().getAcceptedMediatorByAddress(offer.getOfferPayload().getArbitratorNodeAddress()), "user.getAcceptedMediatorByAddress(arbitratorNodeAddress) must not be null");
+            if (!TradeUtils.isSignatureValid(model.getSignOfferResponse().getSignedOfferPayload(), arbitrator)) {
+                throw new RuntimeException("Offer payload has invalid arbitrator signature");
+            }
             
-            // remove arbitrator signature from signed payload
-            String signature = signedOfferPayload.getArbitratorSignature();
-            signedOfferPayload.setArbitratorSignature(null);;
-            
-            // get unsigned offer payload as json string
-            String offerPayloadAsJson = Utilities.objectToJson(offer.getOfferPayload());
-            
-            // verify arbitrator signature
-            Mediator arbitrator = checkNotNull(model.getUser().getAcceptedMediatorByAddress(offer.getOfferPayload().getArbitratorNodeAddress()), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null");
-            Sig.verify(arbitrator.getPubKeyRing().getSignaturePubKey(),
-                    offerPayloadAsJson,
-                    signature);
-            
-            // replace signature
-            signedOfferPayload.setArbitratorSignature(signature);
+            // set arbitrator signature for maker's offer
+            model.getOffer().getOfferPayload().setArbitratorSignature(model.getSignOfferResponse().getSignedOfferPayload().getArbitratorSignature());
             
             complete();
         } catch (Exception e) {

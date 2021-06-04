@@ -197,7 +197,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         this.signedOfferPersistenceManager = signedOfferPersistenceManager;
 
         this.persistenceManager.initialize(openOffers, "OpenOffers", PersistenceManager.Source.PRIVATE);
-        this.signedOfferPersistenceManager.initialize(signedOffers, "SignedOffers", PersistenceManager.Source.PRIVATE);
+        this.signedOfferPersistenceManager.initialize(signedOffers, "SignedOffers", PersistenceManager.Source.PRIVATE); // arbitrator stores reserve tx for signed offers
     }
 
     @Override
