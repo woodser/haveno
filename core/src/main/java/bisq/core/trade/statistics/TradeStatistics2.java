@@ -79,15 +79,15 @@ public final class TradeStatistics2 implements ProcessOncePersistableNetworkPayl
             extraDataMap.put(OfferPayload.REFERRAL_ID, referralId);
         }
 
-        NodeAddress mediatorNodeAddress = trade.getMediatorNodeAddress();
-        if (mediatorNodeAddress != null) {
-            // The first 4 chars are sufficient to identify a mediator.
+        NodeAddress arbitratorNodeAddress = trade.getArbitratorNodeAddress();
+        if (arbitratorNodeAddress != null) {
+            // The first 4 chars are sufficient to identify a arbitrator.
             // For testing with regtest/localhost we use the full address as its localhost and would result in
-            // same values for multiple mediators.
+            // same values for multiple arbitrators.
             String address = isTorNetworkNode ?
-                    mediatorNodeAddress.getFullAddress().substring(0, 4) :
-                    mediatorNodeAddress.getFullAddress();
-            extraDataMap.put(TradeStatistics2.MEDIATOR_ADDRESS, address);
+                    arbitratorNodeAddress.getFullAddress().substring(0, 4) :
+                    arbitratorNodeAddress.getFullAddress();
+            extraDataMap.put(TradeStatistics2.ARBITRATOR_ADDRESS, address);
         }
 
         Offer offer = trade.getOffer();
@@ -103,7 +103,7 @@ public final class TradeStatistics2 implements ProcessOncePersistableNetworkPayl
     }
 
     @SuppressWarnings("SpellCheckingInspection")
-    public static final String MEDIATOR_ADDRESS = "medAddr";
+    public static final String ARBITRATOR_ADDRESS = "arbAddr";
     @SuppressWarnings("SpellCheckingInspection")
     public static final String REFUND_AGENT_ADDRESS = "refAddr";
 

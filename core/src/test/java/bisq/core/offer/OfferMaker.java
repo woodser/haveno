@@ -48,8 +48,6 @@ public class OfferMaker {
                     lookup.valueOf(minAmount, 100000L),
                     lookup.valueOf(baseCurrencyCode, "XMR"),
                     lookup.valueOf(counterCurrencyCode, "USD"),
-                    null,
-                    null,
                     "SEPA",
                     "",
                     null,

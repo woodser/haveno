@@ -44,28 +44,17 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
     @Nullable
     private final Capabilities supportedCapabilities;
 
-    private final NodeAddress arbitrator;
-    // Was introduced in v 1.1.6. Might be null if msg received from node with old version
-    @Nullable
-    private final NodeAddress mediator;
-
-    // Added v1.2.0
-    @Nullable
-    private final NodeAddress refundAgent;
+    private final NodeAddress backupArbitrator;
 
     public OfferAvailabilityResponse(String offerId,
                                      AvailabilityResult availabilityResult,
-                                     NodeAddress arbitrator,
-                                     NodeAddress mediator,
-                                     NodeAddress refundAgent) {
+                                     NodeAddress arbitrator) {
         this(offerId,
                 availabilityResult,
                 Capabilities.app,
                 Version.getP2PMessageVersion(),
                 UUID.randomUUID().toString(),
-                arbitrator,
-                mediator,
-                refundAgent);
+                arbitrator);
     }
 
 
@@ -78,15 +67,11 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                                       @Nullable Capabilities supportedCapabilities,
                                       int messageVersion,
                                       @Nullable String uid,
-                                      NodeAddress arbitrator,
-                                      @Nullable NodeAddress mediator,
-                                      @Nullable NodeAddress refundAgent) {
+                                      NodeAddress arbitrator) {
         super(messageVersion, offerId, uid);
         this.availabilityResult = availabilityResult;
         this.supportedCapabilities = supportedCapabilities;
-        this.arbitrator = arbitrator;
-        this.mediator = mediator;
-        this.refundAgent = refundAgent;
+        this.backupArbitrator = arbitrator;
     }
 
     @Override
@@ -97,9 +82,7 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
 
         Optional.ofNullable(supportedCapabilities).ifPresent(e -> builder.addAllSupportedCapabilities(Capabilities.toIntList(supportedCapabilities)));
         Optional.ofNullable(uid).ifPresent(e -> builder.setUid(uid));
-        Optional.ofNullable(mediator).ifPresent(e -> builder.setMediator(mediator.toProtoMessage()));
-        Optional.ofNullable(refundAgent).ifPresent(e -> builder.setRefundAgent(refundAgent.toProtoMessage()));
-        Optional.ofNullable(arbitrator).ifPresent(e -> builder.setArbitrator(arbitrator.toProtoMessage()));
+        Optional.ofNullable(backupArbitrator).ifPresent(e -> builder.setBackupArbitrator(backupArbitrator.toProtoMessage()));
 
         return getNetworkEnvelopeBuilder()
                 .setOfferAvailabilityResponse(builder)
@@ -112,8 +95,6 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                 Capabilities.fromIntList(proto.getSupportedCapabilitiesList()),
                 messageVersion,
                 proto.getUid().isEmpty() ? null : proto.getUid(),
-                proto.hasArbitrator() ? NodeAddress.fromProto(proto.getArbitrator()) : null,
-                proto.hasMediator() ? NodeAddress.fromProto(proto.getMediator()) : null,
-                proto.hasRefundAgent() ? NodeAddress.fromProto(proto.getRefundAgent()) : null);
+                proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null);
     }
 }

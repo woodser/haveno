@@ -652,8 +652,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             }
             
             // verify arbitrator is signer of offer payload
-            // TODO (woodser): different arbitrator can sign offer if original arbitrator is offline
-            if (!request.getOfferPayload().getArbitratorSigner().equals(thisAddress)) {
+            if (!request.getOfferPayload().getArbitratorNodeAddress().equals(thisAddress)) {
                 errorMessage = "Cannot sign offer because offer payload is for a different arbitrator";
                 log.info(errorMessage);
                 sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
@@ -827,9 +826,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         try {
             Optional<OpenOffer> openOfferOptional = getOpenOfferById(request.offerId);
             AvailabilityResult availabilityResult;
-            NodeAddress arbitratorNodeAddress = null;
-            NodeAddress mediatorNodeAddress = null;
-            NodeAddress refundAgentNodeAddress = null;
+            NodeAddress backupArbitrator = null;
             if (openOfferOptional.isPresent()) {
                 OpenOffer openOffer = openOfferOptional.get();
                 if (!apiUserDeniedByOffer(request)) {
@@ -837,9 +834,9 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                         Offer offer = openOffer.getOffer();
                         if (preferences.getIgnoreTradersList().stream().noneMatch(fullAddress -> fullAddress.equals(peer.getFullAddress()))) {
                             
-                            // TODO (woodser): only select new arbitrator if old arbitrator unavailable
-                            arbitratorNodeAddress = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
-                            openOffer.setArbitratorNodeAddress(arbitratorNodeAddress);
+                            // get arbitrator to use if original offer signer is not available
+                            backupArbitrator = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
+                            openOffer.setBackupArbitrator(backupArbitrator);
 
                             try {
                                 // Check also tradePrice to avoid failures after taker fee is paid caused by a too big difference
@@ -883,9 +880,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
 
             OfferAvailabilityResponse offerAvailabilityResponse = new OfferAvailabilityResponse(request.offerId,
                     availabilityResult,
-                    arbitratorNodeAddress,
-                    mediatorNodeAddress,
-                    refundAgentNodeAddress);
+                    backupArbitrator);
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     offerAvailabilityResponse.getClass().getSimpleName(), offerAvailabilityResponse.getOfferId(),
                     offerAvailabilityResponse.getUid(), peer);
@@ -1028,8 +1023,6 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                         originalOfferPayload.getMinAmount(),
                         originalOfferPayload.getBaseCurrencyCode(),
                         originalOfferPayload.getCounterCurrencyCode(),
-                        originalOfferPayload.getArbitratorNodeAddresses(),
-                        originalOfferPayload.getMediatorNodeAddresses(),
                         originalOfferPayload.getPaymentMethodId(),
                         originalOfferPayload.getMakerPaymentAccountId(),
                         originalOfferPayload.getOfferFeePaymentTxId(),
@@ -1054,7 +1047,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                         originalOfferPayload.getHashOfChallenge(),
                         updatedExtraDataMap,
                         protocolVersion,
-                        originalOfferPayload.getArbitratorSigner(),
+                        originalOfferPayload.getArbitratorNodeAddress(),
                         originalOfferPayload.getArbitratorSignature());
 
                 // Save states from original data to use for the updated

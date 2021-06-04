@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -120,8 +119,6 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
     private final String baseCurrencyCode;
     private final String counterCurrencyCode;
 
-    private final List<NodeAddress> arbitratorNodeAddresses;
-    private final List<NodeAddress> mediatorNodeAddresses; // TODO (woodser): delete this field
     private final String paymentMethodId;
     private final String makerPaymentAccountId;
     // Mutable property. Has to be set before offer is save in P2P network as it changes the objects hash!
@@ -173,7 +170,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
     
     // address and signature of signing arbitrator
     @Setter
-    private NodeAddress arbitratorSigner;
+    private NodeAddress arbitratorNodeAddress;
     @Nullable
     @Setter
     private String arbitratorSignature;
@@ -195,8 +192,6 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                         long minAmount,
                         String baseCurrencyCode,
                         String counterCurrencyCode,
-                        List<NodeAddress> arbitratorNodeAddresses,
-                        List<NodeAddress> mediatorNodeAddresses,
                         String paymentMethodId,
                         String makerPaymentAccountId,
                         @Nullable String offerFeePaymentTxId,
@@ -235,8 +230,6 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
         this.minAmount = minAmount;
         this.baseCurrencyCode = baseCurrencyCode;
         this.counterCurrencyCode = counterCurrencyCode;
-        this.arbitratorNodeAddresses = arbitratorNodeAddresses;
-        this.mediatorNodeAddresses = mediatorNodeAddresses;
         this.paymentMethodId = paymentMethodId;
         this.makerPaymentAccountId = makerPaymentAccountId;
         this.offerFeePaymentTxId = offerFeePaymentTxId;
@@ -261,7 +254,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
         this.hashOfChallenge = hashOfChallenge;
         this.extraDataMap = ExtraDataMapValidator.getValidatedExtraDataMap(extraDataMap);
         this.protocolVersion = protocolVersion;
-        this.arbitratorSigner = arbitratorSigner;
+        this.arbitratorNodeAddress = arbitratorSigner;
         this.arbitratorSignature = arbitratorSignature;
     }
 
@@ -284,12 +277,6 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 .setMinAmount(minAmount)
                 .setBaseCurrencyCode(baseCurrencyCode)
                 .setCounterCurrencyCode(counterCurrencyCode)
-                .addAllArbitratorNodeAddresses(arbitratorNodeAddresses.stream()
-                        .map(NodeAddress::toProtoMessage)
-                        .collect(Collectors.toList()))
-                .addAllMediatorNodeAddresses(mediatorNodeAddresses.stream()
-                        .map(NodeAddress::toProtoMessage)
-                        .collect(Collectors.toList()))
                 .setPaymentMethodId(paymentMethodId)
                 .setMakerPaymentAccountId(makerPaymentAccountId)
                 .setVersionNr(versionNr)
@@ -318,7 +305,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
         Optional.ofNullable(hashOfChallenge).ifPresent(builder::setHashOfChallenge);
         Optional.ofNullable(extraDataMap).ifPresent(builder::putAllExtraData);
         
-        builder.setArbitratorSigner(arbitratorSigner.toProtoMessage());
+        builder.setArbitratorNodeAddress(arbitratorNodeAddress.toProtoMessage());
         Optional.ofNullable(arbitratorSignature).ifPresent(builder::setArbitratorSignature);
 
         return protobuf.StoragePayload.newBuilder().setOfferPayload(builder).build();
@@ -346,12 +333,6 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 proto.getMinAmount(),
                 proto.getBaseCurrencyCode(),
                 proto.getCounterCurrencyCode(),
-                proto.getArbitratorNodeAddressesList().stream()
-                        .map(NodeAddress::fromProto)
-                        .collect(Collectors.toList()),
-                proto.getMediatorNodeAddressesList().stream()
-                        .map(NodeAddress::fromProto)
-                        .collect(Collectors.toList()),
                 proto.getPaymentMethodId(),
                 proto.getMakerPaymentAccountId(),
                 proto.getOfferFeePaymentTxId(),
@@ -376,7 +357,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 hashOfChallenge,
                 extraDataMapMap,
                 proto.getProtocolVersion(),
-                NodeAddress.fromProto(proto.getArbitratorSigner()),
+                NodeAddress.fromProto(proto.getArbitratorNodeAddress()),
                 proto.getArbitratorSignature());
     }
 
@@ -443,7 +424,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 ",\n     hashOfChallenge='" + hashOfChallenge + '\'' +
                 ",\n     extraDataMap=" + extraDataMap +
                 ",\n     protocolVersion=" + protocolVersion +
-                ",\n     arbitratorSigner=" + arbitratorSigner +
+                ",\n     arbitratorSigner=" + arbitratorNodeAddress +
                 ",\n     arbitratorSignature=" + arbitratorSignature +
                 "\n}";
     }

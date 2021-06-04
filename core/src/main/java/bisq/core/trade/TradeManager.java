@@ -424,7 +424,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                       Coin.valueOf(initTradeRequest.getTradeFee()),
                       initTradeRequest.getMakerNodeAddress(),
                       initTradeRequest.getTakerNodeAddress(),
-                      openOffer.getArbitratorNodeAddress(),
+                      openOffer.getBackupArbitrator(),
                       xmrWalletService,
                       getNewProcessModel(offer),
                       UUID.randomUUID().toString());
@@ -574,8 +574,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                                     takerFee,
                                     tradePrice,
                                     model.getPeerNodeAddress(),
-                                    P2PService.getMyNodeAddress(), // TODO (woodser): correct taker node address?
-                                    model.getSelectedMediator(),   // TODO (woodser): using mediator as arbitrator which is assigned upfront
+                                    P2PService.getMyNodeAddress(),
+                                    offer.getOfferPayload().getArbitratorNodeAddress(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
                                     UUID.randomUUID().toString());
@@ -587,11 +587,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                                     tradePrice,
                                     model.getPeerNodeAddress(),
                                     P2PService.getMyNodeAddress(),
-                                    model.getSelectedMediator(),  // TODO (woodser): using mediator as arbitrator which is assigned upfront
+                                    offer.getOfferPayload().getArbitratorNodeAddress(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
                                     UUID.randomUUID().toString());
                         }
+                        
+                        trade.getProcessModel().setBackupArbitrator(model.getBackupArbitrator());
                         trade.getProcessModel().setUseSavingsWallet(useSavingsWallet);
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
                         trade.setTakerPaymentAccountId(paymentAccountId);

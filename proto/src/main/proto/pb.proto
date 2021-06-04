@@ -197,9 +197,7 @@ message OfferAvailabilityResponse {
     AvailabilityResult availability_result = 2;
     repeated int32 supported_capabilities = 3;
     string uid = 4;
-    NodeAddress arbitrator = 5;
-    NodeAddress mediator = 6;
-    NodeAddress refund_agent = 7;
+    NodeAddress backup_arbitrator = 5;
 }
 
 message RefreshOfferMessage {
@@ -877,34 +875,32 @@ message OfferPayload {
     int64 min_amount = 10;
     string base_currency_code = 11;
     string counter_currency_code = 12;
-    repeated NodeAddress arbitrator_node_addresses = 13 [deprecated = true]; // not used anymore but still required as old clients check for nonNull
-    repeated NodeAddress mediator_node_addresses = 14 [deprecated = true]; // not used anymore but still required as old clients check for nonNull
-    string payment_method_id = 15;
-    string maker_payment_account_id = 16;
-    string offer_fee_payment_tx_id = 17;
-    string country_code = 18;
-    repeated string accepted_country_codes = 19;
-    string bank_id = 20;
-    repeated string accepted_bank_ids = 21;
-    string version_nr = 22;
-    int64 block_height_at_offer_creation = 23;
-    int64 tx_fee = 24;
-    int64 maker_fee = 25;
-    bool is_currency_for_maker_fee_btc = 26;
-    int64 buyer_security_deposit = 27;
-    int64 seller_security_deposit = 28;
-    int64 max_trade_limit = 29;
-    int64 max_trade_period = 30;
-    bool use_auto_close = 31;
-    bool use_re_open_after_auto_close = 32;
-    int64 lower_close_price = 33;
-    int64 upper_close_price = 34;
-    bool is_private_offer = 35;
-    string hash_of_challenge = 36;
-    map<string, string> extra_data = 37;
-    int32 protocol_version = 38;
+    string payment_method_id = 13;
+    string maker_payment_account_id = 14;
+    string offer_fee_payment_tx_id = 15;
+    string country_code = 16;
+    repeated string accepted_country_codes = 17;
+    string bank_id = 18;
+    repeated string accepted_bank_ids = 19;
+    string version_nr = 20;
+    int64 block_height_at_offer_creation = 21;
+    int64 tx_fee = 22;
+    int64 maker_fee = 23;
+    bool is_currency_for_maker_fee_btc = 24;
+    int64 buyer_security_deposit = 25;
+    int64 seller_security_deposit = 26;
+    int64 max_trade_limit = 27;
+    int64 max_trade_period = 28;
+    bool use_auto_close = 29;
+    bool use_re_open_after_auto_close = 30;
+    int64 lower_close_price = 31;
+    int64 upper_close_price = 32;
+    bool is_private_offer = 33;
+    string hash_of_challenge = 34;
+    map<string, string> extra_data = 35;
+    int32 protocol_version = 36;
     
-    NodeAddress arbitrator_signer = 1001;
+    NodeAddress arbitrator_node_address = 1001;
     string arbitrator_signature = 1002;
 }
 
@@ -1529,9 +1525,7 @@ message OpenOffer {
 
     Offer offer = 1;
     State state = 2;
-    NodeAddress arbitrator_node_address = 3;
-    NodeAddress mediator_node_address = 4;
-    NodeAddress refund_agent_node_address = 5;
+    NodeAddress backup_arbitrator = 3;
     int64 trigger_price = 6;
 }
 
@@ -1706,17 +1700,18 @@ message ProcessModel {
     int64 buyer_payout_amount_from_mediation = 19;
     int64 seller_payout_amount_from_mediation = 20;
     
-    TradingPeer maker = 1001;
-    TradingPeer taker = 1002;
-    TradingPeer arbitrator = 1003;
-    NodeAddress temp_trading_peer_node_address = 1004;
-    string prepared_multisig_hex = 1005;
-    string made_multisig_hex = 1006;
-    bool multisig_setup_complete = 1007;
-    bool maker_ready_to_fund_multisig = 1008;
-    bool multisig_deposit_initiated = 1009;
-    string taker_prepared_deposit_tx_id = 1010;
-    string maker_prepared_deposit_tx_id = 1011;
+    NodeAddress backup_arbitrator = 1001;
+    TradingPeer maker = 1002;
+    TradingPeer taker = 1003;
+    TradingPeer arbitrator = 1004;
+    NodeAddress temp_trading_peer_node_address = 1005;
+    string prepared_multisig_hex = 1006;
+    string made_multisig_hex = 1007;
+    bool multisig_setup_complete = 1008;
+    bool maker_ready_to_fund_multisig = 1009;
+    bool multisig_deposit_initiated = 1010;
+    string taker_prepared_deposit_tx_id = 1011;
+    string maker_prepared_deposit_tx_id = 1012;
 }
 
 message TradingPeer {

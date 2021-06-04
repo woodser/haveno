@@ -57,17 +57,7 @@ public final class OpenOffer implements Tradable {
     @Getter
     @Setter
     @Nullable
-    private NodeAddress arbitratorNodeAddress;
-    @Getter
-    @Setter
-    @Nullable
-    private NodeAddress mediatorNodeAddress;
-
-    // Added v1.2.0
-    @Getter
-    @Setter
-    @Nullable
-    private NodeAddress refundAgentNodeAddress;
+    private NodeAddress backupArbitrator;
 
     // Added in v1.5.3.
     // If market price reaches that trigger price the offer gets deactivated
@@ -93,15 +83,11 @@ public final class OpenOffer implements Tradable {
 
     private OpenOffer(Offer offer,
                       State state,
-                      @Nullable NodeAddress arbitratorNodeAddress,
-                      @Nullable NodeAddress mediatorNodeAddress,
-                      @Nullable NodeAddress refundAgentNodeAddress,
+                      @Nullable NodeAddress backupArbitrator,
                       long triggerPrice) {
         this.offer = offer;
         this.state = state;
-        this.arbitratorNodeAddress = arbitratorNodeAddress;
-        this.mediatorNodeAddress = mediatorNodeAddress;
-        this.refundAgentNodeAddress = refundAgentNodeAddress;
+        this.backupArbitrator = backupArbitrator;
         this.triggerPrice = triggerPrice;
 
         if (this.state == State.RESERVED)
@@ -115,9 +101,7 @@ public final class OpenOffer implements Tradable {
                 .setTriggerPrice(triggerPrice)
                 .setState(protobuf.OpenOffer.State.valueOf(state.name()));
 
-        Optional.ofNullable(arbitratorNodeAddress).ifPresent(nodeAddress -> builder.setArbitratorNodeAddress(nodeAddress.toProtoMessage()));
-        Optional.ofNullable(mediatorNodeAddress).ifPresent(nodeAddress -> builder.setMediatorNodeAddress(nodeAddress.toProtoMessage()));
-        Optional.ofNullable(refundAgentNodeAddress).ifPresent(nodeAddress -> builder.setRefundAgentNodeAddress(nodeAddress.toProtoMessage()));
+        Optional.ofNullable(backupArbitrator).ifPresent(nodeAddress -> builder.setBackupArbitrator(nodeAddress.toProtoMessage()));
 
         return protobuf.Tradable.newBuilder().setOpenOffer(builder).build();
     }
@@ -125,9 +109,7 @@ public final class OpenOffer implements Tradable {
     public static Tradable fromProto(protobuf.OpenOffer proto) {
         return new OpenOffer(Offer.fromProto(proto.getOffer()),
                 ProtoUtil.enumFromProto(OpenOffer.State.class, proto.getState().name()),
-                proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null,
-                proto.hasMediatorNodeAddress() ? NodeAddress.fromProto(proto.getMediatorNodeAddress()) : null,
-                proto.hasRefundAgentNodeAddress() ? NodeAddress.fromProto(proto.getRefundAgentNodeAddress()) : null,
+                proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null,
                 proto.getTriggerPrice());
     }
 
@@ -191,9 +173,7 @@ public final class OpenOffer implements Tradable {
         return "OpenOffer{" +
                 ",\n     offer=" + offer +
                 ",\n     state=" + state +
-                ",\n     arbitratorNodeAddress=" + arbitratorNodeAddress +
-                ",\n     mediatorNodeAddress=" + mediatorNodeAddress +
-                ",\n     refundAgentNodeAddress=" + refundAgentNodeAddress +
+                ",\n     arbitratorNodeAddress=" + backupArbitrator +
                 ",\n     triggerPrice=" + triggerPrice +
                 "\n}";
     }

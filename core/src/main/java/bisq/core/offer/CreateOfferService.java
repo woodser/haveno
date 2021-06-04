@@ -207,8 +207,6 @@ public class CreateOfferService {
                 minAmountAsLong,
                 baseCurrencyCode,
                 counterCurrencyCode,
-                arbitratorNodeAddresses,
-                mediatorNodeAddresses,
                 paymentAccount.getPaymentMethod().getId(),
                 paymentAccount.getId(),
                 null,

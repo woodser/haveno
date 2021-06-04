@@ -52,19 +52,7 @@ public class OfferAvailabilityModel implements Model {
     @Nullable
     @Setter
     @Getter
-    private NodeAddress selectedArbitrator;
-
-    // Added in v1.1.6
-    @Nullable
-    @Setter
-    @Getter
-    private NodeAddress selectedMediator;
-
-    // Added in v1.2.0
-    @Nullable
-    @Setter
-    @Getter
-    private NodeAddress selectedRefundAgent;
+    private NodeAddress backupArbitrator;
 
     // Added in v1.5.5
     @Getter

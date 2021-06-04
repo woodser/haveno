@@ -364,14 +364,6 @@ public abstract class Trade implements Tradable, Model {
     @Nullable
     @Getter
     @Setter
-    private NodeAddress mediatorNodeAddress;
-    @Nullable
-    @Getter
-    @Setter
-    private PubKeyRing mediatorPubKeyRing;
-    @Nullable
-    @Getter
-    @Setter
     private String takerPaymentAccountId;
     @Nullable
     private String errorMessage;
@@ -608,13 +600,11 @@ public abstract class Trade implements Tradable, Model {
         Optional.ofNullable(takerContractSignature).ifPresent(builder::setTakerContractSignature);
         Optional.ofNullable(makerContractSignature).ifPresent(builder::setMakerContractSignature);
         Optional.ofNullable(arbitratorNodeAddress).ifPresent(e -> builder.setArbitratorNodeAddress(arbitratorNodeAddress.toProtoMessage()));
-        Optional.ofNullable(mediatorNodeAddress).ifPresent(e -> builder.setMediatorNodeAddress(mediatorNodeAddress.toProtoMessage()));
         Optional.ofNullable(refundAgentNodeAddress).ifPresent(e -> builder.setRefundAgentNodeAddress(refundAgentNodeAddress.toProtoMessage()));
         Optional.ofNullable(arbitratorBtcPubKey).ifPresent(e -> builder.setArbitratorBtcPubKey(ByteString.copyFrom(arbitratorBtcPubKey)));
         Optional.ofNullable(takerPaymentAccountId).ifPresent(builder::setTakerPaymentAccountId);
         Optional.ofNullable(errorMessage).ifPresent(builder::setErrorMessage);
         Optional.ofNullable(arbitratorPubKeyRing).ifPresent(e -> builder.setArbitratorPubKeyRing(arbitratorPubKeyRing.toProtoMessage()));
-        Optional.ofNullable(mediatorPubKeyRing).ifPresent(e -> builder.setMediatorPubKeyRing(mediatorPubKeyRing.toProtoMessage()));
         Optional.ofNullable(refundAgentPubKeyRing).ifPresent(e -> builder.setRefundAgentPubKeyRing(refundAgentPubKeyRing.toProtoMessage()));
         Optional.ofNullable(counterCurrencyTxId).ifPresent(e -> builder.setCounterCurrencyTxId(counterCurrencyTxId));
         Optional.ofNullable(mediationResultState).ifPresent(e -> builder.setMediationResultState(MediationResultState.toProtoMessage(mediationResultState)));
@@ -644,13 +634,11 @@ public abstract class Trade implements Tradable, Model {
         trade.setTakerContractSignature(ProtoUtil.stringOrNullFromProto(proto.getTakerContractSignature()));
         trade.setMakerContractSignature(ProtoUtil.stringOrNullFromProto(proto.getMakerContractSignature()));
         trade.setArbitratorNodeAddress(proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null);
-        trade.setMediatorNodeAddress(proto.hasMediatorNodeAddress() ? NodeAddress.fromProto(proto.getMediatorNodeAddress()) : null);
         trade.setRefundAgentNodeAddress(proto.hasRefundAgentNodeAddress() ? NodeAddress.fromProto(proto.getRefundAgentNodeAddress()) : null);
         trade.setArbitratorBtcPubKey(ProtoUtil.byteArrayOrNullFromProto(proto.getArbitratorBtcPubKey()));
         trade.setTakerPaymentAccountId(ProtoUtil.stringOrNullFromProto(proto.getTakerPaymentAccountId()));
         trade.setErrorMessage(ProtoUtil.stringOrNullFromProto(proto.getErrorMessage()));
         trade.setArbitratorPubKeyRing(proto.hasArbitratorPubKeyRing() ? PubKeyRing.fromProto(proto.getArbitratorPubKeyRing()) : null);
-        trade.setMediatorPubKeyRing(proto.hasMediatorPubKeyRing() ? PubKeyRing.fromProto(proto.getMediatorPubKeyRing()) : null);
         trade.setRefundAgentPubKeyRing(proto.hasRefundAgentPubKeyRing() ? PubKeyRing.fromProto(proto.getRefundAgentPubKeyRing()) : null);
         trade.setCounterCurrencyTxId(proto.getCounterCurrencyTxId().isEmpty() ? null : proto.getCounterCurrencyTxId());
         trade.setMediationResultState(MediationResultState.fromProto(proto.getMediationResultState()));
@@ -687,12 +675,6 @@ public abstract class Trade implements Tradable, Model {
             arbitratorBtcPubKey = arbitrator.getBtcPubKey();
             arbitratorPubKeyRing = arbitrator.getPubKeyRing();
         });
-
-        serviceProvider.getMediatorManager().getDisputeAgentByNodeAddress(mediatorNodeAddress)
-                .ifPresent(mediator -> mediatorPubKeyRing = mediator.getPubKeyRing());
-
-        serviceProvider.getRefundAgentManager().getDisputeAgentByNodeAddress(refundAgentNodeAddress)
-                .ifPresent(refundAgent -> refundAgentPubKeyRing = refundAgent.getPubKeyRing());
 
         isInitialized = true;
     }
@@ -1254,8 +1236,6 @@ public abstract class Trade implements Tradable, Model {
                 ",\n     takerContractSignature='" + takerContractSignature + '\'' +
                 ",\n     makerContractSignature='" + makerContractSignature + '\'' +
                 ",\n     arbitratorBtcPubKey=" + Utilities.bytesAsHexString(arbitratorBtcPubKey) +
-                ",\n     mediatorNodeAddress=" + mediatorNodeAddress +
-                ",\n     mediatorPubKeyRing=" + mediatorPubKeyRing +
                 ",\n     takerPaymentAccountId='" + takerPaymentAccountId + '\'' +
                 ",\n     errorMessage='" + errorMessage + '\'' +
                 ",\n     counterCurrencyTxId='" + counterCurrencyTxId + '\'' +

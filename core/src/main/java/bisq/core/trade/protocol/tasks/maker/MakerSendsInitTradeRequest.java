@@ -114,14 +114,13 @@ public class MakerSendsInitTradeRequest extends TradeTask {
 
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     message.getClass().getSimpleName(), message.getTradeId(),
-                    message.getUid(), trade.getMediatorNodeAddress());
+                    message.getUid(), trade.getArbitratorNodeAddress());
 
 
             System.out.println("MAKER TRADE INFO");
             System.out.println("Trading peer node address: " + trade.getTradingPeerNodeAddress());
             System.out.println("Maker node address: " + trade.getMakerNodeAddress());
             System.out.println("Taker node adddress: " + trade.getTakerNodeAddress());
-            System.out.println("Mediator node address: " + trade.getMediatorNodeAddress());
             System.out.println("Arbitrator node address: " + trade.getArbitratorNodeAddress());
 
             // send request to arbitrator
