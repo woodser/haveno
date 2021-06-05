@@ -361,15 +361,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           if (!tradeOptional.isPresent()) {
             trade = new ArbitratorTrade(offer,
                     Coin.valueOf(initTradeRequest.getTradeAmount()),
-                    Coin.valueOf(initTradeRequest.getTxFee()),
-                    Coin.valueOf(initTradeRequest.getTradeFee()),
                     initTradeRequest.getTradePrice(),
-                    initTradeRequest.getMakerNodeAddress(),
-                    initTradeRequest.getTakerNodeAddress(),
-                    initTradeRequest.getArbitratorNodeAddress(),
                     xmrWalletService,
                     getNewProcessModel(offer),
-                    UUID.randomUUID().toString());
+                    UUID.randomUUID().toString(),
+                    initTradeRequest.getMakerNodeAddress(),
+                    initTradeRequest.getTakerNodeAddress(),
+                    initTradeRequest.getArbitratorNodeAddress());
             initTradeAndProtocol(trade, getTradeProtocol(trade));
             tradableList.add(trade);
           } else {
@@ -410,24 +408,26 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           Trade trade;
           if (offer.isBuyOffer())
               trade = new BuyerAsMakerTrade(offer,
-                      Coin.valueOf(initTradeRequest.getTxFee()),
+                      Coin.valueOf(initTradeRequest.getTradeAmount()),
                       Coin.valueOf(initTradeRequest.getTradeFee()),
-                      initTradeRequest.getMakerNodeAddress(),
-                      initTradeRequest.getTakerNodeAddress(),
-                      initTradeRequest.getArbitratorNodeAddress(),
+                      initTradeRequest.getTradePrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
-                      UUID.randomUUID().toString());
+                      UUID.randomUUID().toString(),
+                      initTradeRequest.getMakerNodeAddress(),
+                      initTradeRequest.getTakerNodeAddress(),
+                      initTradeRequest.getArbitratorNodeAddress());
           else
               trade = new SellerAsMakerTrade(offer,
-                      Coin.valueOf(initTradeRequest.getTxFee()),
+                      Coin.valueOf(initTradeRequest.getTradeAmount()),
                       Coin.valueOf(initTradeRequest.getTradeFee()),
-                      initTradeRequest.getMakerNodeAddress(),
-                      initTradeRequest.getTakerNodeAddress(),
-                      openOffer.getBackupArbitrator(),
+                      initTradeRequest.getTradePrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
-                      UUID.randomUUID().toString());
+                      UUID.randomUUID().toString(),
+                      initTradeRequest.getMakerNodeAddress(),
+                      initTradeRequest.getTakerNodeAddress(),
+                      openOffer.getBackupArbitrator()); // TODO: how to handle primary vs backup arbitrator?
 
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);
@@ -570,27 +570,25 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         if (offer.isBuyOffer()) {
                             trade = new SellerAsTakerTrade(offer,
                                     amount,
-                                    txFee,
                                     takerFee,
                                     tradePrice,
-                                    model.getPeerNodeAddress(),
-                                    P2PService.getMyNodeAddress(),
-                                    offer.getOfferPayload().getArbitratorNodeAddress(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
-                                    UUID.randomUUID().toString());
+                                    UUID.randomUUID().toString(),
+                                    model.getPeerNodeAddress(),
+                                    P2PService.getMyNodeAddress(),
+                                    offer.getOfferPayload().getArbitratorNodeAddress());
                         } else {
                             trade = new BuyerAsTakerTrade(offer,
                                     amount,
-                                    txFee,
                                     takerFee,
                                     tradePrice,
-                                    model.getPeerNodeAddress(),
-                                    P2PService.getMyNodeAddress(),
-                                    offer.getOfferPayload().getArbitratorNodeAddress(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
-                                    UUID.randomUUID().toString());
+                                    UUID.randomUUID().toString(),
+                                    model.getPeerNodeAddress(),
+                                    P2PService.getMyNodeAddress(),
+                                    offer.getOfferPayload().getArbitratorNodeAddress());
                         }
                         
                         trade.getProcessModel().setBackupArbitrator(model.getBackupArbitrator());

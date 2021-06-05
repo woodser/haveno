@@ -302,18 +302,18 @@ message InitTradeRequest {
     PubKeyRing pub_key_ring = 3;
     int64 trade_amount = 4;
     int64 trade_price = 5;
-    int64 tx_fee = 6;
-    int64 trade_fee = 7;
-    string payout_address_string = 8;
-    PaymentAccountPayload payment_account_payload = 9;
-    string account_id = 10;
-    string trade_fee_tx_id = 11;
-    string uid = 12;
-    bytes account_age_witness_signature_of_offer_id = 13;
-    int64 current_date = 14;
-    NodeAddress maker_node_address = 15;
-    NodeAddress taker_node_address = 16;
-    NodeAddress arbitrator_node_address = 17;
+    int64 trade_fee = 6;
+    PaymentAccountPayload payment_account_payload = 7;
+    string account_id = 8;
+    string uid = 9;
+    bytes account_age_witness_signature_of_offer_id = 10;
+    int64 current_date = 11;
+    NodeAddress maker_node_address = 12;
+    NodeAddress taker_node_address = 13;
+    NodeAddress arbitrator_node_address = 14;
+    string reserve_tx_hash = 15;
+    string reserve_tx_hex = 16;
+    string reserve_tx_key = 17;
 }
 
 message MakerReadyToFundMultisigRequest {

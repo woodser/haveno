@@ -171,6 +171,12 @@ public class ProcessModel implements Model, PersistablePayload {
     @Nullable
     @Getter
     @Setter
+    private MoneroTxWallet reserveTx;
+    
+    
+    @Nullable
+    @Getter
+    @Setter
     private String preparedMultisigHex;
     @Nullable
     @Getter

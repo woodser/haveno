@@ -98,19 +98,19 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     processModel.getPubKeyRing(),
                     trade.getTradeAmount().value,
                     trade.getTradePrice().getValue(),
-                    trade.getTxFee().getValue(),
                     trade.getTakerFee().getValue(),
-                    payoutAddress,
                     paymentAccountPayload,
                     processModel.getAccountId(),
-                    trade.getTakerFeeTxId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     sig,
                     new Date().getTime(),
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
-                    trade.getArbitratorNodeAddress());
+                    trade.getArbitratorNodeAddress(),
+                    trade.getProcessModel().getReserveTx().getHash(),
+                    trade.getProcessModel().getReserveTx().getFullHex(),
+                    trade.getProcessModel().getReserveTx().getKey());
 
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     message.getClass().getSimpleName(), message.getTradeId(),

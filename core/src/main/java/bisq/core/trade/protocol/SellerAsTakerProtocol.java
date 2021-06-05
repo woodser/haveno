@@ -40,9 +40,10 @@ import bisq.core.trade.protocol.tasks.taker.TakerCreateFeeTx;
 import bisq.core.trade.protocol.tasks.taker.TakerProcessesInputsForDepositTxResponse;
 import bisq.core.trade.protocol.tasks.taker.TakerProcessesMakerDepositTxMessage;
 import bisq.core.trade.protocol.tasks.taker.TakerPublishFeeTx;
+import bisq.core.trade.protocol.tasks.taker.TakerReservesTradeFunds;
 import bisq.core.trade.protocol.tasks.taker.TakerSendInitMultisigMessages;
-import bisq.core.trade.protocol.tasks.taker.TakerSendInitTradeRequests;
 import bisq.core.trade.protocol.tasks.taker.TakerSendReadyToFundMultisigRequest;
+import bisq.core.trade.protocol.tasks.taker.TakerSendsInitTradeRequestToArbitrator;
 import bisq.core.trade.protocol.tasks.taker.TakerSetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.taker.TakerVerifyAndSignContract;
 import bisq.core.trade.protocol.tasks.taker.TakerVerifyMakerFeePayment;
@@ -97,8 +98,8 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
           .from(trade.getTradingPeerNodeAddress()))
           .setup(tasks(
               ApplyFilter.class,
-              TakerVerifyMakerFeePayment.class,
-              TakerSendInitTradeRequests.class)
+              TakerReservesTradeFunds.class,
+              TakerSendsInitTradeRequestToArbitrator.class)
           .withTimeout(30))
           .executeTasks();
     }
@@ -202,6 +203,7 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
       // TODO (woodser): test initiating multisig when maker offline
       MoneroWallet wallet = processModel.getProvider().getXmrWalletService().getWallet();
       MoneroWalletListener fundMultisigListener = new MoneroWalletListener() {
+        @Override
         public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
 
           // get updated offer fee tx

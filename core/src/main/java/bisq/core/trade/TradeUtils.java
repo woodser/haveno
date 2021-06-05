@@ -29,6 +29,11 @@ import java.util.Objects;
 public class TradeUtils {
     
     /**
+     * Address to collect Haveno trade fees. TODO (woodser): move to config constants
+     */
+    public static String FEE_ADDRESS = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM";
+    
+    /**
      * Indicates if the given offer payload has a valid signature from the given arbitrator.
      * 
      * @param arbitrator is the possible original arbitrator

@@ -911,7 +911,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             log.error(errorMessage);
             t.printStackTrace();
         } finally {
-            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
+            sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), result, errorMessage);
         }
     }
 

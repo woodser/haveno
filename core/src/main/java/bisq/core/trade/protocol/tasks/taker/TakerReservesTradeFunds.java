@@ -15,14 +15,13 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.core.offer.placeoffer.tasks;
+package bisq.core.trade.protocol.tasks.taker;
 
-import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.offer.Offer;
-import bisq.core.offer.placeoffer.PlaceOfferModel;
+import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
+import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.ParsingUtils;
 import common.utils.JsonUtils;
 import java.math.BigInteger;
@@ -35,16 +34,15 @@ import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
 
-public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
+public class TakerReservesTradeFunds extends TradeTask {
 
-    public MakerReservesTradeFunds(TaskRunner taskHandler, PlaceOfferModel model) {
-        super(taskHandler, model);
+    public TakerReservesTradeFunds(TaskRunner taskHandler, Trade trade) {
+        super(taskHandler, trade);
     }
 
     @Override
     protected void run() {
 
-        Offer offer = model.getOffer();
         MoneroWallet wallet = model.getXmrWalletService().getWallet();
         MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
 
@@ -52,21 +50,21 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             runInterceptHook();
             
             // collect fields for reserve transaction
-            BigInteger makerFee = ParsingUtils.coinToAtomicUnits(offer.getMakerFee());
-            BigInteger reservedFundsForOffer = ParsingUtils.coinToAtomicUnits(model.getReservedFundsForOffer());
-            String returnAddress = model.getXmrWalletService().getNewAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new return address
+            BigInteger takerFee = ParsingUtils.coinToAtomicUnits(trade.getTakerFee());
+            BigInteger reservedFundsForOffer = ParsingUtils.centinerosToAtomicUnits(processModel.getFundsNeededForTradeAsLong());
+            String returnAddress = model.getXmrWalletService().getNewAddressEntry(trade.getOffer().getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new return address
             
             // create transaction to reserve outputs for trade
             MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
-                    .addDestination(TradeUtils.FEE_ADDRESS, makerFee)
+                    .addDestination(TradeUtils.FEE_ADDRESS, takerFee)
                     .addDestination(returnAddress, reservedFundsForOffer));
 
             // reserve additional funds to account for fluctuations in mining fee
             BigInteger extraMiningFee = prepareTx.getFee().multiply(BigInteger.valueOf(3l)); // add thrice the mining fee
             MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
-                    .addDestination(TradeUtils.FEE_ADDRESS, makerFee)
+                    .addDestination(TradeUtils.FEE_ADDRESS, takerFee)
                     .addDestination(returnAddress, reservedFundsForOffer.add(extraMiningFee)));
             
             // freeze trade funds
@@ -76,17 +74,15 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
                 //wallet.freezeOutput(input.getKeyImage().getHex()); // TODO: actually freeze funds!
             }
             
-            // submit reserve tx to daemon but do not relay
+            // submit tx to daemon but do not relay
             MoneroSubmitTxResult result = daemon.submitTxHex(reserveTx.getFullHex(), true);
             if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
             
-            // save offer state
-            model.setReserveTx(reserveTx);
-            offer.setOfferFeePaymentTxId(reserveTx.getHash());
-            offer.setState(Offer.State.OFFER_FEE_RESERVED);
+            // save process state
+            processModel.setReserveTx(reserveTx);
             complete();
         } catch (Throwable t) {
-            offer.setErrorMessage("An error occurred.\n" +
+            trade.setErrorMessage("An error occurred.\n" +
                 "Error message:\n"
                 + t.getMessage());
             failed(t);

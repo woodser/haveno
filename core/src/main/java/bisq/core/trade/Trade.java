@@ -484,28 +484,32 @@ public abstract class Trade implements Tradable, Model {
 
     // maker
     protected Trade(Offer offer,
-                    Coin txFee,
-                    Coin takerFee,
-                    @Nullable NodeAddress makerNodeAddress,
-                    @Nullable NodeAddress takerNodeAddress,
-                    @Nullable NodeAddress arbitratorNodeAddress,
+                    Coin tradeAmount,
+                    Coin takerFee, // TODO (woodser): makerFee, takerFee, but not given one during construction
+                    long tradePrice,
                     XmrWalletService xmrWalletService,
                     ProcessModel processModel,
-                    String uid) {
+                    String uid,
+                    @Nullable NodeAddress makerNodeAddress,
+                    @Nullable NodeAddress takerNodeAddress,
+                    @Nullable NodeAddress arbitratorNodeAddress) {
         this.offer = offer;
-        this.txFee = txFee;
+        this.tradeAmount = tradeAmount;
+        this.txFee = Coin.valueOf(0);   // TODO (woodser): remove this field
         this.takerFee = takerFee;
-        this.makerNodeAddress = makerNodeAddress;
-        this.takerNodeAddress = takerNodeAddress;
-        this.arbitratorNodeAddress = arbitratorNodeAddress;
+        this.tradePrice = tradePrice;
         this.xmrWalletService = xmrWalletService;
         this.processModel = processModel;
         this.uid = uid;
 
-        txFeeAsLong = txFee.value;
-        takerFeeAsLong = takerFee.value;
-        takeOfferDate = new Date().getTime();
-        tradeMessageListeners = new ArrayList<TradeMessageListener>();
+        this.txFeeAsLong = txFee.value;
+        this.takerFeeAsLong = takerFee.value;
+        this.takeOfferDate = new Date().getTime();
+        this.tradeMessageListeners = new ArrayList<TradeMessageListener>();
+        
+        this.makerNodeAddress = makerNodeAddress;
+        this.takerNodeAddress = takerNodeAddress;
+        this.arbitratorNodeAddress = arbitratorNodeAddress;
     }
 
 
@@ -517,28 +521,29 @@ public abstract class Trade implements Tradable, Model {
                     Coin txFee,
                     Coin takerFee,
                     long tradePrice,
-                    @Nullable NodeAddress makerNodeAddress,
-                    @Nullable NodeAddress takerNodeAddress,
-                    @Nullable NodeAddress arbitratorNodeAddress,
-                    @Nullable NodeAddress mediatorNodeAddress,
+                    @Nullable NodeAddress mediatorNodeAddress, // TODO (woodser): remove mediator, refund agent from trade
                     @Nullable NodeAddress refundAgentNodeAddress,
                     XmrWalletService xmrWalletService,
                     ProcessModel processModel,
-                    String uid) {
+                    String uid,
+                    @Nullable NodeAddress makerNodeAddress,
+                    @Nullable NodeAddress takerNodeAddress,
+                    @Nullable NodeAddress arbitratorNodeAddress) {
 
         this(offer,
-                txFee,
+                tradeAmount,
                 takerFee,
-                makerNodeAddress,
-                takerNodeAddress,
-                arbitratorNodeAddress,
+                tradePrice,
                 xmrWalletService,
                 processModel,
-                uid);
-        this.tradePrice = tradePrice;
+                uid,
+                makerNodeAddress,
+                takerNodeAddress,
+                arbitratorNodeAddress);
         setTradeAmount(tradeAmount);
     }
 
+    // TODO: remove these constructors
     // arbitrator
     @SuppressWarnings("NullableProblems")
     protected Trade(Offer offer,
@@ -554,16 +559,16 @@ public abstract class Trade implements Tradable, Model {
                     String uid) {
 
       this(offer,
-              txFee,
+              tradeAmount,
               takerFee,
-              makerNodeAddress,
-              takerNodeAddress,
-              arbitratorNodeAddress,
+              tradePrice,
               xmrWalletService,
               processModel,
-              uid);
+              uid,
+              makerNodeAddress,
+              takerNodeAddress,
+              arbitratorNodeAddress);
 
-        this.tradePrice = tradePrice;
         setTradeAmount(tradeAmount);
     }
 

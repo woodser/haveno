@@ -98,7 +98,6 @@ public class ProcessInitTradeRequest extends TradeTask {
             }
 
             multisigParticipant.setPaymentAccountPayload(checkNotNull(request.getPaymentAccountPayload()));
-            multisigParticipant.setPayoutAddressString(nonEmptyStringOf(request.getPayoutAddressString()));
             multisigParticipant.setPubKeyRing(checkNotNull(request.getPubKeyRing()));
 
             multisigParticipant.setAccountId(nonEmptyStringOf(request.getAccountId()));
