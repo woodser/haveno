@@ -21,11 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ArbitratorTrade extends Trade {
     
-  // TODO (woodser): remove this temporary field by removing from trade
-  private static final Coin takerFee = Coin.valueOf(0);
-
   public ArbitratorTrade(Offer offer,
           Coin tradeAmount,
+          Coin takerFee,
           long tradePrice,
           XmrWalletService xmrWalletService,
           ProcessModel processModel,
@@ -65,6 +63,7 @@ public class ArbitratorTrade extends Trade {
       return fromProto(new ArbitratorTrade(
                       Offer.fromProto(proto.getOffer()),
                       Coin.valueOf(proto.getTradeAmountAsLong()),
+                      Coin.valueOf(proto.getTakerFeeAsLong()),
                       proto.getTradePrice(),
                       xmrWalletService,
                       processModel,

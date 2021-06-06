@@ -62,7 +62,7 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
                     model.getReserveTx().getHash(),
                     model.getReserveTx().getFullHex(),
                     model.getReserveTx().getKey(),
-                    model.getXmrWalletService().getWallet().getPrimaryAddress());
+                    model.getXmrWalletService().getWallet().getPrimaryAddress()); // TODO (woodser): reserve tx verification should fail since sending primary address instead of payout address
             
             // get signing arbitrator
             Mediator arbitrator = checkNotNull(model.getUser().getAcceptedMediatorByAddress(offer.getOfferPayload().getArbitratorNodeAddress()), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null");

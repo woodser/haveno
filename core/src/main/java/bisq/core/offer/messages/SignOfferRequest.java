@@ -35,7 +35,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
     private final String reserveTxHash;
     private final String reserveTxHex;
     private final String reserveTxKey;
-    private final String returnAddress;
+    private final String payoutAddress;
 
     public SignOfferRequest(String offerId,
                                      NodeAddress senderNodeAddress,
@@ -48,7 +48,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                                      String reserveTxHash,
                                      String reserveTxHex,
                                      String reserveTxKey,
-                                     String returnAddress) {
+                                     String payoutAddress) {
         super(messageVersion, offerId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
@@ -58,7 +58,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
         this.reserveTxHash = reserveTxHash;
         this.reserveTxHex = reserveTxHex;
         this.reserveTxKey = reserveTxKey;
-        this.returnAddress = returnAddress;
+        this.payoutAddress = payoutAddress;
     }
 
 
@@ -79,7 +79,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                 .setReserveTxHash(reserveTxHash)
                 .setReserveTxHex(reserveTxHex)
                 .setReserveTxKey(reserveTxKey)
-                .setReturnAddress(returnAddress);
+                .setPayoutAddress(payoutAddress);
 
         return getNetworkEnvelopeBuilder().setSignOfferRequest(builder).build();
     }
@@ -97,7 +97,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                 proto.getReserveTxHash(),
                 proto.getReserveTxHex(),
                 proto.getReserveTxKey(),
-                proto.getReturnAddress());
+                proto.getPayoutAddress());
     }
 
     @Override
@@ -109,7 +109,7 @@ public final class SignOfferRequest extends OfferMessage implements DirectMessag
                 ",\n     reserveTxHash='" + reserveTxHash +
                 ",\n     reserveTxHex='" + reserveTxHex +
                 ",\n     reserveTxKey='" + reserveTxKey +
-                ",\n     returnAddress='" + returnAddress +
+                ",\n     payoutAddress='" + payoutAddress +
                 "\n} " + super.toString();
     }
 }

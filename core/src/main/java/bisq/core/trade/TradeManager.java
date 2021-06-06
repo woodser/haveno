@@ -28,8 +28,10 @@ import bisq.core.offer.OfferPayload;
 import bisq.core.offer.OpenOffer;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.offer.availability.OfferAvailabilityModel;
+import bisq.core.provider.fee.FeeService;
 import bisq.core.provider.price.PriceFeedService;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
@@ -52,7 +54,7 @@ import bisq.core.trade.statistics.ReferralIdService;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.User;
 import bisq.core.util.Validator;
-
+import bisq.core.util.coin.CoinUtil;
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.DecryptedDirectMessageListener;
 import bisq.network.p2p.DecryptedMessageWithPubKey;
@@ -327,63 +329,89 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         persistenceManager.requestPersistence();
     }
 
-    private void handleInitTradeRequest(InitTradeRequest initTradeRequest, NodeAddress peer) {
-      log.info("Received InitTradeRequest from {} with tradeId {} and uid {}", peer, initTradeRequest.getTradeId(), initTradeRequest.getUid());
+    private void handleInitTradeRequest(InitTradeRequest request, NodeAddress sender) {
+      log.info("Received InitTradeRequest from {} with tradeId {} and uid {}", sender, request.getTradeId(), request.getUid());
 
       try {
-          Validator.nonEmptyStringOf(initTradeRequest.getTradeId());
+          Validator.nonEmptyStringOf(request.getTradeId());
       } catch (Throwable t) {
-          log.warn("Invalid InitTradeRequest message " + initTradeRequest.toString());
+          log.warn("Invalid InitTradeRequest message " + request.toString());
           return;
       }
 
-      System.out.println("RECEIVED INIT REQUEST INFO");
-      System.out.println("Sender peer node address: " + initTradeRequest.getSenderNodeAddress());
-      System.out.println("Maker node address: " + initTradeRequest.getMakerNodeAddress());
-      System.out.println("Taker node adddress: " + initTradeRequest.getTakerNodeAddress());
-      System.out.println("Arbitrator node address: " + initTradeRequest.getArbitratorNodeAddress());
-
       // handle request as arbitrator
-      boolean isArbitrator = initTradeRequest.getArbitratorNodeAddress().equals(p2PService.getNetworkNode().getNodeAddress()); // TODO (woodser): verify address is registered arbitrator
+      boolean isArbitrator = request.getArbitratorNodeAddress().equals(p2PService.getNetworkNode().getNodeAddress());
       if (isArbitrator) {
+          
+          // verify this node is registered arbitrator
+          Mediator thisArbitrator = user.getRegisteredMediator();
+          NodeAddress thisAddress = p2PService.getNetworkNode().getNodeAddress();
+          if (thisArbitrator == null || !thisArbitrator.getNodeAddress().equals(thisAddress)) {
+              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because we are not an arbitrator", sender, request.getTradeId());
+              return;
+          }
 
           // get offer associated with trade
           Offer offer = null;
           for (Offer anOffer : offerBookService.getOffers()) {
-            if (anOffer.getId().equals(initTradeRequest.getTradeId())) {
-              offer = anOffer;
-            }
+              if (anOffer.getId().equals(request.getTradeId())) {
+                  offer = anOffer;
+              }
           }
-          if (offer == null) throw new RuntimeException("No offer on the books with trade id: " + initTradeRequest.getTradeId()); // TODO (woodser): proper error handling
+          if (offer == null) {
+              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because no offer is on the books", sender, request.getTradeId());
+              return;
+          }
+          
+          // verify arbitrator is payload signer unless they are offline
+          // TODO (woodser): handle if payload signer differs from current arbitrator (verify signer is offline)
+          
+          // verify maker is offer owner
+          if (!offer.getOwnerNodeAddress().equals(request.getMakerNodeAddress())) {
+              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because maker is not offer owner", sender, request.getTradeId());
+              return;
+          }
 
           Trade trade;
           Optional<Trade> tradeOptional = getTradeById(offer.getId());
-          if (!tradeOptional.isPresent()) {
-            trade = new ArbitratorTrade(offer,
-                    Coin.valueOf(initTradeRequest.getTradeAmount()),
-                    initTradeRequest.getTradePrice(),
-                    xmrWalletService,
-                    getNewProcessModel(offer),
-                    UUID.randomUUID().toString(),
-                    initTradeRequest.getMakerNodeAddress(),
-                    initTradeRequest.getTakerNodeAddress(),
-                    initTradeRequest.getArbitratorNodeAddress());
+          if (tradeOptional.isPresent()) {
+              trade = tradeOptional.get();
+              
+              // verify request is from maker
+              if (!sender.equals(request.getMakerNodeAddress())) {
+                  log.warn("Trade is already taken"); // TODO (woodser): need to respond with bad ack
+                  return;
+              }
+          } else {
+              
+              // verify request is from taker
+              if (!sender.equals(request.getTakerNodeAddress())) {
+                  log.warn("Ignoring InitTradeRequest from {} with tradeId {} because request must be from taker when trade is not initialized", sender, request.getTradeId());
+                  return;
+              }
+              
+              // compute expected taker fee
+              Coin feePerBtc = CoinUtil.getFeePerBtc(FeeService.getTakerFeePerBtc(true), Coin.valueOf(offer.getOfferPayload().getAmount()));
+              Coin takerFee = CoinUtil.maxCoin(feePerBtc, FeeService.getMinTakerFee(true));
+              
+              // create arbitrator trade
+              trade = new ArbitratorTrade(offer,
+                      Coin.valueOf(offer.getOfferPayload().getAmount()),
+                      takerFee,
+                      offer.getOfferPayload().getPrice(),
+                      xmrWalletService,
+                      getNewProcessModel(offer),
+                      UUID.randomUUID().toString(),
+                      request.getMakerNodeAddress(),
+                      request.getTakerNodeAddress(),
+                      request.getArbitratorNodeAddress());
             initTradeAndProtocol(trade, getTradeProtocol(trade));
             tradableList.add(trade);
-          } else {
-            trade = tradeOptional.get();
           }
 
-          // TODO (woodser): do this for arbitrator?
-//          TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
-//          TradeProtocol prev = tradeProtocolByTradeId.put(trade.getUid(), tradeProtocol);
-//          if (prev != null) {
-//              log.error("We had already an entry with uid {}", trade.getUid());
-//          }
-
-          ((ArbitratorProtocol) getTradeProtocol(trade)).handleInitTradeRequest(initTradeRequest, peer, errorMessage -> {
+          ((ArbitratorProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request, sender, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null)
-                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);  // TODO (woodser): separate handler?
+                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage); // TODO (woodser): separate handler? // TODO (woodser): ensure failed trade removed
           });
 
           requestPersistence();
@@ -392,7 +420,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
       // handle request as maker
       else {
 
-          Optional<OpenOffer> openOfferOptional = openOfferManager.getOpenOfferById(initTradeRequest.getTradeId());
+          Optional<OpenOffer> openOfferOptional = openOfferManager.getOpenOfferById(request.getTradeId());
           if (!openOfferOptional.isPresent()) {
               return;
           }
@@ -408,31 +436,31 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           Trade trade;
           if (offer.isBuyOffer())
               trade = new BuyerAsMakerTrade(offer,
-                      Coin.valueOf(initTradeRequest.getTradeAmount()),
-                      Coin.valueOf(initTradeRequest.getTradeFee()),
-                      initTradeRequest.getTradePrice(),
+                      Coin.valueOf(offer.getOfferPayload().getAmount()),
+                      Coin.valueOf(offer.getOfferPayload().getMakerFee()),
+                      offer.getOfferPayload().getPrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
                       UUID.randomUUID().toString(),
-                      initTradeRequest.getMakerNodeAddress(),
-                      initTradeRequest.getTakerNodeAddress(),
-                      initTradeRequest.getArbitratorNodeAddress());
+                      request.getMakerNodeAddress(),
+                      request.getTakerNodeAddress(),
+                      request.getArbitratorNodeAddress());
           else
               trade = new SellerAsMakerTrade(offer,
-                      Coin.valueOf(initTradeRequest.getTradeAmount()),
-                      Coin.valueOf(initTradeRequest.getTradeFee()),
-                      initTradeRequest.getTradePrice(),
+                      Coin.valueOf(offer.getOfferPayload().getAmount()),
+                      Coin.valueOf(offer.getOfferPayload().getMakerFee()),
+                      offer.getOfferPayload().getPrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
                       UUID.randomUUID().toString(),
-                      initTradeRequest.getMakerNodeAddress(),
-                      initTradeRequest.getTakerNodeAddress(),
+                      request.getMakerNodeAddress(),
+                      request.getTakerNodeAddress(),
                       openOffer.getBackupArbitrator()); // TODO: how to handle primary vs backup arbitrator?
 
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);
 
-          ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(initTradeRequest,  peer, errorMessage -> {
+          ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request,  sender, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null)
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
           });

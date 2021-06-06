@@ -65,7 +65,7 @@ public class TakerVerifyAndSignContract extends TradeTask {
             System.out.println("MAKER ACCOUNT ID: " + maker.getAccountId());
             maker.setPayoutAddressString(response.getMakerPayoutAddressString());
             TradingPeer tradingPeer = processModel.getTradingPeer();
-            tradingPeer.setPaymentAccountPayload(checkNotNull(response.getMakerPaymentAccountPayload()));
+            tradingPeer.setPaymentAccountPayload(checkNotNull(response.getMakerPaymentAccountPayload())); // TODO (woodser): redundant with above calls, others too
             tradingPeer.setAccountId(nonEmptyStringOf(response.getMakerAccountId()));
             tradingPeer.setContractAsJson(nonEmptyStringOf(response.getMakerContractAsJson()));
             tradingPeer.setContractSignature(nonEmptyStringOf(response.getMakerContractSignature()));

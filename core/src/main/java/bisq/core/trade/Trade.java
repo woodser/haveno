@@ -510,6 +510,8 @@ public abstract class Trade implements Tradable, Model {
         this.makerNodeAddress = makerNodeAddress;
         this.takerNodeAddress = takerNodeAddress;
         this.arbitratorNodeAddress = arbitratorNodeAddress;
+        
+        setTradeAmount(tradeAmount);
     }
 
 
@@ -540,7 +542,6 @@ public abstract class Trade implements Tradable, Model {
                 makerNodeAddress,
                 takerNodeAddress,
                 arbitratorNodeAddress);
-        setTradeAmount(tradeAmount);
     }
 
     // TODO: remove these constructors

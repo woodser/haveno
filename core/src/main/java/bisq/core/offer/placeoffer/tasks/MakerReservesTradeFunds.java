@@ -54,20 +54,20 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             // collect fields for reserve transaction
             BigInteger makerFee = ParsingUtils.coinToAtomicUnits(offer.getMakerFee());
             BigInteger reservedFundsForOffer = ParsingUtils.coinToAtomicUnits(model.getReservedFundsForOffer());
-            String returnAddress = model.getXmrWalletService().getNewAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new return address
+            String payoutAdddress = model.getXmrWalletService().getNewAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new payout address
             
             // create transaction to reserve outputs for trade
             MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
                     .addDestination(TradeUtils.FEE_ADDRESS, makerFee)
-                    .addDestination(returnAddress, reservedFundsForOffer));
+                    .addDestination(payoutAdddress, reservedFundsForOffer));
 
             // reserve additional funds to account for fluctuations in mining fee
             BigInteger extraMiningFee = prepareTx.getFee().multiply(BigInteger.valueOf(3l)); // add thrice the mining fee
             MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
                     .setAccountIndex(0)
                     .addDestination(TradeUtils.FEE_ADDRESS, makerFee)
-                    .addDestination(returnAddress, reservedFundsForOffer.add(extraMiningFee)));
+                    .addDestination(payoutAdddress, reservedFundsForOffer.add(extraMiningFee)));
             
             // freeze trade funds
             List<String> inputKeyImages = new ArrayList<String>();

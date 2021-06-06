@@ -174,7 +174,7 @@ message SignOfferRequest {
     string reserve_tx_hash = 8;
     string reserve_tx_hex = 9;
     string reserve_tx_key = 10;
-    string return_address = 11;
+    string payout_address = 11;
 }
 
 message SignOfferResponse {
@@ -303,17 +303,19 @@ message InitTradeRequest {
     int64 trade_amount = 4;
     int64 trade_price = 5;
     int64 trade_fee = 6;
-    PaymentAccountPayload payment_account_payload = 7;
-    string account_id = 8;
-    string uid = 9;
-    bytes account_age_witness_signature_of_offer_id = 10;
-    int64 current_date = 11;
-    NodeAddress maker_node_address = 12;
-    NodeAddress taker_node_address = 13;
-    NodeAddress arbitrator_node_address = 14;
-    string reserve_tx_hash = 15;
-    string reserve_tx_hex = 16;
-    string reserve_tx_key = 17;
+    string account_id = 7;
+    string uid = 8;
+    bytes account_age_witness_signature_of_offer_id = 9;
+    int64 current_date = 10;
+    NodeAddress maker_node_address = 11;
+    NodeAddress taker_node_address = 12;
+    NodeAddress arbitrator_node_address = 13;
+    PaymentAccountPayload taker_payment_account_payload = 14;
+    PaymentAccountPayload maker_payment_account_payload = 15;
+    string reserve_tx_hash = 16;
+    string reserve_tx_hex = 17;
+    string reserve_tx_key = 18;
+    string payout_address = 19;
 }
 
 message MakerReadyToFundMultisigRequest {

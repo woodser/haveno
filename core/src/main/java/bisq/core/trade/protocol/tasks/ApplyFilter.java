@@ -19,8 +19,9 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.core.filter.FilterManager;
 import bisq.core.payment.payload.PaymentAccountPayload;
+import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
-
+import bisq.core.trade.messages.InitTradeRequest;
 import bisq.network.p2p.NodeAddress;
 
 import bisq.common.taskrunner.TaskRunner;
@@ -43,8 +44,6 @@ public class ApplyFilter extends TradeTask {
             runInterceptHook();
 
             NodeAddress nodeAddress = checkNotNull(processModel.getTempTradingPeerNodeAddress());
-            @Nullable
-            PaymentAccountPayload paymentAccountPayload = processModel.getTradingPeer().getPaymentAccountPayload();
 
             FilterManager filterManager = processModel.getFilterManager();
             if (filterManager.isNodeAddressBanned(nodeAddress)) {
@@ -59,14 +58,33 @@ public class ApplyFilter extends TradeTask {
             } else if (filterManager.isPaymentMethodBanned(checkNotNull(trade.getOffer()).getPaymentMethod())) {
                 failed("Payment method is banned.\n" +
                         "Payment method=" + trade.getOffer().getPaymentMethod().getId());
-            } else if (paymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(paymentAccountPayload)) {
-                failed("Other trader is banned by their trading account data.\n" +
-                        "paymentAccountPayload=" + paymentAccountPayload.getPaymentDetails());
             } else if (filterManager.requireUpdateToNewVersionForTrading()) {
                 failed("Your version of Bisq is not compatible for trading anymore. " +
                         "Please update to the latest Bisq version at https://bisq.network/downloads.");
             } else {
                 complete();
+            }
+            
+            // check payment account payloads
+            if (trade instanceof ArbitratorTrade) {
+                @Nullable // TODO (woodser): don't allow null
+                PaymentAccountPayload takerPaymentAccountPayload = ((InitTradeRequest) processModel.getTradeMessage()).getTakerPaymentAccountPayload();
+                PaymentAccountPayload makerPaymentAccountPayload = ((InitTradeRequest) processModel.getTradeMessage()).getMakerPaymentAccountPayload();
+                if (takerPaymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(takerPaymentAccountPayload)) {
+                    failed("Taker is banned by their trading account data.\n" +
+                            "takerPaymentAccountPayload=" + takerPaymentAccountPayload.getPaymentDetails());
+                }
+                if (takerPaymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(makerPaymentAccountPayload)) {
+                    failed("Maker is banned by their trading account data.\n" +
+                            "makePaymentAccountPayload=" + makerPaymentAccountPayload.getPaymentDetails());
+                }
+            } else {
+                @Nullable
+                PaymentAccountPayload paymentAccountPayload = processModel.getTradingPeer().getPaymentAccountPayload();
+                if (paymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(paymentAccountPayload)) {
+                    failed("Other trader is banned by their trading account data.\n" +
+                            "paymentAccountPayload=" + paymentAccountPayload.getPaymentDetails());
+                }
             }
         } catch (Throwable t) {
             failed(t);

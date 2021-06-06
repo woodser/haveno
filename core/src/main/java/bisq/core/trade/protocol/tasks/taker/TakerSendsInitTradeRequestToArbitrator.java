@@ -55,7 +55,6 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
             
             // collect fields for request
             String offerId = processModel.getOffer().getId();
-            XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
             
             // taker signs offer using offer id as nonce to avoid challenge protocol
             final PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade), "processModel.getPaymentAccountPayload(trade) must not be null");
@@ -71,14 +70,13 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
             trade.setMakerPubKeyRing(processModel.getTradingPeer().getPubKeyRing());
             
             // create request to initialize trade
-            InitTradeRequest message = new InitTradeRequest(
+            InitTradeRequest arbitratorRequest = new InitTradeRequest(
                     offerId,
                     processModel.getMyNodeAddress(),
                     processModel.getPubKeyRing(),
                     trade.getTradeAmount().value,
                     trade.getTradePrice().getValue(),
                     trade.getTakerFee().getValue(),
-                    paymentAccountPayload,
                     processModel.getAccountId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
@@ -87,25 +85,28 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
+                    paymentAccountPayload,
+                    paymentAccountPayload, // TODO (woodser): should fail because != maker payment account, return in OfferAvailabilityResponse
                     trade.getProcessModel().getReserveTx().getHash(),
                     trade.getProcessModel().getReserveTx().getFullHex(),
-                    trade.getProcessModel().getReserveTx().getKey());
+                    trade.getProcessModel().getReserveTx().getKey(),
+                    processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString()); // TODO (woodser): put into trade model?
 
             // send request to arbitrator
-            log.info("Send {} with offerId {} and uid {} to arbitrator {} with pub key ring", message.getClass().getSimpleName(), message.getTradeId(), message.getUid(), trade.getArbitratorNodeAddress(), trade.getArbitratorPubKeyRing());
+            log.info("Send {} with offerId {} and uid {} to arbitrator {} with pub key ring", arbitratorRequest.getClass().getSimpleName(), arbitratorRequest.getTradeId(), arbitratorRequest.getUid(), trade.getArbitratorNodeAddress(), trade.getArbitratorPubKeyRing());
             processModel.getP2PService().sendEncryptedDirectMessage(
                     trade.getArbitratorNodeAddress(),
                     trade.getArbitratorPubKeyRing(),
-                    message,
+                    arbitratorRequest,
                     new SendDirectMessageListener() {
                         @Override
                         public void onArrived() {
-                            log.info("{} arrived at arbitrator: offerId={}; uid={}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid());
+                            log.info("{} arrived at arbitrator: offerId={}; uid={}", arbitratorRequest.getClass().getSimpleName(), arbitratorRequest.getTradeId(), arbitratorRequest.getUid());
                         }
                         @Override // TODO (woodser): handle case where primary arbitrator is unavailable so use backup arbitrator, distinguish offline from bad ack
                         public void onFault(String errorMessage) {
-                            log.error("Sending {} failed: uid={}; peer={}; error={}", message.getClass().getSimpleName(), message.getUid(), trade.getArbitratorNodeAddress(), errorMessage);
-                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+                            log.error("Sending {} failed: uid={}; peer={}; error={}", arbitratorRequest.getClass().getSimpleName(), arbitratorRequest.getUid(), trade.getArbitratorNodeAddress(), errorMessage);
+                            appendToErrorMessage("Sending message failed: message=" + arbitratorRequest + "\nerrorMessage=" + errorMessage);
                             failed();
                         }
                     }

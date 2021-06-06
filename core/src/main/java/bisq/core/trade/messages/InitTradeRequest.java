@@ -43,7 +43,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
     private final long tradeAmount;
     private final long tradePrice;
     private final long tradeFee;
-    private final PaymentAccountPayload paymentAccountPayload;
+    private final PaymentAccountPayload takerPaymentAccountPayload;
+    private final PaymentAccountPayload makerPaymentAccountPayload;
     private final PubKeyRing pubKeyRing;
     private final String accountId;
 
@@ -62,6 +63,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
     private final String reserveTxHex;
     @Nullable
     private final String reserveTxKey;
+    @Nullable
+    private final String payoutAddress;
 
     public InitTradeRequest(String tradeId,
                                      NodeAddress senderNodeAddress,
@@ -69,7 +72,6 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                                      long tradeAmount,
                                      long tradePrice,
                                      long tradeFee,
-                                     PaymentAccountPayload paymentAccountPayload,
                                      String accountId,
                                      String uid,
                                      int messageVersion,
@@ -78,13 +80,15 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                                      NodeAddress takerNodeAddress,
                                      NodeAddress makerNodeAddress,
                                      NodeAddress arbitratorNodeAddress,
+                                     PaymentAccountPayload takerPaymentAccountPayload,
+                                     PaymentAccountPayload makerPaymentAccountPayload,
                                      @Nullable String reserveTxHash,
                                      @Nullable String reserveTxHex,
-                                     @Nullable String reserveTxKey) {
+                                     @Nullable String reserveTxKey,
+                                     @Nullable String payoutAddress) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
-        this.paymentAccountPayload = paymentAccountPayload;
         this.tradeAmount = tradeAmount;
         this.tradePrice = tradePrice;
         this.tradeFee = tradeFee;
@@ -94,9 +98,12 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
         this.takerNodeAddress = takerNodeAddress;
         this.makerNodeAddress = makerNodeAddress;
         this.arbitratorNodeAddress = arbitratorNodeAddress;
+        this.takerPaymentAccountPayload = takerPaymentAccountPayload;
+        this.makerPaymentAccountPayload = makerPaymentAccountPayload;
         this.reserveTxHash = reserveTxHash;
         this.reserveTxHex = reserveTxHex;
         this.reserveTxKey = reserveTxKey;
+        this.payoutAddress = payoutAddress;
     }
 
 
@@ -116,13 +123,15 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 .setTradePrice(tradePrice)
                 .setTradeFee(tradeFee)
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
-                .setPaymentAccountPayload((protobuf.PaymentAccountPayload) paymentAccountPayload.toProtoMessage())
+                .setTakerPaymentAccountPayload((protobuf.PaymentAccountPayload) takerPaymentAccountPayload.toProtoMessage())
+                .setMakerPaymentAccountPayload((protobuf.PaymentAccountPayload) makerPaymentAccountPayload.toProtoMessage())
                 .setAccountId(accountId)
                 .setUid(uid);
 
         Optional.ofNullable(reserveTxHash).ifPresent(e -> builder.setReserveTxHash(reserveTxHash));
         Optional.ofNullable(reserveTxHex).ifPresent(e -> builder.setReserveTxHex(reserveTxHex));
         Optional.ofNullable(reserveTxKey).ifPresent(e -> builder.setReserveTxKey(reserveTxKey));
+        Optional.ofNullable(payoutAddress).ifPresent(e -> builder.setPayoutAddress(payoutAddress));
         Optional.ofNullable(accountAgeWitnessSignatureOfOfferId).ifPresent(e -> builder.setAccountAgeWitnessSignatureOfOfferId(ByteString.copyFrom(e)));
         builder.setCurrentDate(currentDate);
 
@@ -138,7 +147,6 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 proto.getTradeAmount(),
                 proto.getTradePrice(),
                 proto.getTradeFee(),
-                coreProtoResolver.fromProto(proto.getPaymentAccountPayload()),
                 proto.getAccountId(),
                 proto.getUid(),
                 messageVersion,
@@ -147,9 +155,12 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 NodeAddress.fromProto(proto.getTakerNodeAddress()),
                 NodeAddress.fromProto(proto.getMakerNodeAddress()),
                 NodeAddress.fromProto(proto.getArbitratorNodeAddress()),
+                coreProtoResolver.fromProto(proto.getTakerPaymentAccountPayload()),
+                coreProtoResolver.fromProto(proto.getMakerPaymentAccountPayload()),
                 proto.getReserveTxHash(),
                 proto.getReserveTxHex(),
-                proto.getReserveTxKey());
+                proto.getReserveTxKey(),
+                proto.getPayoutAddress());
     }
 
     @Override
@@ -160,7 +171,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 ",\n     tradePrice=" + tradePrice +
                 ",\n     tradeFee=" + tradeFee +
                 ",\n     pubKeyRing=" + pubKeyRing +
-                ",\n     paymentAccountPayload=" + paymentAccountPayload +
+                ",\n     paymentAccountPayload=" + takerPaymentAccountPayload +
                 ",\n     paymentAccountPayload='" + accountId + '\'' +
                 ",\n     arbitratorNodeAddress=" + arbitratorNodeAddress +
                 ",\n     accountAgeWitnessSignatureOfOfferId=" + Utilities.bytesAsHexString(accountAgeWitnessSignatureOfOfferId) +
@@ -168,6 +179,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 ",\n     reserveTxHash=" + reserveTxHash +
                 ",\n     reserveTxHex=" + reserveTxHex +
                 ",\n     reserveTxKey=" + reserveTxKey +
+                ",\n     payoutAddress=" + payoutAddress +
                 "\n} " + super.toString();
     }
 }

@@ -49,81 +49,84 @@ public class ProcessInitTradeRequest extends TradeTask {
         super(taskHandler, trade);
     }
 
+    // TODO (woodser): synchronize access to setting trade state in case of concurrent requests
     @Override
     protected void run() {
         try {
             runInterceptHook();
-            log.debug("current trade state " + trade.getState());
+            User user = checkNotNull(processModel.getUser(), "User must not be null");
+            Offer offer = checkNotNull(trade.getOffer(), "Offer must not be null");
             InitTradeRequest request = (InitTradeRequest) processModel.getTradeMessage();
             checkNotNull(request);
             checkTradeId(processModel.getOfferId(), request);
 
             System.out.println("PROCESS INIT TRADE REQUEST");
             System.out.println(request);
-
-            User user = checkNotNull(processModel.getUser(), "User must not be null");
-
-            // handle maker trade
-            TradingPeer multisigParticipant;
-            if (trade instanceof MakerTrade) {
-
-              NodeAddress arbitratorNodeAddress = checkNotNull(request.getArbitratorNodeAddress(), "payDepositRequest.getMediatorNodeAddress() must not be null");
-              Mediator mediator = checkNotNull(user.getAcceptedMediatorByAddress(arbitratorNodeAddress), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null"); // TODO (woodser): switch to arbitrator?
-
-              multisigParticipant = processModel.getTaker();
-              trade.setTakerNodeAddress(request.getTakerNodeAddress());
-              trade.setTakerPubKeyRing(request.getPubKeyRing());
-              trade.setArbitratorNodeAddress(request.getArbitratorNodeAddress());
-              trade.setArbitratorPubKeyRing(mediator.getPubKeyRing());
-            }
-
+            
             // handle arbitrator trade
-            else if (trade instanceof ArbitratorTrade) {
-              // TODO (woodser): synchronize access to setting trade state in case of concurrent requests
-              if (request.getSenderNodeAddress().equals(trade.getMakerNodeAddress())) {
-                multisigParticipant = processModel.getMaker();
-                if (!trade.getMakerNodeAddress().equals(request.getMakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree");  // TODO (woodser): test when maker and taker do not agree, use proper handling
-                if (trade.getMakerPubKeyRing() == null) trade.setMakerPubKeyRing(request.getPubKeyRing());
-                else if (!trade.getMakerPubKeyRing().equals(request.getPubKeyRing())) throw new RuntimeException("Init trade requests from maker and taker do not agree");  // TODO (woodser): proper handling
-              } else if (request.getSenderNodeAddress().equals(trade.getTakerNodeAddress())) {
-                multisigParticipant = processModel.getTaker();
-                if (!trade.getTakerNodeAddress().equals(request.getTakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree");  // TODO (woodser): proper handling
-                if (trade.getTakerPubKeyRing() == null) trade.setTakerPubKeyRing(request.getPubKeyRing());
-                else if (!trade.getTakerPubKeyRing().equals(request.getPubKeyRing())) throw new RuntimeException("Init trade requests from maker and taker do not agree");  // TODO (woodser): proper handling
-              } else {
-                throw new RuntimeException("Sender is not trade's maker or taker");
-              }
-            } else {
-              throw new RuntimeException("Invalid trade type to process init trade request: " + trade.getClass().getName());
+            TradingPeer multisigParticipant;
+            if (trade instanceof ArbitratorTrade) {
+                if (request.getSenderNodeAddress().equals(request.getTakerNodeAddress())) {
+                    multisigParticipant = processModel.getTaker();
+                    if (!trade.getTakerNodeAddress().equals(request.getTakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree");
+                    if (trade.getTakerPubKeyRing() != null) throw new RuntimeException("Pub key ring should not be initialized before processing InitTradeRequest");
+                    trade.setTakerPubKeyRing(request.getPubKeyRing());
+                } else if (request.getSenderNodeAddress().equals(request.getMakerNodeAddress())) {
+                    multisigParticipant = processModel.getMaker();
+                    if (!trade.getMakerNodeAddress().equals(request.getMakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree"); // TODO (woodser): test when maker and taker do not agree, use proper handling, uninitialize trade for other takers
+                    if (trade.getMakerPubKeyRing() == null) trade.setMakerPubKeyRing(request.getPubKeyRing());
+                    else if (!trade.getMakerPubKeyRing().equals(request.getPubKeyRing())) throw new RuntimeException("Init trade requests from maker and taker do not agree");  // TODO (woodser): proper handling
+                    trade.setMakerPubKeyRing(request.getPubKeyRing());
+                } else {
+                    throw new RuntimeException("Sender is not trade's maker or taker");
+                }
+            }
+            
+            // handle maker trade
+            else if (trade instanceof MakerTrade) {
+                multisigParticipant = null;
+                throw new RuntimeException("Processing maker init trade request not yet implemented");
+//                NodeAddress arbitratorNodeAddress = checkNotNull(request.getArbitratorNodeAddress(), "payDepositRequest.getMediatorNodeAddress() must not be null");
+//                Mediator mediator = checkNotNull(user.getAcceptedMediatorByAddress(arbitratorNodeAddress), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null"); // TODO (woodser): switch to arbitrator?
+//
+//                multisigParticipant = processModel.getTaker();
+//                trade.setTakerNodeAddress(request.getTakerNodeAddress());
+//                trade.setTakerPubKeyRing(request.getPubKeyRing());
+//                trade.setArbitratorNodeAddress(request.getArbitratorNodeAddress());
+//                trade.setArbitratorPubKeyRing(mediator.getPubKeyRing());
+            }
+            
+            // handle invalid trade type
+            else {
+                throw new RuntimeException("Invalid trade type to process init trade request: " + trade.getClass().getName());
             }
 
-            multisigParticipant.setPaymentAccountPayload(checkNotNull(request.getPaymentAccountPayload()));
+            // set trading peer info
+            processModel.getTaker().setPaymentAccountPayload(request.getTakerPaymentAccountPayload());
+            processModel.getMaker().setPaymentAccountPayload(request.getMakerPaymentAccountPayload());
             multisigParticipant.setPubKeyRing(checkNotNull(request.getPubKeyRing()));
-
             multisigParticipant.setAccountId(nonEmptyStringOf(request.getAccountId()));
-            //trade.setTakerFeeTxId(nonEmptyStringOf(request.getTradeFeeTxId())); // TODO (woodser): no trade fee tx yet if creating multisig first
-
-            // Taker has to sign offerId (he cannot manipulate that - so we avoid to have a challenge protocol for passing the nonce we want to get signed)
             multisigParticipant.setAccountAgeWitnessNonce(trade.getId().getBytes(Charsets.UTF_8));
             multisigParticipant.setAccountAgeWitnessSignature(request.getAccountAgeWitnessSignatureOfOfferId());
             multisigParticipant.setCurrentDate(request.getCurrentDate());
 
-            Offer offer = checkNotNull(trade.getOffer(), "Offer must not be null");
+            // check trade price
             try {
-                long takersTradePrice = request.getTradePrice();
-                offer.checkTradePriceTolerance(takersTradePrice);
-                trade.setTradePrice(takersTradePrice);
+                long tradePrice = request.getTradePrice();
+                offer.checkTradePriceTolerance(tradePrice);
+                trade.setTradePrice(tradePrice);
             } catch (TradePriceOutOfToleranceException e) {
                 failed(e.getMessage());
             } catch (Throwable e2) {
                 failed(e2);
             }
 
+            // check trade amount
             checkArgument(request.getTradeAmount() > 0);
             trade.setTradeAmount(Coin.valueOf(request.getTradeAmount()));
 
+            // persist trade
             processModel.getTradeManager().requestPersistence();
-
             complete();
         } catch (Throwable t) {
             failed(t);

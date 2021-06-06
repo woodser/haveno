@@ -17,6 +17,7 @@
 
 package bisq.core.trade.protocol.tasks.maker;
 
+import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
@@ -90,7 +91,7 @@ public class MakerSendsInitTradeRequest extends TradeTask {
 
             System.out.println("MAKER SENDING ARBITRTATOR SENDER NODE ADDRESS");
             System.out.println(processModel.getMyNodeAddress());
-
+            
             // create message to initialize trade
             InitTradeRequest message = new InitTradeRequest(
                     offerId,
@@ -99,7 +100,6 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     trade.getTradeAmount().value,
                     trade.getTradePrice().getValue(),
                     trade.getTakerFee().getValue(),
-                    paymentAccountPayload,
                     processModel.getAccountId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
@@ -108,9 +108,12 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
+                    request.getTakerPaymentAccountPayload(),
+                    paymentAccountPayload, // TODO (woodser): verify this account payload matches request.getMakerPaymentAccountPayload()
                     trade.getProcessModel().getReserveTx().getHash(),
                     trade.getProcessModel().getReserveTx().getFullHex(),
-                    trade.getProcessModel().getReserveTx().getKey());
+                    trade.getProcessModel().getReserveTx().getKey(),
+                    processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString());
 
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     message.getClass().getSimpleName(), message.getTradeId(),
