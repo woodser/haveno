@@ -83,9 +83,8 @@ public class MakerSendsInitTradeRequest extends TradeTask {
             checkNotNull(user, "User must not be null");
             final List<NodeAddress> acceptedMediatorAddresses = user.getAcceptedMediatorAddresses();
             checkNotNull(acceptedMediatorAddresses, "acceptedMediatorAddresses must not be null");
-
-            // Taker has to use offerId as nonce (he cannot manipulate that - so we avoid to have a challenge protocol for passing the nonce we want to get signed)
-            // He cannot manipulate the offerId - so we avoid to have a challenge protocol for passing the nonce we want to get signed.
+            
+            // maker signs offer id as nonce to avoid challenge protocol
             final PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade), "processModel.getPaymentAccountPayload(trade) must not be null");
             byte[] sig = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), offerId.getBytes(Charsets.UTF_8));
 
@@ -108,7 +107,6 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    request.getTakerPaymentAccountPayload(),
                     paymentAccountPayload, // TODO (woodser): verify this account payload matches request.getMakerPaymentAccountPayload()
                     trade.getProcessModel().getReserveTx().getHash(),
                     trade.getProcessModel().getReserveTx().getFullHex(),

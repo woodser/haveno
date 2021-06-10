@@ -67,27 +67,21 @@ public class ApplyFilter extends TradeTask {
             
             // check payment account payloads
             if (trade instanceof ArbitratorTrade) {
-                @Nullable // TODO (woodser): don't allow null
-                PaymentAccountPayload takerPaymentAccountPayload = ((InitTradeRequest) processModel.getTradeMessage()).getTakerPaymentAccountPayload();
-                PaymentAccountPayload makerPaymentAccountPayload = ((InitTradeRequest) processModel.getTradeMessage()).getMakerPaymentAccountPayload();
-                if (takerPaymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(takerPaymentAccountPayload)) {
-                    failed("Taker is banned by their trading account data.\n" +
-                            "takerPaymentAccountPayload=" + takerPaymentAccountPayload.getPaymentDetails());
-                }
-                if (takerPaymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(makerPaymentAccountPayload)) {
-                    failed("Maker is banned by their trading account data.\n" +
-                            "makePaymentAccountPayload=" + makerPaymentAccountPayload.getPaymentDetails());
-                }
+                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getMaker().getPaymentAccountPayload(), "Maker is banned by their trading account data.");
+                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getTaker().getPaymentAccountPayload(), "Taker is banned by their trading account data.");
             } else {
-                @Nullable
-                PaymentAccountPayload paymentAccountPayload = processModel.getTradingPeer().getPaymentAccountPayload();
-                if (paymentAccountPayload != null && filterManager.arePeersPaymentAccountDataBanned(paymentAccountPayload)) {
-                    failed("Other trader is banned by their trading account data.\n" +
-                            "paymentAccountPayload=" + paymentAccountPayload.getPaymentDetails());
-                }
+                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getTradingPeer().getPaymentAccountPayload(), "Other trader is banned by their trading account data.");
             }
         } catch (Throwable t) {
             failed(t);
+        }
+    }
+    
+    private static void verifyPaymentAccountPayload(FilterManager filterManager, PaymentAccountPayload paymentAccountPayload, String errorMsg) {
+        if (paymentAccountPayload == null) throw new RuntimeException("Payment account payload is null");
+        if (filterManager.arePeersPaymentAccountDataBanned(paymentAccountPayload)) {
+            throw new RuntimeException(errorMsg +
+                    "paymentAccountPayload=" + paymentAccountPayload.getPaymentDetails());
         }
     }
 }

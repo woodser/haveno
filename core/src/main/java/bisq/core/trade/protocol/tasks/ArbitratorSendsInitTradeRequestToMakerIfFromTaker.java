@@ -76,8 +76,7 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    request.getTakerPaymentAccountPayload(),
-                    request.getMakerPaymentAccountPayload(),
+                    request.getPaymentAccountPayload(), // send taker payment account payload
                     null,
                     null,
                     null,

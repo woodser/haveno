@@ -102,8 +102,8 @@ public class ProcessInitTradeRequest extends TradeTask {
             }
 
             // set trading peer info
-            processModel.getTaker().setPaymentAccountPayload(request.getTakerPaymentAccountPayload());
-            processModel.getMaker().setPaymentAccountPayload(request.getMakerPaymentAccountPayload());
+            if (multisigParticipant.getPaymentAccountPayload() == null) multisigParticipant.setPaymentAccountPayload(request.getPaymentAccountPayload());
+            else if (multisigParticipant.getPaymentAccountPayload() != request.getPaymentAccountPayload()) throw new RuntimeException("Payment account payload is different from previous");
             multisigParticipant.setPubKeyRing(checkNotNull(request.getPubKeyRing()));
             multisigParticipant.setAccountId(nonEmptyStringOf(request.getAccountId()));
             multisigParticipant.setAccountAgeWitnessNonce(trade.getId().getBytes(Charsets.UTF_8));

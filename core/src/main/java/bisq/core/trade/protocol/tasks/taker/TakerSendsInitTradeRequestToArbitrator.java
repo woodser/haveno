@@ -55,9 +55,9 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
             
             // collect fields for request
             String offerId = processModel.getOffer().getId();
+            final PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade), "processModel.getPaymentAccountPayload(trade) must not be null");
             
             // taker signs offer using offer id as nonce to avoid challenge protocol
-            final PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade), "processModel.getPaymentAccountPayload(trade) must not be null");
             byte[] sig = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), offerId.getBytes(Charsets.UTF_8));
             
             // get primary arbitrator
@@ -86,7 +86,6 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
                     paymentAccountPayload,
-                    paymentAccountPayload, // TODO (woodser): should fail because != maker payment account, return in OfferAvailabilityResponse
                     trade.getProcessModel().getReserveTx().getHash(),
                     trade.getProcessModel().getReserveTx().getFullHex(),
                     trade.getProcessModel().getReserveTx().getKey(),
