@@ -58,6 +58,8 @@ public final class TradingPeer implements PersistablePayload {
     @Nullable
     private String accountId;
     @Nullable
+    private String paymentAccountId;
+    @Nullable
     private PaymentAccountPayload paymentAccountPayload;
     @Nullable
     private String payoutAddressString;
@@ -102,6 +104,7 @@ public final class TradingPeer implements PersistablePayload {
         final protobuf.TradingPeer.Builder builder = protobuf.TradingPeer.newBuilder()
                 .setChangeOutputValue(changeOutputValue);
         Optional.ofNullable(accountId).ifPresent(builder::setAccountId);
+        Optional.ofNullable(paymentAccountId).ifPresent(builder::setPaymentAccountId);
         Optional.ofNullable(paymentAccountPayload).ifPresent(e -> builder.setPaymentAccountPayload((protobuf.PaymentAccountPayload) e.toProtoMessage()));
         Optional.ofNullable(payoutAddressString).ifPresent(builder::setPayoutAddressString);
         Optional.ofNullable(contractAsJson).ifPresent(builder::setContractAsJson);
@@ -130,6 +133,7 @@ public final class TradingPeer implements PersistablePayload {
             TradingPeer tradingPeer = new TradingPeer();
             tradingPeer.setChangeOutputValue(proto.getChangeOutputValue());
             tradingPeer.setAccountId(ProtoUtil.stringOrNullFromProto(proto.getAccountId()));
+            tradingPeer.setPaymentAccountId(ProtoUtil.stringOrNullFromProto(proto.getPaymentAccountId()));
             tradingPeer.setPaymentAccountPayload(proto.hasPaymentAccountPayload() ? coreProtoResolver.fromProto(proto.getPaymentAccountPayload()) : null);
             tradingPeer.setPayoutAddressString(ProtoUtil.stringOrNullFromProto(proto.getPayoutAddressString()));
             tradingPeer.setContractAsJson(ProtoUtil.stringOrNullFromProto(proto.getContractAsJson()));

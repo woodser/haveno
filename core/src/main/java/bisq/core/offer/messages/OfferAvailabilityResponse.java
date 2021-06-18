@@ -44,17 +44,22 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
     @Nullable
     private final Capabilities supportedCapabilities;
 
+    @Nullable
+    private final String makerSignature;
+    @Nullable
     private final NodeAddress backupArbitrator;
 
     public OfferAvailabilityResponse(String offerId,
                                      AvailabilityResult availabilityResult,
-                                     NodeAddress arbitrator) {
+                                     String makerSignature,
+                                     NodeAddress backupArbitrator) {
         this(offerId,
                 availabilityResult,
                 Capabilities.app,
                 Version.getP2PMessageVersion(),
                 UUID.randomUUID().toString(),
-                arbitrator);
+                makerSignature,
+                backupArbitrator);
     }
 
 
@@ -67,11 +72,13 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                                       @Nullable Capabilities supportedCapabilities,
                                       int messageVersion,
                                       @Nullable String uid,
-                                      NodeAddress arbitrator) {
+                                      String makerSignature,
+                                      NodeAddress backupArbitrator) {
         super(messageVersion, offerId, uid);
         this.availabilityResult = availabilityResult;
         this.supportedCapabilities = supportedCapabilities;
-        this.backupArbitrator = arbitrator;
+        this.makerSignature = makerSignature;
+        this.backupArbitrator = backupArbitrator;
     }
 
     @Override
@@ -82,6 +89,7 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
 
         Optional.ofNullable(supportedCapabilities).ifPresent(e -> builder.addAllSupportedCapabilities(Capabilities.toIntList(supportedCapabilities)));
         Optional.ofNullable(uid).ifPresent(e -> builder.setUid(uid));
+        Optional.ofNullable(makerSignature).ifPresent(e -> builder.setMakerSignature(makerSignature));
         Optional.ofNullable(backupArbitrator).ifPresent(e -> builder.setBackupArbitrator(backupArbitrator.toProtoMessage()));
 
         return getNetworkEnvelopeBuilder()
@@ -95,6 +103,7 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                 Capabilities.fromIntList(proto.getSupportedCapabilitiesList()),
                 messageVersion,
                 proto.getUid().isEmpty() ? null : proto.getUid(),
+                proto.getMakerSignature().isEmpty() ? null : proto.getMakerSignature(),
                 proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null);
     }
 }

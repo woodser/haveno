@@ -19,18 +19,15 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.core.exceptions.TradePriceOutOfToleranceException;
 import bisq.core.offer.Offer;
-import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.MakerTrade;
 import bisq.core.trade.Trade;
+import bisq.core.trade.TradeUtils;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.protocol.TradingPeer;
 import bisq.core.user.User;
 
-import bisq.network.p2p.NodeAddress;
-
 import bisq.common.taskrunner.TaskRunner;
-
 import org.bitcoinj.core.Coin;
 
 import com.google.common.base.Charsets;
@@ -63,15 +60,21 @@ public class ProcessInitTradeRequest extends TradeTask {
             System.out.println("PROCESS INIT TRADE REQUEST");
             System.out.println(request);
             
-            // handle arbitrator trade
+            // handle request as arbitrator
             TradingPeer multisigParticipant;
             if (trade instanceof ArbitratorTrade) {
+                
+                // handle request from taker
                 if (request.getSenderNodeAddress().equals(request.getTakerNodeAddress())) {
                     multisigParticipant = processModel.getTaker();
                     if (!trade.getTakerNodeAddress().equals(request.getTakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree");
                     if (trade.getTakerPubKeyRing() != null) throw new RuntimeException("Pub key ring should not be initialized before processing InitTradeRequest");
                     trade.setTakerPubKeyRing(request.getPubKeyRing());
-                } else if (request.getSenderNodeAddress().equals(request.getMakerNodeAddress())) {
+                    if (!TradeUtils.isMakerSignatureValid(request, request.getMakerSignature(), offer.getPubKeyRing())) throw new RuntimeException("Maker signature is invalid for the trade request"); // verify maker signature
+                }
+                
+                // handle request from maker
+                else if (request.getSenderNodeAddress().equals(request.getMakerNodeAddress())) {
                     multisigParticipant = processModel.getMaker();
                     if (!trade.getMakerNodeAddress().equals(request.getMakerNodeAddress())) throw new RuntimeException("Init trade requests from maker and taker do not agree"); // TODO (woodser): test when maker and taker do not agree, use proper handling, uninitialize trade for other takers
                     if (trade.getMakerPubKeyRing() == null) trade.setMakerPubKeyRing(request.getPubKeyRing());
@@ -102,8 +105,8 @@ public class ProcessInitTradeRequest extends TradeTask {
             }
 
             // set trading peer info
-            if (multisigParticipant.getPaymentAccountPayload() == null) multisigParticipant.setPaymentAccountPayload(request.getPaymentAccountPayload());
-            else if (multisigParticipant.getPaymentAccountPayload() != request.getPaymentAccountPayload()) throw new RuntimeException("Payment account payload is different from previous");
+            if (multisigParticipant.getPaymentAccountId() == null) multisigParticipant.setPaymentAccountId(request.getPaymentAccountId());
+            else if (multisigParticipant.getPaymentAccountId() != request.getPaymentAccountId()) throw new RuntimeException("Payment account id is different from previous");
             multisigParticipant.setPubKeyRing(checkNotNull(request.getPubKeyRing()));
             multisigParticipant.setAccountId(nonEmptyStringOf(request.getAccountId()));
             multisigParticipant.setAccountAgeWitnessNonce(trade.getId().getBytes(Charsets.UTF_8));

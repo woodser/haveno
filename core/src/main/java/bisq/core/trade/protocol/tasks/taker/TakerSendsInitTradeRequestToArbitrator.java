@@ -18,7 +18,6 @@
 package bisq.core.trade.protocol.tasks.taker;
 
 import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.trade.Trade;
@@ -53,45 +52,41 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
         try {
             runInterceptHook();
             
-            // collect fields for request
-            String offerId = processModel.getOffer().getId();
-            final PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade), "processModel.getPaymentAccountPayload(trade) must not be null");
-            
-            // taker signs offer using offer id as nonce to avoid challenge protocol
-            byte[] sig = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), offerId.getBytes(Charsets.UTF_8));
-            
             // get primary arbitrator
             Mediator arbitrator = processModel.getUser().getAcceptedMediatorByAddress(trade.getArbitratorNodeAddress());
-            if (arbitrator == null) throw new RuntimeException("Cannot get arbitrator instance by trade id"); // TODO (woodser): null if arbitrator goes offline or never seen?
+            if (arbitrator == null) throw new RuntimeException("Cannot get arbitrator instance from node address"); // TODO (woodser): null if arbitrator goes offline or never seen?
             
             // save pub keys
             processModel.getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
             trade.setArbitratorPubKeyRing(processModel.getArbitrator().getPubKeyRing());
             trade.setMakerPubKeyRing(processModel.getTradingPeer().getPubKeyRing());
             
-            // create request to initialize trade
+            // send trade request to arbitrator
+            InitTradeRequest makerRequest = (InitTradeRequest) processModel.getTradeMessage();
             InitTradeRequest arbitratorRequest = new InitTradeRequest(
-                    offerId,
-                    processModel.getMyNodeAddress(),
-                    processModel.getPubKeyRing(),
-                    trade.getTradeAmount().value,
-                    trade.getTradePrice().getValue(),
-                    trade.getTakerFee().getValue(),
-                    processModel.getAccountId(),
-                    UUID.randomUUID().toString(),
+                    makerRequest.getTradeId(),
+                    makerRequest.getSenderNodeAddress(),
+                    makerRequest.getPubKeyRing(),
+                    makerRequest.getTradeAmount(),
+                    makerRequest.getTradePrice(),
+                    makerRequest.getTradeFee(),
+                    makerRequest.getAccountId(),
+                    makerRequest.getPaymentAccountId(),
+                    makerRequest.getUid(),
                     Version.getP2PMessageVersion(),
-                    sig,
-                    new Date().getTime(),
-                    trade.getTakerNodeAddress(),
-                    trade.getMakerNodeAddress(),
+                    makerRequest.getAccountAgeWitnessSignatureOfOfferId(),
+                    makerRequest.getCurrentDate(),
+                    makerRequest.getTakerNodeAddress(),
+                    makerRequest.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    paymentAccountPayload,
-                    trade.getProcessModel().getReserveTx().getHash(),
-                    trade.getProcessModel().getReserveTx().getFullHex(),
-                    trade.getProcessModel().getReserveTx().getKey(),
-                    processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString()); // TODO (woodser): put into trade model?
+                    processModel.getReserveTx().getHash(),
+                    processModel.getReserveTx().getFullHex(),
+                    processModel.getReserveTx().getKey(),
+                    makerRequest.getPayoutAddress(),
+                    processModel.getMakerSignature());
 
             // send request to arbitrator
+            System.out.println("SENDING INIT TRADE REQUEST TO ARBITRATOR!");
             log.info("Send {} with offerId {} and uid {} to arbitrator {} with pub key ring", arbitratorRequest.getClass().getSimpleName(), arbitratorRequest.getTradeId(), arbitratorRequest.getUid(), trade.getArbitratorNodeAddress(), trade.getArbitratorPubKeyRing());
             processModel.getP2PService().sendEncryptedDirectMessage(
                     trade.getArbitratorNodeAddress(),

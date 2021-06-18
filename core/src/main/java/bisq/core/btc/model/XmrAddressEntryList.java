@@ -174,7 +174,6 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
         if (entryWithSameOfferIdAndContextAlreadyExist) {
             log.error("We have an address entry with the same offer ID and context. We do not add the new one. " +
                     "addressEntry={}, entrySet={}", addressEntry, entrySet);
-            if (true) throw new RuntimeException("why?");
             return;
         }
 

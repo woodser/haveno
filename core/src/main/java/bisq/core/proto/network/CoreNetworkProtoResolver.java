@@ -141,7 +141,7 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return SignOfferResponse.fromProto(proto.getSignOfferResponse(), messageVersion);
 
                 case OFFER_AVAILABILITY_REQUEST:
-                    return OfferAvailabilityRequest.fromProto(proto.getOfferAvailabilityRequest(), messageVersion);
+                    return OfferAvailabilityRequest.fromProto(proto.getOfferAvailabilityRequest(), this, messageVersion);
                 case OFFER_AVAILABILITY_RESPONSE:
                     return OfferAvailabilityResponse.fromProto(proto.getOfferAvailabilityResponse(), messageVersion);
                 case REFRESH_OFFER_MESSAGE:

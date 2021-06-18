@@ -94,12 +94,6 @@ public class ProcessModel implements Model, PersistablePayload {
     @Setter
     transient private Trade trade;
 
-    // Transient/Mutable
-    @Getter
-    transient private MoneroTxWallet takeOfferFeeTx;
-    @Setter
-    transient private TradeMessage tradeMessage;
-
     // Added in v1.2.0
     @Setter
     @Nullable
@@ -166,6 +160,13 @@ public class ProcessModel implements Model, PersistablePayload {
     private long sellerPayoutAmountFromMediation;
 
     // Added for XMR integration
+    @Getter
+    transient private MoneroTxWallet takeOfferFeeTx;
+    @Setter
+    transient private TradeMessage tradeMessage;
+    @Getter
+    @Setter
+    private String makerSignature;
     @Getter
     @Setter
     private NodeAddress backupArbitrator;
@@ -261,6 +262,7 @@ public class ProcessModel implements Model, PersistablePayload {
         Optional.ofNullable(changeOutputAddress).ifPresent(builder::setChangeOutputAddress);
         Optional.ofNullable(myMultiSigPubKey).ifPresent(e -> builder.setMyMultiSigPubKey(ByteString.copyFrom(myMultiSigPubKey)));
         Optional.ofNullable(tempTradingPeerNodeAddress).ifPresent(e -> builder.setTempTradingPeerNodeAddress(tempTradingPeerNodeAddress.toProtoMessage()));
+        Optional.ofNullable(makerSignature).ifPresent(e -> builder.setMakerSignature(makerSignature));
         Optional.ofNullable(backupArbitrator).ifPresent(e -> builder.setBackupArbitrator(backupArbitrator.toProtoMessage()));
         Optional.ofNullable(preparedMultisigHex).ifPresent(e -> builder.setPreparedMultisigHex(preparedMultisigHex));
         Optional.ofNullable(madeMultisigHex).ifPresent(e -> builder.setMadeMultisigHex(madeMultisigHex));
@@ -293,6 +295,7 @@ public class ProcessModel implements Model, PersistablePayload {
         processModel.setMyMultiSigPubKey(ProtoUtil.byteArrayOrNullFromProto(proto.getMyMultiSigPubKey()));
         processModel.setTempTradingPeerNodeAddress(proto.hasTempTradingPeerNodeAddress() ? NodeAddress.fromProto(proto.getTempTradingPeerNodeAddress()) : null);
         processModel.setMediatedPayoutTxSignature(ProtoUtil.byteArrayOrNullFromProto(proto.getMediatedPayoutTxSignature()));
+        processModel.setMakerSignature(proto.getMakerSignature());
         processModel.setBackupArbitrator(proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null);
         processModel.setPreparedMultisigHex(ProtoUtil.stringOrNullFromProto(proto.getPreparedMultisigHex()));
         processModel.setMadeMultisigHex(ProtoUtil.stringOrNullFromProto(proto.getMadeMultisigHex()));

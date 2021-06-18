@@ -69,6 +69,7 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
                     trade.getTradePrice().getValue(),
                     trade.getTakerFee().getValue(),
                     processModel.getAccountId(),
+                    request.getPaymentAccountId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     sig,
@@ -76,7 +77,7 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    request.getPaymentAccountPayload(), // send taker payment account payload
+                    null,
                     null,
                     null,
                     null,

@@ -52,7 +52,7 @@ public class TakerReservesTradeFunds extends TradeTask {
             // collect fields for reserve transaction
             BigInteger takerFee = ParsingUtils.coinToAtomicUnits(trade.getTakerFee());
             BigInteger reservedFundsForOffer = ParsingUtils.centinerosToAtomicUnits(processModel.getFundsNeededForTradeAsLong());
-            String returnAddress = model.getXmrWalletService().getNewAddressEntry(trade.getOffer().getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new return address
+            String returnAddress = model.getXmrWalletService().getAddressEntry(trade.getOffer().getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString();
             
             // create transaction to reserve outputs for trade
             MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()

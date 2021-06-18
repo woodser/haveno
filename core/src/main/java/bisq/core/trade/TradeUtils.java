@@ -21,8 +21,10 @@ import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
+import bisq.core.trade.messages.InitTradeRequest;
 import common.utils.JsonUtils;
 import bisq.common.crypto.KeyRing;
+import bisq.common.crypto.PubKeyRing;
 import bisq.common.crypto.Sig;
 import bisq.common.util.Tuple2;
 import bisq.common.util.Utilities;
@@ -35,6 +37,9 @@ import monero.daemon.model.MoneroTx;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroCheckTx;
 
+/**
+ * Collection of utilities for trading.
+ */
 public class TradeUtils {
     
     /**
@@ -43,13 +48,13 @@ public class TradeUtils {
     public static String FEE_ADDRESS = "52FnB7ABUrKJzVQRpbMNrqDFWbcKLjFUq8Rgek7jZEuB6WE2ZggXaTf4FK6H8gQymvSrruHHrEuKhMN3qTMiBYzREKsmRKM";
     
     /**
-     * Indicates if the given offer payload has a valid signature from the given arbitrator.
+     * Check if the arbitrator signature for an offer is valid.
      * 
      * @param arbitrator is the possible original arbitrator
      * @param signedOfferPayload is a signed offer payload
-     * @return true if the offer payload's signature is valid, false otherwise
+     * @return true if the arbitrator's signature is valid for the offer
      */
-    public static boolean isSignatureValid(OfferPayload signedOfferPayload, Mediator arbitrator) {
+    public static boolean isArbitratorSignatureValid(OfferPayload signedOfferPayload, Mediator arbitrator) {
         
         // remove arbitrator signature from signed payload
         String signature = signedOfferPayload.getArbitratorSignature();
@@ -61,7 +66,7 @@ public class TradeUtils {
         // verify arbitrator signature
         boolean isValid = true;
         try {
-            Sig.verify(arbitrator.getPubKeyRing().getSignaturePubKey(),
+            isValid = Sig.verify(arbitrator.getPubKeyRing().getSignaturePubKey(), // TODO (woodser): assign isValid
                     unsignedOfferAsJson,
                     signature);
         } catch (Exception e) {
@@ -73,6 +78,51 @@ public class TradeUtils {
         
         // return result
         return isValid;
+    }
+    
+    /**
+     * Check if the maker signature for a trade request is valid.
+     * 
+     * @param request is the trade request to check
+     * @return true if the maker's signature is valid for the trade request
+     */
+    public static boolean isMakerSignatureValid(InitTradeRequest request, String signature, PubKeyRing makerPubKeyRing) {
+        
+        // re-create trade request with signed fields
+        InitTradeRequest signedRequest = new InitTradeRequest(
+                request.getTradeId(),
+                request.getSenderNodeAddress(),
+                request.getPubKeyRing(),
+                request.getTradeAmount(),
+                request.getTradePrice(),
+                request.getTradeFee(),
+                request.getAccountId(),
+                request.getPaymentAccountId(),
+                request.getUid(),
+                request.getMessageVersion(),
+                request.getAccountAgeWitnessSignatureOfOfferId(),
+                request.getCurrentDate(),
+                request.getTakerNodeAddress(),
+                request.getMakerNodeAddress(),
+                null,
+                null,
+                null,
+                null,
+                request.getPayoutAddress(),
+                null
+                );
+        
+        // get trade request as string
+        String tradeRequestAsJson = Utilities.objectToJson(signedRequest);
+        
+        // verify maker signature
+        try {
+            return Sig.verify(makerPubKeyRing.getSignaturePubKey(),
+                    tradeRequestAsJson,
+                    signature);
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     /**
@@ -104,7 +154,7 @@ public class TradeUtils {
             if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
         }
 
-        // verify maker trade fee
+        // verify trade fee
         String feeAddress = TradeUtils.FEE_ADDRESS;
         MoneroCheckTx check = wallet.checkTxKey(txHash, txKey, feeAddress);
         if (!check.isGood()) throw new RuntimeException("Invalid proof of trade fee");
@@ -122,7 +172,7 @@ public class TradeUtils {
         check = wallet.checkTxKey(txHash, txKey, returnAddress);
         if (!check.isGood()) throw new RuntimeException("Invalid proof of deposit amount");
         BigInteger depositThreshold = depositAmount.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
-        if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough");
+        if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough, needed " + depositThreshold + " but was " + check.getReceivedAmount());
     }
 
     // Returns <MULTI_SIG, TRADE_PAYOUT> if both are AVAILABLE, otherwise null

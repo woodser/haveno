@@ -190,6 +190,7 @@ message OfferAvailabilityRequest {
     repeated int32 supported_capabilities = 4;
     string uid = 5;
     bool is_taker_api_user = 6;
+    InitTradeRequest trade_request = 7;
 }
 
 message OfferAvailabilityResponse {
@@ -197,7 +198,8 @@ message OfferAvailabilityResponse {
     AvailabilityResult availability_result = 2;
     repeated int32 supported_capabilities = 3;
     string uid = 4;
-    NodeAddress backup_arbitrator = 5;
+    string maker_signature = 5;
+    NodeAddress backup_arbitrator = 6;
 }
 
 message RefreshOfferMessage {
@@ -303,8 +305,8 @@ message InitTradeRequest {
     int64 trade_amount = 4;
     int64 trade_price = 5;
     int64 trade_fee = 6;
-    PaymentAccountPayload payment_account_payload = 7;
-    string account_id = 8;
+    string account_id = 7;
+    string payment_account_id = 8;
     string uid = 9;
     bytes account_age_witness_signature_of_offer_id = 10;
     int64 current_date = 11;
@@ -315,6 +317,7 @@ message InitTradeRequest {
     string reserve_tx_hex = 16;
     string reserve_tx_key = 17;
     string payout_address = 18;
+    string maker_signature = 19;
 }
 
 message MakerReadyToFundMultisigRequest {
@@ -1065,6 +1068,7 @@ enum AvailabilityResult {
     UNCONF_TX_LIMIT_HIT = 11;
     MAKER_DENIED_API_USER = 12;
     PRICE_CHECK_FAILED = 13;
+    MAKER_DENIED_TAKER = 14;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1701,36 +1705,38 @@ message ProcessModel {
     int64 buyer_payout_amount_from_mediation = 19;
     int64 seller_payout_amount_from_mediation = 20;
     
-    NodeAddress backup_arbitrator = 1001;
-    TradingPeer maker = 1002;
-    TradingPeer taker = 1003;
-    TradingPeer arbitrator = 1004;
-    NodeAddress temp_trading_peer_node_address = 1005;
-    string prepared_multisig_hex = 1006;
-    string made_multisig_hex = 1007;
-    bool multisig_setup_complete = 1008;
-    bool maker_ready_to_fund_multisig = 1009;
-    bool multisig_deposit_initiated = 1010;
-    string taker_prepared_deposit_tx_id = 1011;
-    string maker_prepared_deposit_tx_id = 1012;
+    string maker_signature = 1001;
+    NodeAddress backup_arbitrator = 1002;
+    TradingPeer maker = 1003;
+    TradingPeer taker = 1004;
+    TradingPeer arbitrator = 1005;
+    NodeAddress temp_trading_peer_node_address = 1006;
+    string prepared_multisig_hex = 1007;
+    string made_multisig_hex = 1008;
+    bool multisig_setup_complete = 1009;
+    bool maker_ready_to_fund_multisig = 1010;
+    bool multisig_deposit_initiated = 1011;
+    string taker_prepared_deposit_tx_id = 1012;
+    string maker_prepared_deposit_tx_id = 1013;
 }
 
 message TradingPeer {
     string account_id = 1;
-    PaymentAccountPayload payment_account_payload = 2;
-    string payout_address_string = 3;
-    string contract_as_json = 4;
-    string contract_signature = 5;
-    bytes signature = 6;	// TODO (woodser): remove unused fields? this was buyer-signed payout tx as bytes
-    PubKeyRing pub_key_ring = 7;
-    bytes multi_sig_pub_key = 8;
-    repeated RawTransactionInput raw_transaction_inputs = 9;
-    int64 change_output_value = 10;
-    string change_output_address = 11;
-    bytes account_age_witness_nonce = 12;
-    bytes account_age_witness_signature = 13;
-    int64 current_date = 14;
-    bytes mediated_payout_tx_signature = 15;
+    string payment_account_id = 2;
+    PaymentAccountPayload payment_account_payload = 3;
+    string payout_address_string = 4;
+    string contract_as_json = 5;
+    string contract_signature = 6;
+    bytes signature = 7;	// TODO (woodser): remove unused fields? this was buyer-signed payout tx as bytes
+    PubKeyRing pub_key_ring = 8;
+    bytes multi_sig_pub_key = 9;
+    repeated RawTransactionInput raw_transaction_inputs = 10;
+    int64 change_output_value = 11;
+    string change_output_address = 12;
+    bytes account_age_witness_nonce = 13;
+    bytes account_age_witness_signature = 14;
+    int64 current_date = 15;
+    bytes mediated_payout_tx_signature = 16;
     
     string prepared_multisig_hex = 1001;
     string made_multisig_hex = 1002;

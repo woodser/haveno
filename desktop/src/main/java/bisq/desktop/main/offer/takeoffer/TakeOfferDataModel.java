@@ -184,6 +184,7 @@ class TakeOfferDataModel extends OfferDataModel {
         if (canTakeOffer()) {
             tradeManager.checkOfferAvailability(offer,
                     false,
+                    paymentAccount.getId(),
                     () -> {
                     },
                     errorMessage -> new Popup().warning(errorMessage).show());

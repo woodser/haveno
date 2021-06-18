@@ -100,6 +100,7 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     trade.getTradePrice().getValue(),
                     trade.getTakerFee().getValue(),
                     processModel.getAccountId(),
+                    paymentAccountPayload.getId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     sig,
@@ -107,11 +108,11 @@ public class MakerSendsInitTradeRequest extends TradeTask {
                     trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    paymentAccountPayload, // TODO (woodser): verify this account payload matches request.getMakerPaymentAccountPayload()
-                    trade.getProcessModel().getReserveTx().getHash(),
-                    trade.getProcessModel().getReserveTx().getFullHex(),
-                    trade.getProcessModel().getReserveTx().getKey(),
-                    processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString());
+                    processModel.getReserveTx().getHash(),
+                    processModel.getReserveTx().getFullHex(),
+                    processModel.getReserveTx().getKey(),
+                    processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString(),
+                    null);
 
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     message.getClass().getSimpleName(), message.getTradeId(),

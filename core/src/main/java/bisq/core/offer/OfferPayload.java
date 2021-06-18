@@ -358,7 +358,7 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
                 extraDataMapMap,
                 proto.getProtocolVersion(),
                 NodeAddress.fromProto(proto.getArbitratorNodeAddress()),
-                proto.getArbitratorSignature());
+                ProtoUtil.stringOrNullFromProto(proto.getArbitratorSignature()));
     }
 
 

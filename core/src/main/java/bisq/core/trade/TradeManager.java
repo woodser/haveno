@@ -25,6 +25,7 @@ import bisq.core.locale.Res;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookService;
 import bisq.core.offer.OfferPayload;
+import bisq.core.offer.OfferUtil;
 import bisq.core.offer.OpenOffer;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.offer.availability.OfferAvailabilityModel;
@@ -134,6 +135,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     private final P2PService p2PService;
     private final PriceFeedService priceFeedService;
     private final TradeStatisticsManager tradeStatisticsManager;
+    private final OfferUtil offerUtil;
     private final TradeUtil tradeUtil;
     @Getter
     private final ArbitratorManager arbitratorManager;
@@ -173,6 +175,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         P2PService p2PService,
                         PriceFeedService priceFeedService,
                         TradeStatisticsManager tradeStatisticsManager,
+                        OfferUtil offerUtil,
                         TradeUtil tradeUtil,
                         ArbitratorManager arbitratorManager,
                         MediatorManager mediatorManager,
@@ -193,6 +196,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         this.p2PService = p2PService;
         this.priceFeedService = priceFeedService;
         this.tradeStatisticsManager = tradeStatisticsManager;
+        this.offerUtil = offerUtil;
         this.tradeUtil = tradeUtil;
         this.arbitratorManager = arbitratorManager;
         this.mediatorManager = mediatorManager;
@@ -437,7 +441,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           if (offer.isBuyOffer())
               trade = new BuyerAsMakerTrade(offer,
                       Coin.valueOf(offer.getOfferPayload().getAmount()),
-                      Coin.valueOf(offer.getOfferPayload().getMakerFee()),
+                      Coin.valueOf(offer.getOfferPayload().getMakerFee()), // TODO (woodser): this is maker fee, but Trade calls it taker fee
                       offer.getOfferPayload().getPrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
@@ -570,9 +574,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     public void checkOfferAvailability(Offer offer,
                                        boolean isTakerApiUser,
+                                       String paymentAccountId,
                                        ResultHandler resultHandler,
                                        ErrorMessageHandler errorMessageHandler) {
-        offer.checkOfferAvailability(getOfferAvailabilityModel(offer, isTakerApiUser), resultHandler, errorMessageHandler);
+        offer.checkOfferAvailability(getOfferAvailabilityModel(offer, isTakerApiUser, paymentAccountId), resultHandler, errorMessageHandler);
     }
 
     // First we check if offer is still available then we create the trade with the protocol
@@ -590,7 +595,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
         checkArgument(!wasOfferAlreadyUsedInTrade(offer.getId()));
 
-        OfferAvailabilityModel model = getOfferAvailabilityModel(offer, isTakerApiUser);
+        OfferAvailabilityModel model = getOfferAvailabilityModel(offer, isTakerApiUser, paymentAccountId);
         offer.checkOfferAvailability(model,
                 () -> {
                     if (offer.getState() == Offer.State.AVAILABLE) {
@@ -619,6 +624,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                                     offer.getOfferPayload().getArbitratorNodeAddress());
                         }
                         
+                        trade.getProcessModel().setTradeMessage(model.getTradeRequest());
+                        trade.getProcessModel().setMakerSignature(model.getMakerSignature());
                         trade.getProcessModel().setBackupArbitrator(model.getBackupArbitrator());
                         trade.getProcessModel().setUseSavingsWallet(useSavingsWallet);
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
@@ -649,15 +656,18 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 processModelServiceProvider.getKeyRing().getPubKeyRing());
     }
 
-    private OfferAvailabilityModel getOfferAvailabilityModel(Offer offer, boolean isTakerApiUser) {
+    private OfferAvailabilityModel getOfferAvailabilityModel(Offer offer, boolean isTakerApiUser, String paymentAccountId) {
         return new OfferAvailabilityModel(
                 offer,
                 keyRing.getPubKeyRing(),
+                xmrWalletService,
                 p2PService,
                 user,
                 mediatorManager,
                 tradeStatisticsManager,
-                isTakerApiUser);
+                isTakerApiUser,
+                paymentAccountId,
+                offerUtil);
     }
 
 

@@ -19,18 +19,16 @@ package bisq.core.offer.availability.tasks;
 
 import bisq.core.offer.AvailabilityResult;
 import bisq.core.offer.Offer;
-import bisq.core.offer.availability.DisputeAgentSelection;
 import bisq.core.offer.availability.OfferAvailabilityModel;
 import bisq.core.offer.messages.OfferAvailabilityResponse;
-
-import bisq.network.p2p.NodeAddress;
-
+import bisq.core.trade.TradeUtils;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 @Slf4j
 public class ProcessOfferAvailabilityResponse extends Task<OfferAvailabilityModel> {
@@ -47,17 +45,27 @@ public class ProcessOfferAvailabilityResponse extends Task<OfferAvailabilityMode
 
             checkArgument(offer.getState() != Offer.State.REMOVED, "Offer state must not be Offer.State.REMOVED");
 
+            // check availability result
             OfferAvailabilityResponse offerAvailabilityResponse = model.getMessage();
-
             if (offerAvailabilityResponse.getAvailabilityResult() != AvailabilityResult.AVAILABLE) {
                 offer.setState(Offer.State.NOT_AVAILABLE);
                 failed("Take offer attempt rejected because of: " + offerAvailabilityResponse.getAvailabilityResult());
                 return;
             }
+            
+            // check maker signature for trade request
+            if (!TradeUtils.isMakerSignatureValid(model.getTradeRequest(), offerAvailabilityResponse.getMakerSignature(), offer.getPubKeyRing())) {
+                offer.setState(Offer.State.NOT_AVAILABLE);
+                failed("Take offer attempt failed because maker signature is invalid");
+                return;
+            }
 
             offer.setState(Offer.State.AVAILABLE);
-
+            
+            model.setMakerSignature(offerAvailabilityResponse.getMakerSignature());
             model.setBackupArbitrator(offerAvailabilityResponse.getBackupArbitrator());
+            checkNotNull(model.getMakerSignature());
+            checkNotNull(model.getBackupArbitrator());
 
             complete();
         } catch (Throwable t) {

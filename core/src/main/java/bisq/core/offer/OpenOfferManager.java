@@ -58,7 +58,6 @@ import bisq.network.p2p.P2PService;
 import bisq.network.p2p.SendDirectMessageListener;
 import bisq.network.p2p.peers.Broadcaster;
 import bisq.network.p2p.peers.PeerManager;
-import common.utils.JsonUtils;
 import bisq.common.Timer;
 import bisq.common.UserThread;
 import bisq.common.app.Capabilities;
@@ -95,12 +94,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
-import monero.common.MoneroError;
-import monero.daemon.MoneroDaemon;
-import monero.daemon.model.MoneroSubmitTxResult;
-import monero.daemon.model.MoneroTx;
-import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroCheckTx;
+
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -131,7 +125,6 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private final TradeStatisticsManager tradeStatisticsManager;
     private final ArbitratorManager arbitratorManager;
     private final MediatorManager mediatorManager;
-    private final RefundAgentManager refundAgentManager;
     private final DaoFacade daoFacade;
     private final FilterManager filterManager;
     private final Broadcaster broadcaster;
@@ -190,7 +183,6 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         this.tradeStatisticsManager = tradeStatisticsManager;
         this.arbitratorManager = arbitratorManager;
         this.mediatorManager = mediatorManager;
-        this.refundAgentManager = refundAgentManager;
         this.daoFacade = daoFacade;
         this.filterManager = filterManager;
         this.broadcaster = broadcaster;
@@ -794,43 +786,52 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         try {
             Optional<OpenOffer> openOfferOptional = getOpenOfferById(request.offerId);
             AvailabilityResult availabilityResult;
+            String makerSignature = null;
             NodeAddress backupArbitrator = null;
             if (openOfferOptional.isPresent()) {
                 OpenOffer openOffer = openOfferOptional.get();
                 if (!apiUserDeniedByOffer(request)) {
-                    if (openOffer.getState() == OpenOffer.State.AVAILABLE) {
-                        Offer offer = openOffer.getOffer();
-                        if (preferences.getIgnoreTradersList().stream().noneMatch(fullAddress -> fullAddress.equals(peer.getFullAddress()))) {
-                            
-                            // get arbitrator to use if original offer signer is not available
-                            backupArbitrator = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
-                            openOffer.setBackupArbitrator(backupArbitrator);
+                    if (!takerDeniedByMaker(request)) {
+                        if (openOffer.getState() == OpenOffer.State.AVAILABLE) {
+                            Offer offer = openOffer.getOffer();
+                            if (preferences.getIgnoreTradersList().stream().noneMatch(fullAddress -> fullAddress.equals(peer.getFullAddress()))) {
+                                
+                                // maker signs taker's request
+                                String tradeRequestAsJson = Utilities.objectToJson(request.getTradeRequest());
+                                makerSignature = Sig.sign(keyRing.getSignatureKeyPair().getPrivate(), tradeRequestAsJson);
+                                
+                                // set backup arbitrator in case original offer signer is unavailable
+                                backupArbitrator = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
+                                openOffer.setBackupArbitrator(backupArbitrator);
 
-                            try {
-                                // Check also tradePrice to avoid failures after taker fee is paid caused by a too big difference
-                                // in trade price between the peers. Also here poor connectivity might cause market price API connection
-                                // losses and therefore an outdated market price.
-                                offer.checkTradePriceTolerance(request.getTakersTradePrice());
-                                availabilityResult = AvailabilityResult.AVAILABLE;
-                            } catch (TradePriceOutOfToleranceException e) {
-                                log.warn("Trade price check failed because takers price is outside out tolerance.");
-                                availabilityResult = AvailabilityResult.PRICE_OUT_OF_TOLERANCE;
-                            } catch (MarketPriceNotAvailableException e) {
-                                log.warn(e.getMessage());
-                                availabilityResult = AvailabilityResult.MARKET_PRICE_NOT_AVAILABLE;
-                            } catch (Throwable e) {
-                                log.warn("Trade price check failed. " + e.getMessage());
-                                if (coreContext.isApiUser())
-                                    // Give api user something more than 'unknown_failure'.
-                                    availabilityResult = AvailabilityResult.PRICE_CHECK_FAILED;
-                                else
-                                    availabilityResult = AvailabilityResult.UNKNOWN_FAILURE;
+                                try {
+                                    // Check also tradePrice to avoid failures after taker fee is paid caused by a too big difference
+                                    // in trade price between the peers. Also here poor connectivity might cause market price API connection
+                                    // losses and therefore an outdated market price.
+                                    offer.checkTradePriceTolerance(request.getTakersTradePrice());
+                                    availabilityResult = AvailabilityResult.AVAILABLE;
+                                } catch (TradePriceOutOfToleranceException e) {
+                                    log.warn("Trade price check failed because takers price is outside out tolerance.");
+                                    availabilityResult = AvailabilityResult.PRICE_OUT_OF_TOLERANCE;
+                                } catch (MarketPriceNotAvailableException e) {
+                                    log.warn(e.getMessage());
+                                    availabilityResult = AvailabilityResult.MARKET_PRICE_NOT_AVAILABLE;
+                                } catch (Throwable e) {
+                                    log.warn("Trade price check failed. " + e.getMessage());
+                                    if (coreContext.isApiUser())
+                                        // Give api user something more than 'unknown_failure'.
+                                        availabilityResult = AvailabilityResult.PRICE_CHECK_FAILED;
+                                    else
+                                        availabilityResult = AvailabilityResult.UNKNOWN_FAILURE;
+                                }
+                            } else {
+                                availabilityResult = AvailabilityResult.USER_IGNORED;
                             }
                         } else {
-                            availabilityResult = AvailabilityResult.USER_IGNORED;
+                            availabilityResult = AvailabilityResult.OFFER_TAKEN;
                         }
                     } else {
-                        availabilityResult = AvailabilityResult.OFFER_TAKEN;
+                        availabilityResult = AvailabilityResult.MAKER_DENIED_TAKER;
                     }
                 } else {
                     availabilityResult = AvailabilityResult.MAKER_DENIED_API_USER;
@@ -845,9 +846,10 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 log.warn(errorMessage);
                 availabilityResult = AvailabilityResult.UNCONF_TX_LIMIT_HIT;
             }
-
+            
             OfferAvailabilityResponse offerAvailabilityResponse = new OfferAvailabilityResponse(request.offerId,
                     availabilityResult,
+                    makerSignature,
                     backupArbitrator);
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     offerAvailabilityResponse.getClass().getSimpleName(), offerAvailabilityResponse.getOfferId(),
@@ -885,6 +887,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
 
     private boolean apiUserDeniedByOffer(OfferAvailabilityRequest request) {
         return preferences.isDenyApiTaker() && request.isTakerApiUser();
+    }
+    
+    private boolean takerDeniedByMaker(OfferAvailabilityRequest request) {
+        if (request.getTradeRequest() == null) return true;
+        return false; // TODO (woodser): implement taker verification here
     }
 
     private void sendAckMessage(Class<?> reqClass,

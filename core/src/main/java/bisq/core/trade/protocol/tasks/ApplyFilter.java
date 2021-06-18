@@ -44,7 +44,7 @@ public class ApplyFilter extends TradeTask {
             runInterceptHook();
 
             NodeAddress nodeAddress = checkNotNull(processModel.getTempTradingPeerNodeAddress());
-
+            
             FilterManager filterManager = processModel.getFilterManager();
             if (filterManager.isNodeAddressBanned(nodeAddress)) {
                 failed("Other trader is banned by their node address.\n" +
@@ -64,24 +64,8 @@ public class ApplyFilter extends TradeTask {
             } else {
                 complete();
             }
-            
-            // check payment account payloads
-            if (trade instanceof ArbitratorTrade) {
-                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getMaker().getPaymentAccountPayload(), "Maker is banned by their trading account data.");
-                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getTaker().getPaymentAccountPayload(), "Taker is banned by their trading account data.");
-            } else {
-                ApplyFilter.verifyPaymentAccountPayload(filterManager, processModel.getTradingPeer().getPaymentAccountPayload(), "Other trader is banned by their trading account data.");
-            }
         } catch (Throwable t) {
             failed(t);
-        }
-    }
-    
-    private static void verifyPaymentAccountPayload(FilterManager filterManager, PaymentAccountPayload paymentAccountPayload, String errorMsg) {
-        if (paymentAccountPayload == null) throw new RuntimeException("Payment account payload is null");
-        if (filterManager.arePeersPaymentAccountDataBanned(paymentAccountPayload)) {
-            throw new RuntimeException(errorMsg +
-                    "paymentAccountPayload=" + paymentAccountPayload.getPaymentDetails());
         }
     }
 }

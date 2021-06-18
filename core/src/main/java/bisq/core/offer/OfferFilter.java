@@ -220,6 +220,6 @@ public class OfferFilter {
         if (arbitrator == null) return false; // TODO (woodser): if arbitrator is null, get arbirator's pub key ring from store, otherwise cannot validate and offer is not seen by takers when arbitrator goes offline
         
         // validate arbitrator signature
-        return TradeUtils.isSignatureValid(offer.getOfferPayload(), arbitrator);
+        return TradeUtils.isArbitratorSignatureValid(offer.getOfferPayload(), arbitrator);
     }
 }
