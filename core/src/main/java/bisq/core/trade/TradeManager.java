@@ -423,13 +423,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
       // handle request as maker
       else {
-          
-          // verify request is from arbitrator
-          // TODO (woodser): verify arbitrator is original signer or if offline that arbitrator is whitelisted (how to check if whitelisted?) (or maybe arbitrator should be part of maker's signature?)
-          if (!sender.equals(request.getArbitratorNodeAddress())) {
-              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because request must be from arbitrator", sender, request.getTradeId());
-              return;
-          }
 
           Optional<OpenOffer> openOfferOptional = openOfferManager.getOpenOfferById(request.getTradeId());
           if (!openOfferOptional.isPresent()) {
@@ -443,12 +436,24 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
           Offer offer = openOffer.getOffer();
           openOfferManager.reserveOpenOffer(openOffer); // TODO (woodser): reserve offer if arbitrator?
+          
+          // verify request is from signing arbitrator when they're online, else from selected arbitrator
+          if (!sender.equals(offer.getOfferPayload().getArbitratorNodeAddress())) {
+              boolean isSignerOnline = true; // TODO (woodser): determine if signer is online and test
+              if (isSignerOnline) {
+                  log.warn("Ignoring InitTradeRequest from {} with tradeId {} because request must be from signing arbitrator when online", sender, request.getTradeId());
+                  return;
+              } else if (!sender.equals(openOffer.getArbitratorNodeAddress())) {
+                  log.warn("Ignoring InitTradeRequest from {} with tradeId {} because request must be from selected arbitrator when signing arbitrator is offline", sender, request.getTradeId());
+                  return;
+              }
+          }
 
           Trade trade;
           if (offer.isBuyOffer())
               trade = new BuyerAsMakerTrade(offer,
                       Coin.valueOf(offer.getOfferPayload().getAmount()),
-                      Coin.valueOf(offer.getOfferPayload().getMakerFee()), // TODO (woodser): this is maker fee, but Trade calls it taker fee
+                      Coin.valueOf(offer.getOfferPayload().getMakerFee()), // TODO (woodser): this is maker fee, but Trade calls it taker fee, why not have both?
                       offer.getOfferPayload().getPrice(),
                       xmrWalletService,
                       getNewProcessModel(offer),
@@ -466,8 +471,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                       UUID.randomUUID().toString(),
                       request.getMakerNodeAddress(),
                       request.getTakerNodeAddress(),
-                      request.getArbitratorNodeAddress()); // TODO: how to handle primary vs backup arbitrator?
+                      request.getArbitratorNodeAddress());
 
+          //System.out.println("TradeManager trade.setTradingPeerNodeAddress(): " + sender);
+          //trade.setTradingPeerNodeAddress(sender);
+          //trade.setArbitratorPubKeyRing(user.getAcceptedMediatorByAddress(sender).getPubKeyRing());
+          //System.out.println("TRADE ARBITRATOR PUB KEY RING: " + trade.getArbitratorPubKeyRing());
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);
 
@@ -633,7 +642,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         
                         trade.getProcessModel().setTradeMessage(model.getTradeRequest());
                         trade.getProcessModel().setMakerSignature(model.getMakerSignature());
-                        trade.getProcessModel().setBackupArbitrator(model.getBackupArbitrator());
+                        trade.getProcessModel().setArbitratorNodeAddress(model.getArbitratorNodeAddress());
                         trade.getProcessModel().setUseSavingsWallet(useSavingsWallet);
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
                         trade.setTakerPaymentAccountId(paymentAccountId);

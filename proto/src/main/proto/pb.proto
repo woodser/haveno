@@ -199,7 +199,7 @@ message OfferAvailabilityResponse {
     repeated int32 supported_capabilities = 3;
     string uid = 4;
     string maker_signature = 5;
-    NodeAddress backup_arbitrator = 6;
+    NodeAddress arbitrator_node_address = 6;
 }
 
 message RefreshOfferMessage {
@@ -1530,7 +1530,7 @@ message OpenOffer {
 
     Offer offer = 1;
     State state = 2;
-    NodeAddress backup_arbitrator = 3;
+    NodeAddress arbitrator_node_address = 3;
     int64 trigger_price = 6;
 }
 
@@ -1706,7 +1706,7 @@ message ProcessModel {
     int64 seller_payout_amount_from_mediation = 20;
     
     string maker_signature = 1001;
-    NodeAddress backup_arbitrator = 1002;
+    NodeAddress arbitrator_node_address = 1002;
     TradingPeer maker = 1003;
     TradingPeer taker = 1004;
     TradingPeer arbitrator = 1005;

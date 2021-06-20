@@ -63,9 +63,9 @@ public class ProcessOfferAvailabilityResponse extends Task<OfferAvailabilityMode
             offer.setState(Offer.State.AVAILABLE);
             
             model.setMakerSignature(offerAvailabilityResponse.getMakerSignature());
-            model.setBackupArbitrator(offerAvailabilityResponse.getBackupArbitrator());
+            model.setArbitratorNodeAddress(offerAvailabilityResponse.getArbitratorNodeAddress());
             checkNotNull(model.getMakerSignature());
-            checkNotNull(model.getBackupArbitrator());
+            checkNotNull(model.getArbitratorNodeAddress());
 
             complete();
         } catch (Throwable t) {

@@ -46,20 +46,19 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
 
     @Nullable
     private final String makerSignature;
-    @Nullable
-    private final NodeAddress backupArbitrator;
+    private final NodeAddress arbitratorNodeAddress;
 
     public OfferAvailabilityResponse(String offerId,
                                      AvailabilityResult availabilityResult,
                                      String makerSignature,
-                                     NodeAddress backupArbitrator) {
+                                     NodeAddress arbitratorNodeAddress) {
         this(offerId,
                 availabilityResult,
                 Capabilities.app,
                 Version.getP2PMessageVersion(),
                 UUID.randomUUID().toString(),
                 makerSignature,
-                backupArbitrator);
+                arbitratorNodeAddress);
     }
 
 
@@ -73,24 +72,24 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                                       int messageVersion,
                                       @Nullable String uid,
                                       String makerSignature,
-                                      NodeAddress backupArbitrator) {
+                                      NodeAddress arbitratorNodeAddress) {
         super(messageVersion, offerId, uid);
         this.availabilityResult = availabilityResult;
         this.supportedCapabilities = supportedCapabilities;
         this.makerSignature = makerSignature;
-        this.backupArbitrator = backupArbitrator;
+        this.arbitratorNodeAddress = arbitratorNodeAddress;
     }
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
         final protobuf.OfferAvailabilityResponse.Builder builder = protobuf.OfferAvailabilityResponse.newBuilder()
                 .setOfferId(offerId)
-                .setAvailabilityResult(protobuf.AvailabilityResult.valueOf(availabilityResult.name()));
+                .setAvailabilityResult(protobuf.AvailabilityResult.valueOf(availabilityResult.name()))
+                .setArbitratorNodeAddress(arbitratorNodeAddress.toProtoMessage());
 
         Optional.ofNullable(supportedCapabilities).ifPresent(e -> builder.addAllSupportedCapabilities(Capabilities.toIntList(supportedCapabilities)));
         Optional.ofNullable(uid).ifPresent(e -> builder.setUid(uid));
         Optional.ofNullable(makerSignature).ifPresent(e -> builder.setMakerSignature(makerSignature));
-        Optional.ofNullable(backupArbitrator).ifPresent(e -> builder.setBackupArbitrator(backupArbitrator.toProtoMessage()));
 
         return getNetworkEnvelopeBuilder()
                 .setOfferAvailabilityResponse(builder)
@@ -104,6 +103,6 @@ public final class OfferAvailabilityResponse extends OfferMessage implements Sup
                 messageVersion,
                 proto.getUid().isEmpty() ? null : proto.getUid(),
                 proto.getMakerSignature().isEmpty() ? null : proto.getMakerSignature(),
-                proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null);
+                NodeAddress.fromProto(proto.getArbitratorNodeAddress()));
     }
 }

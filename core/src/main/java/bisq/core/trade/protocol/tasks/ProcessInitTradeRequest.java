@@ -87,7 +87,6 @@ public class ProcessInitTradeRequest extends TradeTask {
             
             // handle maker trade
             else if (trade instanceof MakerTrade) {
-                if (!request.getSenderNodeAddress().equals(request.getArbitratorNodeAddress())) throw new RuntimeException("Maker must receive InitTradeRequest from arbitrator");
                 multisigParticipant = processModel.getTaker();
                 trade.setTakerNodeAddress(request.getSenderNodeAddress()); // arbitrator sends maker InitTradeRequest with taker's node address and pub key ring
                 trade.setTakerPubKeyRing(request.getPubKeyRing());

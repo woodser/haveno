@@ -787,7 +787,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             Optional<OpenOffer> openOfferOptional = getOpenOfferById(request.offerId);
             AvailabilityResult availabilityResult;
             String makerSignature = null;
-            NodeAddress backupArbitrator = null;
+            NodeAddress arbitratorNodeAddress = null;
             if (openOfferOptional.isPresent()) {
                 OpenOffer openOffer = openOfferOptional.get();
                 if (!apiUserDeniedByOffer(request)) {
@@ -796,13 +796,14 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                             Offer offer = openOffer.getOffer();
                             if (preferences.getIgnoreTradersList().stream().noneMatch(fullAddress -> fullAddress.equals(peer.getFullAddress()))) {
                                 
-                                // maker signs taker's request
+                                // use signing arbitrator if available, otherwise use least used arbitrator
+                                boolean isSignerOnline = true;
+                                arbitratorNodeAddress = isSignerOnline ? offer.getOfferPayload().getArbitratorNodeAddress() : DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
+                                openOffer.setArbitratorNodeAddress(arbitratorNodeAddress);
+                                
+                                // maker signs taker's request // TODO (woodser): should maker signature include selected arbitrator?
                                 String tradeRequestAsJson = Utilities.objectToJson(request.getTradeRequest());
                                 makerSignature = Sig.sign(keyRing.getSignatureKeyPair().getPrivate(), tradeRequestAsJson);
-                                
-                                // set backup arbitrator in case original offer signer is unavailable
-                                backupArbitrator = DisputeAgentSelection.getLeastUsedArbitrator(tradeStatisticsManager, mediatorManager).getNodeAddress();
-                                openOffer.setBackupArbitrator(backupArbitrator);
 
                                 try {
                                     // Check also tradePrice to avoid failures after taker fee is paid caused by a too big difference
@@ -850,7 +851,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             OfferAvailabilityResponse offerAvailabilityResponse = new OfferAvailabilityResponse(request.offerId,
                     availabilityResult,
                     makerSignature,
-                    backupArbitrator);
+                    arbitratorNodeAddress);
             log.info("Send {} with offerId {} and uid {} to peer {}",
                     offerAvailabilityResponse.getClass().getSimpleName(), offerAvailabilityResponse.getOfferId(),
                     offerAvailabilityResponse.getUid(), peer);

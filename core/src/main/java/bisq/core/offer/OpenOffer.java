@@ -57,7 +57,7 @@ public final class OpenOffer implements Tradable {
     @Getter
     @Setter
     @Nullable
-    private NodeAddress backupArbitrator;
+    private NodeAddress arbitratorNodeAddress;
 
     // Added in v1.5.3.
     // If market price reaches that trigger price the offer gets deactivated
@@ -83,11 +83,11 @@ public final class OpenOffer implements Tradable {
 
     private OpenOffer(Offer offer,
                       State state,
-                      @Nullable NodeAddress backupArbitrator,
+                      @Nullable NodeAddress arbitratorNodeAddress,
                       long triggerPrice) {
         this.offer = offer;
         this.state = state;
-        this.backupArbitrator = backupArbitrator;
+        this.arbitratorNodeAddress = arbitratorNodeAddress;
         this.triggerPrice = triggerPrice;
 
         if (this.state == State.RESERVED)
@@ -101,7 +101,7 @@ public final class OpenOffer implements Tradable {
                 .setTriggerPrice(triggerPrice)
                 .setState(protobuf.OpenOffer.State.valueOf(state.name()));
 
-        Optional.ofNullable(backupArbitrator).ifPresent(nodeAddress -> builder.setBackupArbitrator(nodeAddress.toProtoMessage()));
+        Optional.ofNullable(arbitratorNodeAddress).ifPresent(nodeAddress -> builder.setArbitratorNodeAddress(nodeAddress.toProtoMessage()));
 
         return protobuf.Tradable.newBuilder().setOpenOffer(builder).build();
     }
@@ -109,7 +109,7 @@ public final class OpenOffer implements Tradable {
     public static Tradable fromProto(protobuf.OpenOffer proto) {
         return new OpenOffer(Offer.fromProto(proto.getOffer()),
                 ProtoUtil.enumFromProto(OpenOffer.State.class, proto.getState().name()),
-                proto.hasBackupArbitrator() ? NodeAddress.fromProto(proto.getBackupArbitrator()) : null,
+                proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null,
                 proto.getTriggerPrice());
     }
 
@@ -173,7 +173,7 @@ public final class OpenOffer implements Tradable {
         return "OpenOffer{" +
                 ",\n     offer=" + offer +
                 ",\n     state=" + state +
-                ",\n     arbitratorNodeAddress=" + backupArbitrator +
+                ",\n     arbitratorNodeAddress=" + arbitratorNodeAddress +
                 ",\n     triggerPrice=" + triggerPrice +
                 "\n}";
     }
