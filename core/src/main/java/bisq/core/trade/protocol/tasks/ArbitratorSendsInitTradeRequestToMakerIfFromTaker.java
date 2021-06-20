@@ -63,8 +63,8 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
             // create request to initialize trade with maker
             InitTradeRequest makerRequest = new InitTradeRequest(
                     offerId,
-                    processModel.getMyNodeAddress(),
-                    processModel.getPubKeyRing(),
+                    request.getSenderNodeAddress(),
+                    request.getPubKeyRing(),
                     trade.getTradeAmount().value,
                     trade.getTradePrice().getValue(),
                     trade.getTakerFee().getValue(),

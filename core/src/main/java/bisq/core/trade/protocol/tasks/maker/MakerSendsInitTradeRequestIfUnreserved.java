@@ -44,9 +44,9 @@ import static bisq.core.util.Validator.checkTradeId;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Slf4j
-public class MakerSendsInitTradeRequest extends TradeTask {
+public class MakerSendsInitTradeRequestIfUnreserved extends TradeTask {
     @SuppressWarnings({"unused"})
-    public MakerSendsInitTradeRequest(TaskRunner taskHandler, Trade trade) {
+    public MakerSendsInitTradeRequestIfUnreserved(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 

@@ -891,7 +891,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     
     private boolean takerDeniedByMaker(OfferAvailabilityRequest request) {
         if (request.getTradeRequest() == null) return true;
-        return false; // TODO (woodser): implement taker verification here
+        return false; // TODO (woodser): implement taker verification here, doing work of ApplyFilter and VerifyPeersAccountAgeWitness
     }
 
     private void sendAckMessage(Class<?> reqClass,

@@ -32,7 +32,7 @@ import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.core.trade.protocol.tasks.maker.MakerCreateAndPublishDepositTx;
 import bisq.core.trade.protocol.tasks.maker.MakerCreateAndSignContract;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
-import bisq.core.trade.protocol.tasks.maker.MakerSendsInitTradeRequest;
+import bisq.core.trade.protocol.tasks.maker.MakerSendsInitTradeRequestIfUnreserved;
 import bisq.core.trade.protocol.tasks.maker.MakerSendsReadyToFundMultisigResponse;
 import bisq.core.trade.protocol.tasks.maker.MakerSetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerDepositTx;
@@ -139,12 +139,10 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
             .from(peer))
             .setup(tasks(
                     ProcessInitTradeRequest.class,
-                    ApplyFilter.class,
-                    VerifyPeersAccountAgeWitness.class,
-                    MakerVerifyTakerFeePayment.class,
-                    MakerSendsInitTradeRequest.class, // TODO (woodser): contact arbitrator here?  probably later when ready to create multisig
-                    MakerRemovesOpenOffer.class,      // TODO (woodser): remove offer after taker pays trade fee or it needs to be reserved until deposit tx
-                    MakerSendsReadyToFundMultisigResponse.class).
+                    ApplyFilter.class, // TODO (woodser): these checks apply when maker signs availability request, but not here
+                    VerifyPeersAccountAgeWitness.class, // TODO (woodser): these checks apply after in multisig, means if rejected need to reimburse other's fee
+                    MakerSendsInitTradeRequestIfUnreserved.class, // TODO (woodser): contact arbitrator here?  probably later when ready to create multisig
+                    MakerRemovesOpenOffer.class).
                     using(new TradeTaskRunner(trade,
                             () -> {
                               stopTimeout();

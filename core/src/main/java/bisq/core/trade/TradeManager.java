@@ -423,6 +423,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
       // handle request as maker
       else {
+          
+          // verify request is from arbitrator
+          // TODO (woodser): verify arbitrator is original signer or if offline that arbitrator is whitelisted (how to check if whitelisted?) (or maybe arbitrator should be part of maker's signature?)
+          if (!sender.equals(request.getArbitratorNodeAddress())) {
+              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because request must be from arbitrator", sender, request.getTradeId());
+              return;
+          }
 
           Optional<OpenOffer> openOfferOptional = openOfferManager.getOpenOfferById(request.getTradeId());
           if (!openOfferOptional.isPresent()) {
@@ -459,7 +466,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                       UUID.randomUUID().toString(),
                       request.getMakerNodeAddress(),
                       request.getTakerNodeAddress(),
-                      openOffer.getBackupArbitrator()); // TODO: how to handle primary vs backup arbitrator?
+                      request.getArbitratorNodeAddress()); // TODO: how to handle primary vs backup arbitrator?
 
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);

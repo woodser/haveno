@@ -87,16 +87,10 @@ public class ProcessInitTradeRequest extends TradeTask {
             
             // handle maker trade
             else if (trade instanceof MakerTrade) {
-                multisigParticipant = null;
-                throw new RuntimeException("Processing maker init trade request not yet implemented");
-//                NodeAddress arbitratorNodeAddress = checkNotNull(request.getArbitratorNodeAddress(), "payDepositRequest.getMediatorNodeAddress() must not be null");
-//                Mediator mediator = checkNotNull(user.getAcceptedMediatorByAddress(arbitratorNodeAddress), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null"); // TODO (woodser): switch to arbitrator?
-//
-//                multisigParticipant = processModel.getTaker();
-//                trade.setTakerNodeAddress(request.getTakerNodeAddress());
-//                trade.setTakerPubKeyRing(request.getPubKeyRing());
-//                trade.setArbitratorNodeAddress(request.getArbitratorNodeAddress());
-//                trade.setArbitratorPubKeyRing(mediator.getPubKeyRing());
+                if (!request.getSenderNodeAddress().equals(request.getArbitratorNodeAddress())) throw new RuntimeException("Maker must receive InitTradeRequest from arbitrator");
+                multisigParticipant = processModel.getTaker();
+                trade.setTakerNodeAddress(request.getSenderNodeAddress()); // arbitrator sends maker InitTradeRequest with taker's node address and pub key ring
+                trade.setTakerPubKeyRing(request.getPubKeyRing());
             }
             
             // handle invalid trade type
