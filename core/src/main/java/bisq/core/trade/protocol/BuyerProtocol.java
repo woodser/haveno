@@ -166,10 +166,10 @@ public abstract class BuyerProtocol extends DisputeProtocol {
                 BuyerProcessPayoutTxPublishedMessage.class)
                 .using(new TradeTaskRunner(trade,
                     () -> {
-                      handleTaskRunnerSuccess(message);
+                      handleTaskRunnerSuccess(peer, message);
                     },
                     errorMessage -> {
-                        handleTaskRunnerFault(message, errorMessage);
+                        handleTaskRunnerFault(peer, message, errorMessage);
                     })))
             .executeTasks();
     }

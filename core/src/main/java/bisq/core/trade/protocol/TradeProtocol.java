@@ -213,11 +213,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
       TradeTaskRunner taskRunner = new TradeTaskRunner(trade,
               () -> {
                 stopTimeout();
-                handleTaskRunnerSuccess(message, "handleMultisigMessage");
+                handleTaskRunnerSuccess(peer, message, "handleMultisigMessage");
               },
               errorMessage -> {
                   errorMessageHandler.handleErrorMessage(errorMessage);
-                  handleTaskRunnerFault(message, errorMessage);
+                  handleTaskRunnerFault(peer, message, errorMessage);
               });
       taskRunner.addTasks(
               ProcessInitMultisigMessage.class
@@ -236,11 +236,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
       TradeTaskRunner taskRunner = new TradeTaskRunner(trade,
               () -> {
                 stopTimeout();
-                handleTaskRunnerSuccess(message, "handleUpdateMultisigRequest");
+                handleTaskRunnerSuccess(peer, message, "handleUpdateMultisigRequest");
               },
               errorMessage -> {
                   errorMessageHandler.handleErrorMessage(errorMessage);
-                  handleTaskRunnerFault(message, errorMessage);
+                  handleTaskRunnerFault(peer, message, errorMessage);
               });
       taskRunner.addTasks(
               ProcessUpdateMultisigRequest.class
@@ -262,6 +262,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                     if (!result.isValid()) {
                         log.warn(result.getInfo());
                         handleTaskRunnerFault(null,
+                                null,
                                 result.name(),
                                 result.getInfo());
                     }
@@ -310,13 +311,19 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    protected void sendAckMessage(TradeMessage message, boolean result, @Nullable String errorMessage) {
+    protected void sendAckMessage(NodeAddress peer, TradeMessage message, boolean result, @Nullable String errorMessage) {
+        
+        // TODO (woodser): get pub key ring for receiver
 
-        // If there was an error during offer verification, the tradingPeerNodeAddress of the trade might not be set yet.
-        // We can find the peer's node address in the processModel's tempTradingPeerNodeAddress in that case.
-        NodeAddress peer = trade.getTradingPeerNodeAddress() != null ?
-                trade.getTradingPeerNodeAddress() :
-                processModel.getTempTradingPeerNodeAddress();
+//        // If there was an error during offer verification, the tradingPeerNodeAddress of the trade might not be set yet.
+//        // We can find the peer's node address in the processModel's tempTradingPeerNodeAddress in that case.
+//        NodeAddress peer = trade.getTradingPeerNodeAddress() != null ?
+//                trade.getTradingPeerNodeAddress() :
+//                processModel.getTempTradingPeerNodeAddress();
+        
+        System.out.println("Sending ack message to: " + peer);
+        
+        // TODO (woodser): remove trade.getTradingPeerNodeAddress() and processModel.getTempTradingPeerNodeAddress() if everything should be maker, taker, or arbitrator
 
         // get destination pub key ring
         PubKeyRing peersPubKeyRing = getPeersPubKeyRing(peer);
@@ -392,20 +399,20 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // Task runner
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    protected void handleTaskRunnerSuccess(TradeMessage message) {
-        handleTaskRunnerSuccess(message, message.getClass().getSimpleName());
+    protected void handleTaskRunnerSuccess(NodeAddress sender, TradeMessage message) {
+        handleTaskRunnerSuccess(sender, message, message.getClass().getSimpleName());
     }
 
     protected void handleTaskRunnerSuccess(FluentProtocol.Event event) {
-        handleTaskRunnerSuccess(null, event.name());
+        handleTaskRunnerSuccess(null, null, event.name());
     }
 
-    protected void handleTaskRunnerFault(TradeMessage message, String errorMessage) {
-        handleTaskRunnerFault(message, message.getClass().getSimpleName(), errorMessage);
+    protected void handleTaskRunnerFault(NodeAddress sender, TradeMessage message, String errorMessage) {
+        handleTaskRunnerFault(sender, message, message.getClass().getSimpleName(), errorMessage);
     }
 
     protected void handleTaskRunnerFault(FluentProtocol.Event event, String errorMessage) {
-        handleTaskRunnerFault(null, event.name(), errorMessage);
+        handleTaskRunnerFault(null, null, event.name(), errorMessage);
     }
 
 
@@ -446,10 +453,10 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // Private
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void handleTaskRunnerSuccess(@Nullable TradeMessage message, String source) {
+    private void handleTaskRunnerSuccess(NodeAddress sender, @Nullable TradeMessage message, String source) {
         log.info("TaskRunner successfully completed. Triggered from {}, tradeId={}", source, trade.getId());
         if (message != null) {
-            sendAckMessage(message, true, null);
+            sendAckMessage(sender, message, true, null);
 
             // Once a taskRunner is completed we remove the mailbox message. To not remove it directly at the task
             // adds some resilience in case of minor errors, so after a restart the mailbox message can be applied
@@ -458,11 +465,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    void handleTaskRunnerFault(@Nullable TradeMessage message, String source, String errorMessage) {
+    void handleTaskRunnerFault(NodeAddress ackReceiver, @Nullable TradeMessage message, String source, String errorMessage) {
         log.error("Task runner failed with error {}. Triggered from {}", errorMessage, source);
 
         if (message != null) {
-            sendAckMessage(message, false, errorMessage);
+            sendAckMessage(ackReceiver, message, false, errorMessage);
         }
         cleanup();
     }

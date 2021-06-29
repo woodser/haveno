@@ -267,12 +267,12 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
             .using(new TradeTaskRunner(trade,
                 () -> {
                   stopTimeout();
-                  handleTaskRunnerSuccess(message);
+                  handleTaskRunnerSuccess(null, message);
                   if (handler != null) handler.handleResult();  // TODO (woodser): use handler to timeout initializing entire trade or remove use of handler and let gui indicate failure later?
                   wallet.addListener(fundMultisigListener);  // listen for trade fee tx to become available then initiate multisig deposit  // TODO: put in pipeline
                 },
                 errorMessage -> {
-                    handleTaskRunnerFault(message, errorMessage);
+                    handleTaskRunnerFault(null, message, errorMessage);
                 }))
             .withTimeout(30))
         .executeTasks();
@@ -287,10 +287,10 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
             .using(new TradeTaskRunner(trade,
                 () -> {
                   stopTimeout();
-                  handleTaskRunnerSuccess(message);
+                  handleTaskRunnerSuccess(null, message);
                 },
                 errorMessage -> {
-                  handleTaskRunnerFault(message, errorMessage);
+                  handleTaskRunnerFault(null, message, errorMessage);
                 }))
             .withTimeout(30))
         .executeTasks();
@@ -306,10 +306,10 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                   .using(new TradeTaskRunner(trade,
                           () -> {
                             stopTimeout();
-                            handleTaskRunnerSuccess(message);
+                            handleTaskRunnerSuccess(null, message);
                           },
                           errorMessage -> {
-                              handleTaskRunnerFault(message, errorMessage);
+                              handleTaskRunnerFault(null, message, errorMessage);
                           }))
                   .withTimeout(30))
           .executeTasks();
@@ -328,7 +328,7 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
               .using(new TradeTaskRunner(trade,
                   () -> {
                     System.out.println("handle multisig pipeline completed successfully!");
-                    handleTaskRunnerSuccess(message);
+                    handleTaskRunnerSuccess(sender, message);
                     if (processModel.isMultisigSetupComplete() && !processModel.isMultisigDepositInitiated()) {
                       processModel.setMultisigDepositInitiated(true); // ensure only funding multisig one time
                       fundMultisig(message, takeOfferListener);
@@ -337,7 +337,7 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                   errorMessage -> {
                       System.out.println("error in handle multisig pipeline!!!: " + errorMessage);
                       errorMessageHandler.handleErrorMessage(errorMessage);
-                      handleTaskRunnerFault(message, errorMessage);
+                      handleTaskRunnerFault(sender, message, errorMessage);
                       takeOfferListener.handleResult();
                   })))
           .executeTasks();
@@ -352,10 +352,10 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                           () -> {
                             System.out.println("MULTISIG WALLET FUNDED!!!!");
                             stopTimeout();
-                            handleTaskRunnerSuccess(message);
+                            handleTaskRunnerSuccess(null, message);
                           },
                           errorMessage -> {
-                              handleTaskRunnerFault(message, errorMessage);
+                              handleTaskRunnerFault(null, message, errorMessage);
                           }))
                   .withTimeout(30))
           .executeTasks();
@@ -374,11 +374,11 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                   using(new TradeTaskRunner(trade,
                           () -> {
                             stopTimeout();
-                            handleTaskRunnerSuccess(message);
+                            handleTaskRunnerSuccess(sender, message);
                           },
                           errorMessage -> {
                               errorMessageHandler.handleErrorMessage(errorMessage);
-                              handleTaskRunnerFault(message, errorMessage);
+                              handleTaskRunnerFault(sender, message, errorMessage);
                           }))
                   .withTimeout(30))
           .executeTasks();

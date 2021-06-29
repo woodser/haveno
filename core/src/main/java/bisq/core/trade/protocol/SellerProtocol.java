@@ -78,7 +78,7 @@ public abstract class SellerProtocol extends DisputeProtocol {
                             log.warn("We received a CounterCurrencyTransferStartedMessage but we have already created the payout tx " +
                                     "so we ignore the message. This can happen if the ACK message to the peer did not " +
                                     "arrive and the peer repeats sending us the message. We send another ACK msg.");
-                            sendAckMessage(message, true, null);
+                            sendAckMessage(peer, message, true, null);
                             removeMailboxMessageAfterProcessing(message);
                         }))
                 .setup(tasks(

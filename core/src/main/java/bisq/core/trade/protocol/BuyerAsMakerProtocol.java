@@ -146,11 +146,11 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     using(new TradeTaskRunner(trade,
                             () -> {
                               stopTimeout();
-                              handleTaskRunnerSuccess(message);
+                              handleTaskRunnerSuccess(peer, message);
                             },
                             errorMessage -> {
                                 errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(message, errorMessage);
+                                handleTaskRunnerFault(peer, message, errorMessage);
                             }))
                     .withTimeout(30))
             .executeTasks();
@@ -172,11 +172,11 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     using(new TradeTaskRunner(trade,
                             () -> {
                               stopTimeout();
-                              handleTaskRunnerSuccess(message);
+                              handleTaskRunnerSuccess(sender, message);
                             },
                             errorMessage -> {
                                 errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(message, errorMessage);
+                                handleTaskRunnerFault(sender, message, errorMessage);
                             }))
                     .withTimeout(30))
             .executeTasks();
@@ -200,10 +200,10 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     MakerCreateAndPublishDepositTx.class,
                     MakerSetupDepositTxsListener.class).
                     using(new TradeTaskRunner(trade,
-                            () -> handleTaskRunnerSuccess(message),
+                            () -> handleTaskRunnerSuccess(sender, message),
                             errorMessage -> {
                                 errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(message, errorMessage);
+                                handleTaskRunnerFault(sender, message, errorMessage);
                             })))
             .executeTasks();
     }
