@@ -24,7 +24,12 @@ import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.trade.messages.TradeMessage;
+import bisq.core.trade.protocol.TradeListener;
+import bisq.network.p2p.AckMessage;
+import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import com.google.common.base.Charsets;
 import java.util.Date;
@@ -82,30 +87,40 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
                     null,
                     null,
                     null);
+            
+            // listen for maker to ack InitTradeRequest
+            TradeListener listener = new TradeListener() {
+                @Override
+                public void onAckMessage(AckMessage ackMessage, NodeAddress sender) {
+                    if (sender.equals(trade.getMakerNodeAddress()) && ackMessage.getSourceMsgClassName().equals(InitTradeRequest.class.getSimpleName())) {
+                        trade.removeListener(this);
+                        if (ackMessage.isSuccess()) complete();
+                        else failed("Received unsuccessful ack for InitTradeRequest from maker"); // TODO (woodser): maker should not do this, penalize them by broadcasting reserve tx?
+                    }
+                }
+            };
+            trade.addListener(listener);
 
             // send request to maker
             log.info("Send {} with offerId {} and uid {} to maker {} with pub key ring", makerRequest.getClass().getSimpleName(), makerRequest.getTradeId(), makerRequest.getUid(), trade.getMakerNodeAddress(), trade.getMakerPubKeyRing());
             processModel.getP2PService().sendEncryptedDirectMessage(
-                    trade.getOffer().getOwnerNodeAddress(),
-                    trade.getOffer().getPubKeyRing(),
+                    trade.getMakerNodeAddress(), // TODO (woodser): maker's address might be different from original owner address if they disconnect and reconnect, need to validate and update address when requests received
+                    trade.getMakerPubKeyRing(),
                     makerRequest,
                     new SendDirectMessageListener() {
                         @Override
                         public void onArrived() {
-                            log.info("{} arrived at arbitrator: offerId={}; uid={}", makerRequest.getClass().getSimpleName(), makerRequest.getTradeId(), makerRequest.getUid());
-                            
-                            // TODO (woodser): send init multisig request if arbitrator has reserve tx, otherwise wait for init trade request from maker
+                            log.info("{} arrived at maker: offerId={}; uid={}", makerRequest.getClass().getSimpleName(), makerRequest.getTradeId(), makerRequest.getUid());
                         }
                         @Override
                         public void onFault(String errorMessage) {
                             log.error("Sending {} failed: uid={}; peer={}; error={}", makerRequest.getClass().getSimpleName(), makerRequest.getUid(), trade.getArbitratorNodeAddress(), errorMessage);
                             appendToErrorMessage("Sending message failed: message=" + makerRequest + "\nerrorMessage=" + errorMessage);
+                            trade.removeListener(listener);
                             failed();
                         }
                     }
             );
-            
-            complete();
         } catch (Throwable t) {
             failed(t);
         }

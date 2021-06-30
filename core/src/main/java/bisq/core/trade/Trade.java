@@ -31,10 +31,10 @@ import bisq.core.support.messages.ChatMessage;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.ProcessModel;
 import bisq.core.trade.protocol.ProcessModelServiceProvider;
-import bisq.core.trade.protocol.TradeMessageListener;
+import bisq.core.trade.protocol.TradeListener;
 import bisq.core.trade.txproof.AssetTxProofResult;
 import bisq.core.util.VolumeUtil;
-
+import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.NodeAddress;
 
 import bisq.common.crypto.PubKeyRing;
@@ -452,7 +452,7 @@ public abstract class Trade implements Tradable, Model {
 
 
     // Added in XMR integration
-    private transient List<TradeMessageListener> tradeMessageListeners; // notified on fully validated trade messages
+    private transient List<TradeListener> tradeListeners; // notified on fully validated trade messages
     @Getter
     @Setter
     private NodeAddress makerNodeAddress;
@@ -505,7 +505,7 @@ public abstract class Trade implements Tradable, Model {
         this.txFeeAsLong = txFee.value;
         this.takerFeeAsLong = takerFee.value;
         this.takeOfferDate = new Date().getTime();
-        this.tradeMessageListeners = new ArrayList<TradeMessageListener>();
+        this.tradeListeners = new ArrayList<TradeListener>();
         
         this.makerNodeAddress = makerNodeAddress;
         this.takerNodeAddress = takerNodeAddress;
@@ -833,18 +833,25 @@ public abstract class Trade implements Tradable, Model {
     // Listeners
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void addTradeMessageListener(TradeMessageListener listener) {
-      tradeMessageListeners.add(listener);
+    public void addListener(TradeListener listener) {
+      tradeListeners.add(listener);
     }
 
-    public void removeTradeMessageListener(TradeMessageListener listener) {
-      if (!tradeMessageListeners.remove(listener)) throw new RuntimeException("TradeMessageListener is not registered");
+    public void removeListener(TradeListener listener) {
+      if (!tradeListeners.remove(listener)) throw new RuntimeException("TradeMessageListener is not registered");
     }
 
-    // notified from TradeProtocol of verified messages
+    // notified from TradeProtocol of verified trade messages
     public void onVerifiedTradeMessage(TradeMessage message, NodeAddress sender) {
-      for (TradeMessageListener listener : new ArrayList<TradeMessageListener>(tradeMessageListeners)) {  // copy array to allow listener invocation to unregister listener without concurrent modification exception
+      for (TradeListener listener : new ArrayList<TradeListener>(tradeListeners)) {  // copy array to allow listener invocation to unregister listener without concurrent modification exception
         listener.onVerifiedTradeMessage(message, sender);
+      }
+    }
+    
+    // notified from TradeProtocol of ack messages
+    public void onAckMessage(AckMessage ackMessage, NodeAddress sender) {
+      for (TradeListener listener : new ArrayList<TradeListener>(tradeListeners)) {  // copy array to allow listener invocation to unregister listener without concurrent modification exception
+        listener.onAckMessage(ackMessage, sender);
       }
     }
 

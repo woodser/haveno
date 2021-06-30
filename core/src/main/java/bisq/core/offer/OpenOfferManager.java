@@ -677,7 +677,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                     request.getReserveTxHex(),
                     request.getReserveTxKey());
 
-            // sign offer to certify arbitrator has valid reserve tx
+            // arbitrator signs offer to certify they have valid reserve tx
             String offerPayloadAsJson = Utilities.objectToJson(request.getOfferPayload());
             String signature = Sig.sign(keyRing.getSignatureKeyPair().getPrivate(), offerPayloadAsJson);
             OfferPayload signedOfferPayload = request.getOfferPayload();

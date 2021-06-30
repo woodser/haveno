@@ -1738,9 +1738,12 @@ message TradingPeer {
     int64 current_date = 15;
     bytes mediated_payout_tx_signature = 16;
     
-    string prepared_multisig_hex = 1001;
-    string made_multisig_hex = 1002;
-    string signed_payout_tx_hex = 1003;
+    string reserve_tx_hash = 1001;
+    string reserve_tx_hex = 1002;
+    string reserve_tx_key = 1003;
+    string prepared_multisig_hex = 1004;
+    string made_multisig_hex = 1005;
+    string signed_payout_tx_hex = 1006;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

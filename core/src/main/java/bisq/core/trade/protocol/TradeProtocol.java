@@ -24,6 +24,7 @@ import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
@@ -128,12 +129,14 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         if (networkEnvelope instanceof TradeMessage) {
             onTradeMessage((TradeMessage) networkEnvelope, peer);
 
+            // notify trade listeners
             // TODO (woodser): better way to register message notifications for trade?
             if (((TradeMessage) networkEnvelope).getTradeId().equals(processModel.getOfferId())) {
               trade.onVerifiedTradeMessage((TradeMessage) networkEnvelope, peer);
             }
         } else if (networkEnvelope instanceof AckMessage) {
             onAckMessage((AckMessage) networkEnvelope, peer);
+            trade.onAckMessage((AckMessage) networkEnvelope, peer); // notify trade listeners
         }
     }
 
@@ -293,9 +296,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // ACK msg
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    // TODO (woodser): support notifications of ack messages
     private void onAckMessage(AckMessage ackMessage, NodeAddress peer) {
         // We handle the ack for CounterCurrencyTransferStartedMessage and DepositTxAndDelayedPayoutTxMessage
         // as we support automatic re-send of the msg in case it was not ACKed after a certain time
+        // TODO (woodser): add AckMessage for InitTradeRequest and support automatic re-send ?
         if (ackMessage.getSourceMsgClassName().equals(CounterCurrencyTransferStartedMessage.class.getSimpleName())) {
             processModel.setPaymentStartedAckMessage(ackMessage);
         } else if (ackMessage.getSourceMsgClassName().equals(DepositTxAndDelayedPayoutTxMessage.class.getSimpleName())) {
@@ -313,19 +318,9 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected void sendAckMessage(NodeAddress peer, TradeMessage message, boolean result, @Nullable String errorMessage) {
         
-        // TODO (woodser): get pub key ring for receiver
-
-//        // If there was an error during offer verification, the tradingPeerNodeAddress of the trade might not be set yet.
-//        // We can find the peer's node address in the processModel's tempTradingPeerNodeAddress in that case.
-//        NodeAddress peer = trade.getTradingPeerNodeAddress() != null ?
-//                trade.getTradingPeerNodeAddress() :
-//                processModel.getTempTradingPeerNodeAddress();
-        
-        System.out.println("Sending ack message to: " + peer);
-        
         // TODO (woodser): remove trade.getTradingPeerNodeAddress() and processModel.getTempTradingPeerNodeAddress() if everything should be maker, taker, or arbitrator
 
-        // get destination pub key ring
+        // get peer's pub key ring
         PubKeyRing peersPubKeyRing = getPeersPubKeyRing(peer);
         if (peersPubKeyRing == null) {
             log.error("We cannot send the ACK message as peersPubKeyRing is null");

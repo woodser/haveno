@@ -148,7 +148,7 @@ public class ProcessModel implements Model, PersistablePayload {
     // After successful verified we copy that over to the trade.tradingPeerAddress
     @Nullable
     @Setter
-    private NodeAddress tempTradingPeerNodeAddress;
+    private NodeAddress tempTradingPeerNodeAddress; // TODO (woodser): remove entirely
 
     // Added in v.1.1.6
     @Nullable
@@ -173,13 +173,11 @@ public class ProcessModel implements Model, PersistablePayload {
     @Nullable
     @Getter
     @Setter
-    private MoneroTxWallet reserveTx;
-    
-    
+    transient private MoneroTxWallet reserveTx;
     @Nullable
     @Getter
     @Setter
-    private String preparedMultisigHex;
+    private String preparedMultisigHex; // TODO (woodser): ProcessModel shares many fields with TradingPeer; switch to trade getMaker(), getTaker(), getArbitrator(), getSelf(), with common TradingPeer object?
     @Nullable
     @Getter
     @Setter

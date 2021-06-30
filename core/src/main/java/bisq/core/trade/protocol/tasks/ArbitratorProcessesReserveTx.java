@@ -23,9 +23,11 @@ import bisq.common.taskrunner.TaskRunner;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.offer.messages.SignOfferRequest;
+import bisq.core.trade.MakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.trade.protocol.TradingPeer;
 import bisq.core.util.ParsingUtils;
 import common.utils.JsonUtils;
 import java.math.BigInteger;
@@ -57,11 +59,12 @@ public class ArbitratorProcessesReserveTx extends TradeTask {
             Offer offer = trade.getOffer();
             InitTradeRequest request = (InitTradeRequest) processModel.getTradeMessage();
             checkNotNull(request);
+            boolean isFromTaker = request.getSenderNodeAddress().equals(request.getTakerNodeAddress());
             
             // TODO (woodser): if signer online, should never be called by maker
             
             // process reserve tx with expected terms
-            BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(request.getSenderNodeAddress().equals(request.getTakerNodeAddress()) ? trade.getTakerFee() : offer.getMakerFee());
+            BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(isFromTaker ? trade.getTakerFee() : offer.getMakerFee());
             BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(offer.getDirection() == OfferPayload.Direction.SELL ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
             TradeUtils.processReserveTx(trade.getOffer(),
                     tradeFee,
@@ -73,6 +76,14 @@ public class ArbitratorProcessesReserveTx extends TradeTask {
                     request.getReserveTxHex(),
                     request.getReserveTxKey());
             
+            // save reserve tx to model
+            TradingPeer trader = isFromTaker ? processModel.getTaker() : processModel.getMaker();
+            trader.setReserveTxHash(request.getReserveTxHash());
+            trader.setReserveTxHex(request.getReserveTxHex());
+            trader.setReserveTxKey(request.getReserveTxKey());
+            
+            // persist trade
+            processModel.getTradeManager().requestPersistence();
             complete();
         } catch (Throwable t) {
             failed(t);

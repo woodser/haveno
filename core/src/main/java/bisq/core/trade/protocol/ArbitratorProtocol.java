@@ -7,6 +7,7 @@ import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitTradeRequestToMakerIfFromTaker;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessesReserveTx;
+import bisq.core.trade.protocol.tasks.ArbitratorSendsInitMultisigMessagesIfFundsReserved;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.network.p2p.NodeAddress;
 
@@ -35,8 +36,8 @@ public class ArbitratorProtocol extends DisputeProtocol {
                   ApplyFilter.class,
                   ProcessInitTradeRequest.class,
                   ArbitratorProcessesReserveTx.class,
-                  ArbitratorSendsInitTradeRequestToMakerIfFromTaker.class))
-               // ArbitratorSendsInitMultisigRequestIfFromMaker
+                  ArbitratorSendsInitTradeRequestToMakerIfFromTaker.class,
+                  ArbitratorSendsInitMultisigMessagesIfFundsReserved.class))
               .executeTasks();
   }
 

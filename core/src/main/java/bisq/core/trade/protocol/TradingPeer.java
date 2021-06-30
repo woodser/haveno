@@ -92,8 +92,16 @@ public final class TradingPeer implements PersistablePayload {
 
     // Added for XMR integration
     @Nullable
+    private String reserveTxHash;
+    @Nullable
+    private String reserveTxHex;
+    @Nullable
+    private String reserveTxKey;
+    @Nullable
     private String preparedMultisigHex;
+    @Nullable
     private String madeMultisigHex;
+    @Nullable
     private String signedPayoutTxHex;
 
     public TradingPeer() {
@@ -118,6 +126,9 @@ public final class TradingPeer implements PersistablePayload {
         Optional.ofNullable(accountAgeWitnessNonce).ifPresent(e -> builder.setAccountAgeWitnessNonce(ByteString.copyFrom(e)));
         Optional.ofNullable(accountAgeWitnessSignature).ifPresent(e -> builder.setAccountAgeWitnessSignature(ByteString.copyFrom(e)));
         Optional.ofNullable(mediatedPayoutTxSignature).ifPresent(e -> builder.setMediatedPayoutTxSignature(ByteString.copyFrom(e)));
+        Optional.ofNullable(reserveTxHash).ifPresent(e -> builder.setReserveTxHash(reserveTxHash));
+        Optional.ofNullable(reserveTxHex).ifPresent(e -> builder.setReserveTxHex(reserveTxHex));
+        Optional.ofNullable(reserveTxKey).ifPresent(e -> builder.setReserveTxKey(reserveTxKey));
         Optional.ofNullable(preparedMultisigHex).ifPresent(e -> builder.setPreparedMultisigHex(preparedMultisigHex));
         Optional.ofNullable(madeMultisigHex).ifPresent(e -> builder.setMadeMultisigHex(madeMultisigHex));
         Optional.ofNullable(signedPayoutTxHex).ifPresent(e -> builder.setSignedPayoutTxHex(signedPayoutTxHex));
@@ -152,6 +163,9 @@ public final class TradingPeer implements PersistablePayload {
             tradingPeer.setAccountAgeWitnessSignature(ProtoUtil.byteArrayOrNullFromProto(proto.getAccountAgeWitnessSignature()));
             tradingPeer.setCurrentDate(proto.getCurrentDate());
             tradingPeer.setMediatedPayoutTxSignature(ProtoUtil.byteArrayOrNullFromProto(proto.getMediatedPayoutTxSignature()));
+            tradingPeer.setReserveTxHash(ProtoUtil.stringOrNullFromProto(proto.getReserveTxHash()));
+            tradingPeer.setReserveTxHex(ProtoUtil.stringOrNullFromProto(proto.getReserveTxHex()));
+            tradingPeer.setReserveTxKey(ProtoUtil.stringOrNullFromProto(proto.getReserveTxKey()));
             tradingPeer.setPreparedMultisigHex(ProtoUtil.stringOrNullFromProto(proto.getPreparedMultisigHex()));
             tradingPeer.setMadeMultisigHex(ProtoUtil.stringOrNullFromProto(proto.getMadeMultisigHex()));
             tradingPeer.setSignedPayoutTxHex(ProtoUtil.stringOrNullFromProto(proto.getSignedPayoutTxHex()));
