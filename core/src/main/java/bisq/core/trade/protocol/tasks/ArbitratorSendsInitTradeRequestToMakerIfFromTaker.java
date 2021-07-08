@@ -79,11 +79,11 @@ public class ArbitratorSendsInitTradeRequestToMakerIfFromTaker extends TradeTask
                     Version.getP2PMessageVersion(),
                     sig,
                     new Date().getTime(),
-                    trade.getTakerNodeAddress(),
                     trade.getMakerNodeAddress(),
+                    trade.getTakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
                     null,
-                    null,
+                    null, // do not include taker's reserve tx
                     null,
                     null,
                     null);

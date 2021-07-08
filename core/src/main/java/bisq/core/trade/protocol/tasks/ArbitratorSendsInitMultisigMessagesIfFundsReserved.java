@@ -24,18 +24,24 @@ import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.network.p2p.SendDirectMessageListener;
 import com.google.common.base.Charsets;
 import java.util.Date;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import monero.wallet.MoneroWallet;
 
 /**
  * Arbitrator sends InitMultisigMessage to maker and taker if both reserve txs received.
  */
 @Slf4j
 public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTask {
+    
+    private boolean takerAck;
+    private boolean makerAck;
+    
     @SuppressWarnings({"unused"})
     public ArbitratorSendsInitMultisigMessagesIfFundsReserved(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
@@ -47,20 +53,79 @@ public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTas
             runInterceptHook();
             
             // skip if arbitrator does not have maker reserve tx
-            if (processModel.getMaker().getReserveTxHash() == null) { // TODO (woodser): need to read this from signed offer store
+            if (false && processModel.getMaker().getReserveTxHash() == null) { // TODO (woodser): need to read this from signed offer store
                 log.info("Arbitrator does not have maker reserve tx for offerId {}, waiting to receive before initializing multisig wallet", processModel.getOffer().getId());
                 complete();
                 return;
             }
             
-            // prepare multisig hex
+            // create wallet for multisig
+            MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId()); // TODO (woodser): assert that wallet does not already exist
             
-            // start creating multisig with maker and taker by sending InitMultisigMessages
-            if (true) throw new RuntimeException("Not yet implemented!");
-            
-            complete();
+            // prepare multisig
+            String preparedHex = multisigWallet.prepareMultisig();
+            processModel.setPreparedMultisigHex(preparedHex);
+
+            // create message to initialize multisig
+            InitMultisigMessage message = new InitMultisigMessage(
+                    processModel.getOffer().getId(),
+                    processModel.getMyNodeAddress(),
+                    processModel.getPubKeyRing(),
+                    UUID.randomUUID().toString(),
+                    Version.getP2PMessageVersion(),
+                    new Date().getTime(),
+                    preparedHex,
+                    null);
+
+            // send request to maker
+            log.info("Send {} with offerId {} and uid {} to maker {}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid(), trade.getMakerNodeAddress());
+            processModel.getP2PService().sendEncryptedDirectMessage(
+                    trade.getMakerNodeAddress(),
+                    trade.getMakerPubKeyRing(),
+                    message,
+                    new SendDirectMessageListener() {
+                        @Override
+                        public void onArrived() {
+                            log.info("{} arrived at arbitrator: offerId={}; uid={}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid());
+                            makerAck = true;
+                            checkComplete();
+                        }
+                        @Override
+                        public void onFault(String errorMessage) {
+                            log.error("Sending {} failed: uid={}; peer={}; error={}", message.getClass().getSimpleName(), message.getUid(), trade.getMakerNodeAddress(), errorMessage);
+                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+                            failed();
+                        }
+                    }
+            );
+
+            // send request to taker
+            log.info("Send {} with offerId {} and uid {} to taker {}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid(), trade.getTakerNodeAddress());
+            processModel.getP2PService().sendEncryptedDirectMessage(
+                    trade.getTakerNodeAddress(),
+                    trade.getTakerPubKeyRing(),
+                    message,
+                    new SendDirectMessageListener() {
+                        @Override
+                        public void onArrived() {
+                            log.info("{} arrived at peer: offerId={}; uid={}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid());
+                            takerAck = true;
+                            checkComplete();
+                        }
+                        @Override
+                        public void onFault(String errorMessage) {
+                            log.error("Sending {} failed: uid={}; peer={}; error={}", message.getClass().getSimpleName(), message.getUid(), trade.getTakerNodeAddress(), errorMessage);
+                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+                            failed();
+                        }
+                    }
+            );
         } catch (Throwable t) {
             failed(t);
         }
+    }
+    
+    private void checkComplete() {
+        if (makerAck && takerAck) complete();
     }
 }

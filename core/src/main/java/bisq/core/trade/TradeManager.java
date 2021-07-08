@@ -371,6 +371,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           // TODO (woodser): handle if payload signer differs from current arbitrator (verify signer is offline)
           
           // verify maker is offer owner
+          // TODO (woodser): maker address might change if they disconnect and reconnect, should allow maker address to differ if pubKeyRing is same ?
           if (!offer.getOwnerNodeAddress().equals(request.getMakerNodeAddress())) {
               log.warn("Ignoring InitTradeRequest from {} with tradeId {} because maker is not offer owner", sender, request.getTradeId());
               return;
@@ -477,6 +478,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           //trade.setTradingPeerNodeAddress(sender);
           // TODO (woodser): what if maker's address changes while offer open, or taker's address changes after multisig deposit available? need to verify and update
           trade.setArbitratorPubKeyRing(user.getAcceptedMediatorByAddress(sender).getPubKeyRing());
+          trade.setTakerPubKeyRing(request.getPubKeyRing());
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           tradableList.add(trade);
 

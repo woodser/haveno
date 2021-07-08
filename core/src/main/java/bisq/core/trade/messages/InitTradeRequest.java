@@ -52,8 +52,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
     private final long currentDate;
 
     // XMR integration
-    private final NodeAddress takerNodeAddress;
     private final NodeAddress makerNodeAddress;
+    private final NodeAddress takerNodeAddress;
     @Nullable
     private final NodeAddress arbitratorNodeAddress;
     @Nullable
@@ -79,8 +79,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                                      int messageVersion,
                                      @Nullable byte[] accountAgeWitnessSignatureOfOfferId,
                                      long currentDate,
-                                     NodeAddress takerNodeAddress,
                                      NodeAddress makerNodeAddress,
+                                     NodeAddress takerNodeAddress,
                                      NodeAddress arbitratorNodeAddress,
                                      @Nullable String reserveTxHash,
                                      @Nullable String reserveTxHex,
@@ -97,8 +97,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
         this.paymentAccountId = paymentAccountId;
         this.accountAgeWitnessSignatureOfOfferId = accountAgeWitnessSignatureOfOfferId;
         this.currentDate = currentDate;
-        this.takerNodeAddress = takerNodeAddress;
         this.makerNodeAddress = makerNodeAddress;
+        this.takerNodeAddress = takerNodeAddress;
         this.arbitratorNodeAddress = arbitratorNodeAddress;
         this.reserveTxHash = reserveTxHash;
         this.reserveTxHex = reserveTxHex;
@@ -154,8 +154,8 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 messageVersion,
                 ProtoUtil.byteArrayOrNullFromProto(proto.getAccountAgeWitnessSignatureOfOfferId()),
                 proto.getCurrentDate(),
-                NodeAddress.fromProto(proto.getTakerNodeAddress()),
                 NodeAddress.fromProto(proto.getMakerNodeAddress()),
+                NodeAddress.fromProto(proto.getTakerNodeAddress()),
                 proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null,
                 ProtoUtil.stringOrNullFromProto(proto.getReserveTxHash()),
                 ProtoUtil.stringOrNullFromProto(proto.getReserveTxHex()),

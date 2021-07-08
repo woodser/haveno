@@ -621,7 +621,7 @@ public abstract class Trade implements Tradable, Model {
         Optional.ofNullable(makerNodeAddress).ifPresent(e -> builder.setMakerNodeAddress(makerNodeAddress.toProtoMessage()));
         Optional.ofNullable(makerPubKeyRing).ifPresent(e -> builder.setMakerPubKeyRing(makerPubKeyRing.toProtoMessage()));
         Optional.ofNullable(takerNodeAddress).ifPresent(e -> builder.setTakerNodeAddress(takerNodeAddress.toProtoMessage()));
-        Optional.ofNullable(takerPubKeyRing).ifPresent(e -> builder.setMakerPubKeyRing(takerPubKeyRing.toProtoMessage()));
+        Optional.ofNullable(takerPubKeyRing).ifPresent(e -> builder.setTakerPubKeyRing(takerPubKeyRing.toProtoMessage()));
         return builder.build();
     }
 

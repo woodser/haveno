@@ -58,8 +58,8 @@ public final class BuyerAsMakerTrade extends BuyerTrade implements MakerTrade {
                 xmrWalletService,
                 processModel,
                 uid,
-                takerNodeAddress,
                 makerNodeAddress,
+                takerNodeAddress,
                 arbitratorNodeAddress);
     }
 
@@ -92,8 +92,8 @@ public final class BuyerAsMakerTrade extends BuyerTrade implements MakerTrade {
                 xmrWalletService,
                 processModel,
                 uid,
-                proto.hasTakerNodeAddress() ? NodeAddress.fromProto(proto.getTakerNodeAddress()) : null,
                 proto.hasMakerNodeAddress() ? NodeAddress.fromProto(proto.getMakerNodeAddress()) : null,
+                proto.hasTakerNodeAddress() ? NodeAddress.fromProto(proto.getTakerNodeAddress()) : null,
                 proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null);
 
         trade.setTradeAmountAsLong(proto.getTradeAmountAsLong());

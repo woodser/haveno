@@ -74,8 +74,8 @@ public class SendOfferAvailabilityRequest extends Task<OfferAvailabilityModel> {
                     Version.getP2PMessageVersion(),
                     sig,
                     new Date().getTime(),
-                    P2PService.getMyNodeAddress(),
                     offer.getMakerNodeAddress(),
+                    P2PService.getMyNodeAddress(),
                     null, // maker provides node address of arbitrator on response
                     null, // reserve tx not sent from taker to maker
                     null,
