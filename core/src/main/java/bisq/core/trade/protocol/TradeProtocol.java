@@ -209,27 +209,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected abstract void onTradeMessage(TradeMessage message, NodeAddress peer);
 
-    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
-
-      TradeTaskRunner taskRunner = new TradeTaskRunner(trade,
-              () -> {
-                stopTimeout();
-                handleTaskRunnerSuccess(peer, message, "handleMultisigMessage");
-              },
-              errorMessage -> {
-                  errorMessageHandler.handleErrorMessage(errorMessage);
-                  handleTaskRunnerFault(peer, message, errorMessage);
-              });
-      taskRunner.addTasks(
-              ProcessInitMultisigMessage.class
-      );
-      startTimeout(60); // TODO (woodser): what timeout to use?  don't hardcode
-      taskRunner.run();
-    }
-
-    public abstract void handleDepositTxMessage(DepositTxMessage message, NodeAddress taker, ErrorMessageHandler errorMessageHandler);
+    public abstract void handleMultisigMessage(InitMultisigMessage message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
 
     // TODO (woodser): update to use fluent for consistency
     public void handleUpdateMultisigRequest(UpdateMultisigRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {

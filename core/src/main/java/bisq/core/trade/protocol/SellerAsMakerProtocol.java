@@ -22,27 +22,21 @@ import bisq.core.trade.SellerAsMakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DepositTxMessage;
+import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigRequest;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateAndPublishDepositTx;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateAndSignContract;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
 import bisq.core.trade.protocol.tasks.maker.MakerSendsInitTradeRequestIfUnreserved;
-import bisq.core.trade.protocol.tasks.maker.MakerSendsReadyToFundMultisigResponse;
-import bisq.core.trade.protocol.tasks.maker.MakerSetupDepositTxsListener;
-import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerDepositTx;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerFeePayment;
 import bisq.core.trade.protocol.tasks.seller.SellerCreatesDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.seller.SellerSendDelayedPayoutTxSignatureRequest;
 import bisq.core.trade.protocol.tasks.seller.SellerSignsDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.seller_as_maker.SellerAsMakerFinalizesDepositTx;
 import bisq.core.trade.protocol.tasks.seller_as_maker.SellerAsMakerProcessDepositTxMessage;
-import bisq.core.util.Validator;
 
 import bisq.network.p2p.NodeAddress;
 
@@ -155,56 +149,9 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
                     .withTimeout(30))
             .executeTasks();
     }
-
+    
     @Override
-    public void handleMakerReadyToFundMultisigRequest(MakerReadyToFundMultisigRequest message,
-                                       NodeAddress sender,
-                                       ErrorMessageHandler errorMessageHandler) {
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
-      processModel.setTempTradingPeerNodeAddress(sender);
-
-      expect(anyPhase(Trade.Phase.INIT, Trade.Phase.TAKER_FEE_PUBLISHED)
-            .with(message)
-            .from(sender))
-            .setup(tasks(
-                    MakerSendsReadyToFundMultisigResponse.class).
-                    using(new TradeTaskRunner(trade,
-                            () -> {
-                              stopTimeout();
-                              handleTaskRunnerSuccess(sender, message);
-                            },
-                            errorMessage -> {
-                                errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(sender, message, errorMessage);
-                            }))
-                    .withTimeout(30))
-            .executeTasks();
-    }
-
-    @Override
-    public void handleDepositTxMessage(DepositTxMessage message,
-                                      NodeAddress sender,
-                                      ErrorMessageHandler errorMessageHandler) {
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
-      processModel.setTempTradingPeerNodeAddress(sender);
-
-      // TODO (woodser): MakerProcessesTakerDepositTxMessage.java which verifies deposit amount = fee + security deposit (+ trade amount), or that deposit is exact amount
-      expect(anyPhase(Trade.Phase.INIT, Trade.Phase.TAKER_FEE_PUBLISHED)
-            .with(message)
-            .from(sender))
-            .setup(tasks(
-                    MakerVerifyTakerDepositTx.class,
-                    MakerCreateAndSignContract.class,
-                    MakerCreateAndPublishDepositTx.class,
-                    MakerSetupDepositTxsListener.class).
-                    using(new TradeTaskRunner(trade,
-                            () -> handleTaskRunnerSuccess(sender, message),
-                            errorMessage -> {
-                                errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(sender, message, errorMessage);
-                            })))
-            .executeTasks();
+    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
     }
 }

@@ -21,26 +21,19 @@ import bisq.core.trade.BuyerAsMakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
-import bisq.core.trade.messages.DepositTxMessage;
+import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigRequest;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
-import bisq.core.trade.protocol.tasks.ApplyFilter;
+import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
+import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
 import bisq.core.trade.protocol.tasks.TradeTask;
-import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.core.trade.protocol.tasks.buyer.BuyerFinalizesDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.buyer.BuyerProcessDelayedPayoutTxSignatureRequest;
 import bisq.core.trade.protocol.tasks.buyer.BuyerSendsDelayedPayoutTxSignatureResponse;
 import bisq.core.trade.protocol.tasks.buyer.BuyerSignsDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.buyer.BuyerVerifiesPreparedDelayedPayoutTx;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateAndPublishDepositTx;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateAndSignContract;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
-import bisq.core.trade.protocol.tasks.maker.MakerSendsInitTradeRequestIfUnreserved;
-import bisq.core.trade.protocol.tasks.maker.MakerSendsReadyToFundMultisigResponse;
-import bisq.core.trade.protocol.tasks.maker.MakerSetupDepositTxsListener;
-import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerDepositTx;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerFeePayment;
 import bisq.core.util.Validator;
 
@@ -155,56 +148,28 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     .withTimeout(30))
             .executeTasks();
     }
-
+    
     @Override
-    public void handleMakerReadyToFundMultisigRequest(MakerReadyToFundMultisigRequest message,
-                                       NodeAddress sender,
-                                       ErrorMessageHandler errorMessageHandler) {
+    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+      System.out.println("BuyerAsMakerProtocol.handleMultisigMessage()");
       Validator.checkTradeId(processModel.getOfferId(), message);
       processModel.setTradeMessage(message);
-      processModel.setTempTradingPeerNodeAddress(sender);
-
-      expect(anyPhase(Trade.Phase.INIT, Trade.Phase.TAKER_FEE_PUBLISHED)
-            .with(message)
-            .from(sender))
-            .setup(tasks(
-                    MakerSendsReadyToFundMultisigResponse.class).
-                    using(new TradeTaskRunner(trade,
-                            () -> {
-                              stopTimeout();
-                              handleTaskRunnerSuccess(sender, message);
-                            },
-                            errorMessage -> {
-                                errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(sender, message, errorMessage);
-                            }))
-                    .withTimeout(30))
-            .executeTasks();
-    }
-
-    @Override
-    public void handleDepositTxMessage(DepositTxMessage message,
-                                      NodeAddress sender,
-                                      ErrorMessageHandler errorMessageHandler) {
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
-      processModel.setTempTradingPeerNodeAddress(sender);
-
-      // TODO (woodser): MakerProcessesTakerDepositTxMessage.java which verifies deposit amount = fee + security deposit (+ trade amount), or that deposit is exact amount
-      expect(anyPhase(Trade.Phase.INIT, Trade.Phase.TAKER_FEE_PUBLISHED)
-            .with(message)
-            .from(sender))
-            .setup(tasks(
-                    MakerVerifyTakerDepositTx.class,
-                    MakerCreateAndSignContract.class,
-                    MakerCreateAndPublishDepositTx.class,
-                    MakerSetupDepositTxsListener.class).
-                    using(new TradeTaskRunner(trade,
-                            () -> handleTaskRunnerSuccess(sender, message),
-                            errorMessage -> {
-                                errorMessageHandler.handleErrorMessage(errorMessage);
-                                handleTaskRunnerFault(sender, message, errorMessage);
-                            })))
-            .executeTasks();
+      expect(anyPhase(Trade.Phase.INIT)
+          .with(message)
+          .from(sender))
+          .setup(tasks(
+                  ProcessInitMultisigMessage.class,
+                  SendSignContractRequestAfterMultisig.class)
+              .using(new TradeTaskRunner(trade,
+                  () -> {
+                    System.out.println("handle multisig pipeline completed successfully!");
+                    handleTaskRunnerSuccess(sender, message);
+                  },
+                  errorMessage -> {
+                      System.out.println("error in handle multisig pipeline!!!: " + errorMessage);
+                      errorMessageHandler.handleErrorMessage(errorMessage);
+                      handleTaskRunnerFault(sender, message, errorMessage);
+                  })))
+          .executeTasks();
     }
 }

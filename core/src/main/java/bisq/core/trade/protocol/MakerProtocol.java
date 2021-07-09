@@ -19,7 +19,6 @@ package bisq.core.trade.protocol;
 
 
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigRequest;
 
 import bisq.network.p2p.NodeAddress;
 
@@ -27,5 +26,4 @@ import bisq.common.handlers.ErrorMessageHandler;
 
 public interface MakerProtocol {
     void handleInitTradeRequest(InitTradeRequest message, NodeAddress taker, ErrorMessageHandler errorMessageHandler);
-    void handleMakerReadyToFundMultisigRequest(MakerReadyToFundMultisigRequest message, NodeAddress taker, ErrorMessageHandler errorMessageHandler);
 }
