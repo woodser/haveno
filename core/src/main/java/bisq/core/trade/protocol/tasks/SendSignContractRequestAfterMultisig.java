@@ -53,8 +53,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           if (!processModel.isMultisigSetupComplete()) return;
           
           // skip if deposit tx already created
-          if (trade instanceof MakerTrade && trade.getMakerDepositTx() != null) throw new RuntimeException("Maker's deposit tx already created, this should not happen when following protocol.");
-          if (trade instanceof TakerTrade && trade.getTakerDepositTx() != null) throw new RuntimeException("Taker's deposit tx already created, this should not happen when following protocol.");
+          if (processModel.getDepositTxXmr() != null) return;
           
           // flush reserve tx from pool
           trade.getXmrWalletService().getDaemon().flushTxPool(processModel.getReserveTxHash());
