@@ -18,7 +18,6 @@
 package bisq.core.trade.protocol.tasks.taker;
 
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.protocol.tasks.TradeTask;
@@ -31,7 +30,6 @@ import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroOutput;
 import monero.daemon.model.MoneroSubmitTxResult;
 import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
 
 public class TakerReservesTradeFunds extends TradeTask {
@@ -42,44 +40,34 @@ public class TakerReservesTradeFunds extends TradeTask {
 
     @Override
     protected void run() {
-
-        MoneroWallet wallet = model.getXmrWalletService().getWallet();
-        MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
-
         try {
             runInterceptHook();
             
-            // collect fields for reserve transaction
+            // create transaction to reserve trade
             BigInteger takerFee = ParsingUtils.coinToAtomicUnits(trade.getTakerFee());
-            BigInteger reservedFundsForOffer = ParsingUtils.centinerosToAtomicUnits(processModel.getFundsNeededForTradeAsLong());
-            String returnAddress = model.getXmrWalletService().getAddressEntry(trade.getOffer().getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString();
-            
-            // create transaction to reserve outputs for trade
-            MoneroTxWallet prepareTx = wallet.createTx(new MoneroTxConfig()
-                    .setAccountIndex(0)
-                    .addDestination(TradeUtils.FEE_ADDRESS, takerFee)
-                    .addDestination(returnAddress, reservedFundsForOffer));
-
-            // reserve additional funds to account for fluctuations in mining fee
-            BigInteger extraMiningFee = prepareTx.getFee().multiply(BigInteger.valueOf(3l)); // add thrice the mining fee
-            MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
-                    .setAccountIndex(0)
-                    .addDestination(TradeUtils.FEE_ADDRESS, takerFee)
-                    .addDestination(returnAddress, reservedFundsForOffer.add(extraMiningFee)));
+            BigInteger depositAmount = ParsingUtils.centinerosToAtomicUnits(processModel.getFundsNeededForTradeAsLong());
+            MoneroTxWallet reserveTx = TradeUtils.createReserveTx(model.getXmrWalletService(), trade.getId(), takerFee, depositAmount);
             
             // freeze trade funds
-            List<String> inputKeyImages = new ArrayList<String>();
+            List<String> frozenKeyImages = new ArrayList<String>();
+            MoneroWallet wallet = model.getXmrWalletService().getWallet();
             for (MoneroOutput input : reserveTx.getInputs()) {
-                inputKeyImages.add(input.getKeyImage().getHex());
-                //wallet.freezeOutput(input.getKeyImage().getHex()); // TODO: actually freeze funds!
+                frozenKeyImages.add(input.getKeyImage().getHex());
+                wallet.freezeOutput(input.getKeyImage().getHex());
             }
             
             // submit tx to daemon but do not relay
+            MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
             MoneroSubmitTxResult result = daemon.submitTxHex(reserveTx.getFullHex(), true);
             if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
             
             // save process state
+            // TODO (woodser): persist
             processModel.setReserveTx(reserveTx);
+            processModel.setReserveTxHash(reserveTx.getHash());
+            processModel.setFrozenKeyImages(frozenKeyImages);
+            trade.setTakerFeeTxId(reserveTx.getHash());
+            //trade.setState(Trade.State.TAKER_PUBLISHED_TAKER_FEE_TX); // TODO (woodser): fee tx is not broadcast separate, update states
             complete();
         } catch (Throwable t) {
             trade.setErrorMessage("An error occurred.\n" +

@@ -61,7 +61,7 @@ import org.bitcoinj.core.Transaction;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -109,7 +109,7 @@ public class ProcessModel implements Model, PersistablePayload {
     transient private ObjectProperty<MessageState> depositTxMessageStateProperty = new SimpleObjectProperty<>(MessageState.UNDEFINED);
     @Setter
     @Getter
-    transient private Transaction depositTx;
+    transient private Transaction depositTx; // TODO (woodser): remove and rename depositTxBtc with depositTx
 
     // Persistable Immutable (private setter only used by PB method)
     private TradingPeer maker = new TradingPeer();
@@ -161,7 +161,7 @@ public class ProcessModel implements Model, PersistablePayload {
 
     // Added for XMR integration
     @Getter
-    transient private MoneroTxWallet takeOfferFeeTx;
+    transient private MoneroTxWallet takeOfferFeeTx; // TODO (woodser): remove
     @Setter
     transient private TradeMessage tradeMessage;
     @Getter
@@ -174,6 +174,15 @@ public class ProcessModel implements Model, PersistablePayload {
     @Getter
     @Setter
     transient private MoneroTxWallet reserveTx;
+    @Setter
+    @Getter
+    private String reserveTxHash;
+    @Setter
+    @Getter
+    private List<String> frozenKeyImages = new ArrayList<>();
+    @Getter
+    @Setter
+    transient private MoneroTxWallet depositTxXmr;
     @Nullable
     @Getter
     @Setter
@@ -189,18 +198,18 @@ public class ProcessModel implements Model, PersistablePayload {
     @Nullable
     @Getter
     @Setter
-    private boolean makerReadyToFundMultisig;
+    private boolean makerReadyToFundMultisig; // TODO (woodser): remove
     @Getter
     @Setter
     private boolean multisigDepositInitiated;
     @Nullable
     @Setter
-    private String makerPreparedDepositTxId;
+    private String makerPreparedDepositTxId; // TODO (woodser): remove
     @Nullable
     @Setter
-    private String takerPreparedDepositTxId;
+    private String takerPreparedDepositTxId; // TODO (woodser): remove
     @Nullable
-    transient private MoneroTxWallet buyerSignedPayoutTx;
+    transient private MoneroTxWallet buyerSignedPayoutTx; // TODO (woodser): remove
 
 
 
@@ -248,11 +257,13 @@ public class ProcessModel implements Model, PersistablePayload {
                 .setFundsNeededForTradeAsLong(fundsNeededForTradeAsLong)
                 .setPaymentStartedMessageState(paymentStartedMessageStateProperty.get().name())
                 .setBuyerPayoutAmountFromMediation(buyerPayoutAmountFromMediation)
-                .setSellerPayoutAmountFromMediation(sellerPayoutAmountFromMediation);
+                .setSellerPayoutAmountFromMediation(sellerPayoutAmountFromMediation)
+                .addAllFrozenKeyImages(frozenKeyImages);
         Optional.ofNullable(maker).ifPresent(e -> builder.setMaker((protobuf.TradingPeer) maker.toProtoMessage()));
         Optional.ofNullable(taker).ifPresent(e -> builder.setTaker((protobuf.TradingPeer) taker.toProtoMessage()));
         Optional.ofNullable(arbitrator).ifPresent(e -> builder.setArbitrator((protobuf.TradingPeer) arbitrator.toProtoMessage()));
         Optional.ofNullable(takeOfferFeeTxId).ifPresent(builder::setTakeOfferFeeTxId);
+        Optional.ofNullable(reserveTxHash).ifPresent(e -> builder.setReserveTxHash(reserveTxHash));
         Optional.ofNullable(payoutTxSignature).ifPresent(e -> builder.setPayoutTxSignature(ByteString.copyFrom(payoutTxSignature)));
         Optional.ofNullable(makerPreparedDepositTxId).ifPresent(e -> builder.setMakerPreparedDepositTxId(makerPreparedDepositTxId));
         Optional.ofNullable(takerPreparedDepositTxId).ifPresent(e -> builder.setTakerPreparedDepositTxId(takerPreparedDepositTxId));
@@ -283,6 +294,8 @@ public class ProcessModel implements Model, PersistablePayload {
         processModel.setSellerPayoutAmountFromMediation(proto.getSellerPayoutAmountFromMediation());
 
         // nullable
+        processModel.setReserveTxHash(proto.getReserveTxHash());
+        processModel.setFrozenKeyImages(proto.getFrozenKeyImagesList());
         processModel.setTakeOfferFeeTxId(ProtoUtil.stringOrNullFromProto(proto.getTakeOfferFeeTxId()));
         processModel.setPayoutTxSignature(ProtoUtil.byteArrayOrNullFromProto(proto.getPayoutTxSignature()));
         List<RawTransactionInput> rawTransactionInputs = proto.getRawTransactionInputsList().isEmpty() ?

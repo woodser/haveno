@@ -24,8 +24,9 @@ import bisq.network.p2p.NodeAddress;
 import bisq.common.Timer;
 import bisq.common.UserThread;
 import bisq.common.proto.ProtoUtil;
-
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.EqualsAndHashCode;
@@ -58,6 +59,9 @@ public final class OpenOffer implements Tradable {
     @Setter
     @Nullable
     private NodeAddress arbitratorNodeAddress;
+    @Setter
+    @Getter
+    private List<String> frozenKeyImages = new ArrayList<>();
 
     // Added in v1.5.3.
     // If market price reaches that trigger price the offer gets deactivated
@@ -75,6 +79,13 @@ public final class OpenOffer implements Tradable {
         this.offer = offer;
         this.triggerPrice = triggerPrice;
         state = State.AVAILABLE;
+    }
+    
+    public OpenOffer(Offer offer, long triggerPrice, List<String> frozenKeyImages) {
+        this.offer = offer;
+        this.triggerPrice = triggerPrice;
+        state = State.AVAILABLE;
+        this.frozenKeyImages = frozenKeyImages;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +110,8 @@ public final class OpenOffer implements Tradable {
         protobuf.OpenOffer.Builder builder = protobuf.OpenOffer.newBuilder()
                 .setOffer(offer.toProtoMessage())
                 .setTriggerPrice(triggerPrice)
-                .setState(protobuf.OpenOffer.State.valueOf(state.name()));
+                .setState(protobuf.OpenOffer.State.valueOf(state.name()))
+                .addAllFrozenKeyImages(frozenKeyImages);
 
         Optional.ofNullable(arbitratorNodeAddress).ifPresent(nodeAddress -> builder.setArbitratorNodeAddress(nodeAddress.toProtoMessage()));
 
@@ -107,10 +119,12 @@ public final class OpenOffer implements Tradable {
     }
 
     public static Tradable fromProto(protobuf.OpenOffer proto) {
-        return new OpenOffer(Offer.fromProto(proto.getOffer()),
+        OpenOffer openOffer = new OpenOffer(Offer.fromProto(proto.getOffer()),
                 ProtoUtil.enumFromProto(OpenOffer.State.class, proto.getState().name()),
                 proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null,
                 proto.getTriggerPrice());
+        openOffer.setFrozenKeyImages(proto.getFrozenKeyImagesList());
+        return openOffer;
     }
 
 

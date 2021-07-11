@@ -1,5 +1,6 @@
 package bisq.core.btc.wallet;
 
+import bisq.common.UserThread;
 import bisq.core.btc.exceptions.AddressEntryException;
 import bisq.core.btc.listeners.XmrBalanceListener;
 import bisq.core.btc.model.XmrAddressEntry;
@@ -397,7 +398,11 @@ public class XmrWalletService {
       } else {
         balance = getAvailableConfirmedBalance();
       }
-      balanceListener.onBalanceChanged(BigInteger.valueOf(balance.value));
+      UserThread.execute(new Runnable() {
+          @Override public void run() {
+              balanceListener.onBalanceChanged(BigInteger.valueOf(balance.value));
+          }
+      });
     }
   }
 
@@ -416,27 +421,47 @@ public class XmrWalletService {
 
     @Override
     public void onSyncProgress(long height, long startHeight, long endHeight, double percentDone, String message) {
-        listener.onSyncProgress(height, startHeight, endHeight, percentDone, message);
+      UserThread.execute(new Runnable() {
+        @Override public void run() {
+          listener.onSyncProgress(height, startHeight, endHeight, percentDone, message);
+        }
+      });
     }
 
     @Override
     public void onNewBlock(long height) {
-        listener.onNewBlock(height);
+      UserThread.execute(new Runnable() {
+        @Override public void run() {
+          listener.onNewBlock(height);
+        }
+      });
     }
-
+    
     @Override
     public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
-        listener.onBalancesChanged(newBalance, newUnlockedBalance);
+      UserThread.execute(new Runnable() {
+        @Override public void run() {
+          listener.onBalancesChanged(newBalance, newUnlockedBalance);
+        }
+      });
     }
 
     @Override
     public void onOutputReceived(MoneroOutputWallet output) {
-        listener.onOutputReceived(output);
+      UserThread.execute(new Runnable() {
+        @Override public void run() {
+          listener.onOutputReceived(output);
+        }
+      });
     }
 
     @Override
     public void onOutputSpent(MoneroOutputWallet output) {
-        listener.onOutputSpent(output);
+        UserThread.execute(new Runnable() {
+        @Override public void run() {
+          listener.onOutputSpent(output);
+        }
+      });
     }
   }
 }

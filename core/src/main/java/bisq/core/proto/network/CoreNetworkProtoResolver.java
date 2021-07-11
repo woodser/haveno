@@ -68,6 +68,8 @@ import bisq.core.trade.messages.MediatedPayoutTxSignatureMessage;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.PeerPublishedDelayedPayoutTxMessage;
 import bisq.core.trade.messages.RefreshTradeStateRequest;
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TraderSignedWitnessMessage;
 import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.messages.UpdateMultisigResponse;
@@ -166,6 +168,10 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                   return InitTradeRequest.fromProto(proto.getInitTradeRequest(), this, messageVersion);
                 case INIT_MULTISIG_MESSAGE:
                   return InitMultisigMessage.fromProto(proto.getInitMultisigMessage(), this, messageVersion);
+                case SIGN_CONTRACT_REQUEST:
+                    return SignContractRequest.fromProto(proto.getSignContractRequest(), this, messageVersion);
+                case SIGN_CONTRACT_RESPONSE:
+                    return SignContractResponse.fromProto(proto.getSignContractResponse(), this, messageVersion);
                 case UPDATE_MULTISIG_REQUEST:
                   return UpdateMultisigRequest.fromProto(proto.getUpdateMultisigRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_RESPONSE:

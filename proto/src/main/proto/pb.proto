@@ -88,10 +88,12 @@ message NetworkEnvelope {
         MakerReadyToFundMultisigRequest maker_ready_to_fund_multisig_request = 1004;
         MakerReadyToFundMultisigResponse maker_ready_to_fund_multisig_response = 1005;
         InitMultisigMessage init_multisig_message = 1006;
-        UpdateMultisigRequest update_multisig_request = 1007;
-        UpdateMultisigResponse update_multisig_response = 1008;
-        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1009;
-        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1010; 
+        SignContractRequest sign_contract_request = 1007;
+        SignContractResponse sign_contract_response = 1008;
+        UpdateMultisigRequest update_multisig_request = 1009;
+        UpdateMultisigResponse update_multisig_response = 1010;
+        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1011;
+        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1012;
     }
 }
 
@@ -347,6 +349,24 @@ message InitMultisigMessage {
     int64 current_date = 5;
     string prepared_multisig_hex = 6;
     string made_multisig_hex = 7;
+}
+
+message SignContractRequest {
+    string trade_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string uid = 4;
+    int64 current_date = 5;
+    string deposit_tx_hash = 6;
+}
+
+message SignContractResponse {
+    string trade_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string uid = 4;
+    int64 current_date = 5;
+    string contract_signature = 6;
 }
 
 message UpdateMultisigRequest {
@@ -1531,7 +1551,8 @@ message OpenOffer {
     Offer offer = 1;
     State state = 2;
     NodeAddress arbitrator_node_address = 3;
-    int64 trigger_price = 6;
+    int64 trigger_price = 4;
+    repeated string frozen_key_images = 5;
 }
 
 message Tradable {
@@ -1711,13 +1732,15 @@ message ProcessModel {
     TradingPeer taker = 1004;
     TradingPeer arbitrator = 1005;
     NodeAddress temp_trading_peer_node_address = 1006;
-    string prepared_multisig_hex = 1007;
-    string made_multisig_hex = 1008;
-    bool multisig_setup_complete = 1009;
-    bool maker_ready_to_fund_multisig = 1010;
-    bool multisig_deposit_initiated = 1011;
-    string taker_prepared_deposit_tx_id = 1012;
-    string maker_prepared_deposit_tx_id = 1013;
+    string reserve_tx_hash = 1007;
+    repeated string frozen_key_images = 1008;
+    string prepared_multisig_hex = 1009;
+    string made_multisig_hex = 1010;
+    bool multisig_setup_complete = 1011;
+    bool maker_ready_to_fund_multisig = 1012;
+    bool multisig_deposit_initiated = 1013;
+    string taker_prepared_deposit_tx_id = 1014;
+    string maker_prepared_deposit_tx_id = 1015; // TODO (woodser): remove unused fields
 }
 
 message TradingPeer {

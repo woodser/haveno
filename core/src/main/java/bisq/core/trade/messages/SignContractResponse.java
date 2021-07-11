@@ -34,25 +34,24 @@ import javax.annotation.Nullable;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class UpdateMultisigRequest extends TradeMessage implements DirectMessage {
+public final class SignContractResponse extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     private final long currentDate;
-    @Nullable
-    private final String updatedMultisigHex;
+    private final String contractSignature;
 
-    public UpdateMultisigRequest(String tradeId,
+    public SignContractResponse(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
                                      int messageVersion,
                                      long currentDate,
-                                     String updatedMultisigHex) {
+                                     String contractSignature) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
         this.currentDate = currentDate;
-        this.updatedMultisigHex = updatedMultisigHex;
+        this.contractSignature = contractSignature;
     }
 
 
@@ -62,38 +61,38 @@ public final class UpdateMultisigRequest extends TradeMessage implements DirectM
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.UpdateMultisigRequest.Builder builder = protobuf.UpdateMultisigRequest.newBuilder()
+        protobuf.SignContractResponse.Builder builder = protobuf.SignContractResponse.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setUid(uid);
 
-        Optional.ofNullable(updatedMultisigHex).ifPresent(e -> builder.setUpdatedMultisigHex(updatedMultisigHex));
+        Optional.ofNullable(contractSignature).ifPresent(e -> builder.setContractSignature(contractSignature));
 
         builder.setCurrentDate(currentDate);
 
-        return getNetworkEnvelopeBuilder().setUpdateMultisigRequest(builder).build();
+        return getNetworkEnvelopeBuilder().setSignContractResponse(builder).build();
     }
 
-    public static UpdateMultisigRequest fromProto(protobuf.UpdateMultisigRequest proto,
+    public static SignContractResponse fromProto(protobuf.SignContractResponse proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       int messageVersion) {
-        return new UpdateMultisigRequest(proto.getTradeId(),
+        return new SignContractResponse(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
                 messageVersion,
                 proto.getCurrentDate(),
-                ProtoUtil.stringOrNullFromProto(proto.getUpdatedMultisigHex()));
+                ProtoUtil.stringOrNullFromProto(proto.getContractSignature()));
     }
 
     @Override
     public String toString() {
-        return "UpdateMultisigMessage {" +
+        return "SignContractResponse {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +
-                ",\n     updatedMultisigHex='" + updatedMultisigHex +
+                ",\n     contractSignature='" + contractSignature +
                 "\n} " + super.toString();
     }
 }

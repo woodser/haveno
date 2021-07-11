@@ -17,11 +17,13 @@
 
 package bisq.core.trade;
 
+import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.util.ParsingUtils;
 import common.utils.JsonUtils;
 import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.PubKeyRing;
@@ -36,6 +38,8 @@ import monero.daemon.model.MoneroSubmitTxResult;
 import monero.daemon.model.MoneroTx;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroCheckTx;
+import monero.wallet.model.MoneroTxConfig;
+import monero.wallet.model.MoneroTxWallet;
 
 /**
  * Collection of utilities for trading.
@@ -126,6 +130,55 @@ public class TradeUtils {
     }
     
     /**
+     * Create a transaction to reserve a trade. The deposit amount is returned
+     * to the sender's payout address. Additional funds are reserved to allow
+     * fluctuations in the mining fee.
+     * 
+     * @param xmrWalletService
+     * @param offerId
+     * @param tradeFee
+     * @param depositAmount
+     * @return a transaction to reserve a trade
+     */
+    public static MoneroTxWallet createReserveTx(XmrWalletService xmrWalletService, String offerId, BigInteger tradeFee, BigInteger depositAmount) {
+        
+        // use payout address as recipient of deposit amount
+        String payoutAddress = xmrWalletService.getOrCreateAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString();
+        
+        // get expected mining fee
+        MoneroWallet wallet = xmrWalletService.getWallet();
+        MoneroTxWallet miningFeeTx = wallet.createTx(new MoneroTxConfig()
+                .setAccountIndex(0)
+                .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
+                .addDestination(payoutAddress, depositAmount));
+        BigInteger miningFee = miningFeeTx.getFee();
+        
+        // create reserve tx
+        MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
+                .setAccountIndex(0)
+                .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
+                .addDestination(payoutAddress, depositAmount.add(miningFee.multiply(BigInteger.valueOf(3l))))); // add thrice the mining fee
+        
+        return reserveTx;
+    }
+    
+    /**
+     * Create a transaction to deposit funds to the multisig wallet.
+     * 
+     * @param xmrWalletService
+     * @param tradeFee
+     * @param destinationAddress
+     * @param depositDestination
+     * @return MoneroTxWallet
+     */
+    public static MoneroTxWallet createDepositTx(XmrWalletService xmrWalletService, BigInteger tradeFee, String depositDestination, BigInteger depositAmount) {
+        return xmrWalletService.getWallet().createTx(new MoneroTxConfig()
+                .setAccountIndex(0)
+                .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
+                .addDestination(depositDestination, depositAmount));
+    }
+    
+    /**
      * Processes a reserve tx by submitting to a daemon to check for double spends
      * and verifying the trade fee, reserved deposit amount, and mining fee.
      * 
@@ -174,6 +227,8 @@ public class TradeUtils {
         BigInteger depositThreshold = depositAmount.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
         if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough, needed " + depositThreshold + " but was " + check.getReceivedAmount());
     }
+    
+    // TODO (woodser): remove the following utitilites?
 
     // Returns <MULTI_SIG, TRADE_PAYOUT> if both are AVAILABLE, otherwise null
     static Tuple2<String, String> getAvailableAddresses(Trade trade, XmrWalletService xmrWalletService,

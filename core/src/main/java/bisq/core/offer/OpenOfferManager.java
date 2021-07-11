@@ -94,7 +94,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
-
+import monero.daemon.model.MoneroOutput;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -427,7 +427,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         PlaceOfferProtocol placeOfferProtocol = new PlaceOfferProtocol(
                 model,
                 transaction -> {
-                    OpenOffer openOffer = new OpenOffer(offer, triggerPrice);
+                    
+                    // save frozen key images with open offer
+                    List<String> frozenKeyImages = new ArrayList<String>();
+                    for (MoneroOutput output : model.getReserveTx().getInputs()) frozenKeyImages.add(output.getKeyImage().getHex());
+                    OpenOffer openOffer = new OpenOffer(offer, triggerPrice, frozenKeyImages);
                     openOffers.add(openOffer);
                     requestPersistence();
                     resultHandler.handleResult(transaction);

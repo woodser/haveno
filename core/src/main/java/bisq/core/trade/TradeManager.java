@@ -246,13 +246,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleInitTradeRequest((InitTradeRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof InitMultisigMessage) {
             handleMultisigMessage((InitMultisigMessage) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof MakerReadyToFundMultisigRequest) {
-            handleMakerReadyToFundMultisigRequest((MakerReadyToFundMultisigRequest) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof MakerReadyToFundMultisigResponse) {
-            handleMakerReadyToFundMultisigResponse((MakerReadyToFundMultisigResponse) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof DepositTxMessage) {
-            handleDepositTxMessage((DepositTxMessage) networkEnvelope, peer);
-        }  else if (networkEnvelope instanceof UpdateMultisigRequest) {
+        } else if (networkEnvelope instanceof UpdateMultisigRequest) {
             handleUpdateMultisigRequest((UpdateMultisigRequest) networkEnvelope, peer);
         }
     }
@@ -480,6 +474,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           trade.setArbitratorPubKeyRing(user.getAcceptedMediatorByAddress(sender).getPubKeyRing());
           trade.setTakerPubKeyRing(request.getPubKeyRing());
           initTradeAndProtocol(trade, getTradeProtocol(trade));
+          trade.getProcessModel().setReserveTxHash(offer.getOfferFeePaymentTxId()); // TODO (woodser): initialize in initTradeAndProtocol ?
+          trade.getProcessModel().setFrozenKeyImages(openOffer.getFrozenKeyImages());
           tradableList.add(trade);
 
           ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request,  sender, errorMessage -> {
@@ -489,44 +485,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
           requestPersistence();
       }
-    }
-
-    private void handleMakerReadyToFundMultisigRequest(MakerReadyToFundMultisigRequest request, NodeAddress peer) {
-      log.info("Received MakerReadyToFundMultisigResponse from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
-
-      try {
-          Validator.nonEmptyStringOf(request.getTradeId());
-      } catch (Throwable t) {
-          log.warn("Invalid InitTradeRequest message " + request.toString());
-          return;
-      }
-
-      Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
-      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
-      Trade trade = tradeOptional.get();
-      ((MakerProtocol) getTradeProtocol(trade)).handleMakerReadyToFundMultisigRequest(request, peer, errorMessage -> {
-            if (takeOfferRequestErrorMessageHandler != null)
-            takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
-      });
-    }
-
-    private void handleMakerReadyToFundMultisigResponse(MakerReadyToFundMultisigResponse response, NodeAddress peer) {
-      log.info("Received MakerReadyToFundMultisigResponse from {} with tradeId {} and uid {}", peer, response.getTradeId(), response.getUid());
-
-      try {
-          Validator.nonEmptyStringOf(response.getTradeId());
-      } catch (Throwable t) {
-          log.warn("Invalid InitTradeRequest message " + response.toString());
-          return;
-      }
-
-      Optional<Trade> tradeOptional = getTradeById(response.getTradeId());
-      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + response.getTradeId()); // TODO (woodser): error handling
-      Trade trade = tradeOptional.get();
-      ((TakerProtocol) getTradeProtocol(trade)).handleMakerReadyToFundMultisigResponse(response, peer, errorMessage -> {
-            if (takeOfferRequestErrorMessageHandler != null)
-            takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
-      });
     }
 
     private void handleMultisigMessage(InitMultisigMessage multisigMessage, NodeAddress peer) {
@@ -562,25 +520,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
       if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
       Trade trade = tradeOptional.get();
       getTradeProtocol(trade).handleUpdateMultisigRequest(request, peer, errorMessage -> {
-            if (takeOfferRequestErrorMessageHandler != null)
-            takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
-      });
-    }
-
-    private void handleDepositTxMessage(DepositTxMessage request, NodeAddress peer) {
-      log.info("Received DepositTxMessage from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
-
-      try {
-          Validator.nonEmptyStringOf(request.getTradeId());
-      } catch (Throwable t) {
-          log.warn("Invalid InitTradeRequest message " + request.toString());
-          return;
-      }
-
-      Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
-      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
-      Trade trade = tradeOptional.get();
-      getTradeProtocol(trade).handleDepositTxMessage(request, peer, errorMessage -> {
             if (takeOfferRequestErrorMessageHandler != null)
             takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
       });
