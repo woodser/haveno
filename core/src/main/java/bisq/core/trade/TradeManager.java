@@ -37,12 +37,11 @@ import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.trade.handlers.TradeResultHandler;
-import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigResponse;
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.protocol.ArbitratorProtocol;
 import bisq.core.trade.protocol.MakerProtocol;
@@ -51,6 +50,7 @@ import bisq.core.trade.protocol.ProcessModelServiceProvider;
 import bisq.core.trade.protocol.TakerProtocol;
 import bisq.core.trade.protocol.TradeProtocol;
 import bisq.core.trade.protocol.TradeProtocolFactory;
+import bisq.core.trade.protocol.TraderProtocol;
 import bisq.core.trade.statistics.ReferralIdService;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.User;
@@ -246,6 +246,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleInitTradeRequest((InitTradeRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof InitMultisigMessage) {
             handleMultisigMessage((InitMultisigMessage) networkEnvelope, peer);
+        } else if (networkEnvelope instanceof SignContractRequest) {
+            handleSignContractRequest((SignContractRequest) networkEnvelope, peer);
+        } else if (networkEnvelope instanceof SignContractResponse) {
+            handleSignContractResponse((SignContractResponse) networkEnvelope, peer);
         } else if (networkEnvelope instanceof UpdateMultisigRequest) {
             handleUpdateMultisigRequest((UpdateMultisigRequest) networkEnvelope, peer);
         }
@@ -479,8 +483,9 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           tradableList.add(trade);
 
           ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request,  sender, errorMessage -> {
-              if (takeOfferRequestErrorMessageHandler != null)
+              if (takeOfferRequestErrorMessageHandler != null) {
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+              }
           });
 
           requestPersistence();
@@ -501,9 +506,50 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
       if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + multisigMessage.getTradeId()); // TODO (woodser): error handling
       Trade trade = tradeOptional.get();
       getTradeProtocol(trade).handleMultisigMessage(multisigMessage, peer, errorMessage -> {
-            if (takeOfferRequestErrorMessageHandler != null)
-            takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+            if (takeOfferRequestErrorMessageHandler != null) {
+                takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+            }
       });
+    }
+    
+    private void handleSignContractRequest(SignContractRequest request, NodeAddress peer) {
+        log.info("Received SignContractRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
+
+        try {
+            Validator.nonEmptyStringOf(request.getTradeId());
+        } catch (Throwable t) {
+            log.warn("Invalid SignContractRequest message " + request.toString());
+            return;
+        }
+
+        Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
+        if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
+        Trade trade = tradeOptional.get();
+        ((TraderProtocol) getTradeProtocol(trade)).handleSignContractRequest(request, peer, errorMessage -> {
+              if (takeOfferRequestErrorMessageHandler != null) {
+                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+              }
+        });
+    }
+    
+    private void handleSignContractResponse(SignContractResponse request, NodeAddress peer) {
+        log.info("Received SignContractResponse from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
+
+        try {
+            Validator.nonEmptyStringOf(request.getTradeId());
+        } catch (Throwable t) {
+            log.warn("Invalid SignContractResponse message " + request.toString());
+            return;
+        }
+
+        Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
+        if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
+        Trade trade = tradeOptional.get();
+        ((TraderProtocol) getTradeProtocol(trade)).handleSignContractResponse(request, peer, errorMessage -> {
+              if (takeOfferRequestErrorMessageHandler != null) {
+                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+              }
+        });
     }
 
     private void handleUpdateMultisigRequest(UpdateMultisigRequest request, NodeAddress peer) {

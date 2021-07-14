@@ -19,6 +19,7 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.common.app.Version;
 import bisq.common.taskrunner.TaskRunner;
+import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.offer.Offer;
 import bisq.core.trade.MakerTrade;
 import bisq.core.trade.SellerTrade;
@@ -36,6 +37,7 @@ import monero.daemon.model.MoneroOutput;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 
+// TODO (woodser): separate classes for deposit tx creation and contract request
 @Slf4j
 public class SendSignContractRequestAfterMultisig extends TradeTask {
 
@@ -71,7 +73,6 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           BigInteger depositAmount = ParsingUtils.coinToAtomicUnits(trade instanceof SellerTrade ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
           MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId());
           String multisigAddress = multisigWallet.getPrimaryAddress();
-          System.out.println("DEPOSIT AMOUNT: " + depositAmount);
           MoneroTxWallet depositTx = TradeUtils.createDepositTx(trade.getXmrWalletService(), tradeFee, multisigAddress, depositAmount);
           
           // freeze deposit outputs
@@ -81,8 +82,10 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           
           // save process state
           processModel.setDepositTxXmr(depositTx);
+          if (trade instanceof MakerTrade) trade.setMakerDepositTxId(depositTx.getHash());
+          else if (trade instanceof TakerTrade) trade.setTakerDepositTxId(depositTx.getHash());
           
-          // create request to send deposit tx id to peer to sign contract
+          // create request for peer to sign contract
           SignContractRequest request = new SignContractRequest(
                   trade.getOffer().getId(),
                   processModel.getMyNodeAddress(),
@@ -90,10 +93,11 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
                   UUID.randomUUID().toString(),
                   Version.getP2PMessageVersion(),
                   new Date().getTime(),
-                  processModel.getDepositTxXmr().getHash());
+                  trade.getProcessModel().getPaymentAccountPayload(trade).getHash(),
+                  trade.getXmrWalletService().getAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString(),
+                  depositTx.getHash());
 
-          // send request to trading peer
-          System.out.println("Sending peer SignContractRequest...");
+          // send request to peer
           processModel.getP2PService().sendEncryptedDirectMessage(trade.getTradingPeerNodeAddress(), trade.getTradingPeerPubKeyRing(), request, new SendDirectMessageListener() {
               @Override
               public void onArrived() {

@@ -52,7 +52,6 @@ import bisq.core.util.VolumeUtil;
 import bisq.core.util.coin.CoinUtil;
 
 import bisq.network.p2p.P2PService;
-import bisq.common.UserThread;
 import bisq.common.util.Tuple2;
 
 import org.bitcoinj.core.Coin;

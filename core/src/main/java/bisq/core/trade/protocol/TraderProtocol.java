@@ -18,12 +18,13 @@
 package bisq.core.trade.protocol;
 
 
-import bisq.core.trade.messages.InitTradeRequest;
-
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.network.p2p.NodeAddress;
 
 import bisq.common.handlers.ErrorMessageHandler;
 
-public interface MakerProtocol extends TraderProtocol {
-    void handleInitTradeRequest(InitTradeRequest message, NodeAddress taker, ErrorMessageHandler errorMessageHandler);
+public interface TraderProtocol {
+    public void handleSignContractRequest(SignContractRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
 }

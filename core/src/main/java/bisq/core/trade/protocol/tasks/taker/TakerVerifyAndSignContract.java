@@ -41,6 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 import static bisq.core.util.Validator.nonEmptyStringOf;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+// TODO (woodser): remove this whole class
 @Slf4j
 public class TakerVerifyAndSignContract extends TradeTask {
     public TakerVerifyAndSignContract(TaskRunner<Trade> taskHandler, Trade trade) {
@@ -95,25 +96,7 @@ public class TakerVerifyAndSignContract extends TradeTask {
 //                    "takerMultiSigPubKey from AddressEntry must match the one from the trade data. trade id =" + id);
 
             Coin tradeAmount = checkNotNull(trade.getTradeAmount());
-            Contract contract = new Contract(
-                    processModel.getOffer().getOfferPayload(),
-                    tradeAmount.value,
-                    trade.getTradePrice().getValue(),
-                    //takerFeeTxId,
-                    buyerNodeAddress,
-                    sellerNodeAddress,
-                    trade.getArbitratorNodeAddress(), // TODO (woodser): updated from mediator, update and use rest of TakerVerifyAndSignContract
-                    isBuyerMakerAndSellerTaker,
-                    maker.getAccountId(),
-                    processModel.getAccountId(),
-                    makerPaymentAccountPayload,
-                    takerPaymentAccountPayload,
-                    maker.getPubKeyRing(),
-                    processModel.getPubKeyRing(),
-                    maker.getPayoutAddressString(),
-                    takerPayoutAddressString,
-                    0
-            );
+            Contract contract = null;
             String contractAsJson = Utilities.objectToJson(contract);
 
             if (!contractAsJson.equals(processModel.getTradingPeer().getContractAsJson())) {

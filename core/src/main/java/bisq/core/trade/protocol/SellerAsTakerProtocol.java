@@ -24,9 +24,12 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
+import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
@@ -186,5 +189,34 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                       takeOfferListener.handleResult();
                   })))
           .executeTasks();
+    }
+    
+    @Override
+    public void handleSignContractRequest(SignContractRequest message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("BuyerAsMakerProtocol.handleSignContractRequest()");
+        Validator.checkTradeId(processModel.getOfferId(), message);
+        processModel.setTradeMessage(message);
+        expect(anyPhase(Trade.Phase.INIT)
+            .with(message)
+            .from(sender))
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessSignContractRequest.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, message);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, message, errorMessage);
+                    })))
+            .executeTasks();
+    }
+    
+    @Override
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
+        String errMsg = "SellerAsTakerProtocol.handleSignContractResponse() not yet implemented";
+        errorMessageHandler.handleErrorMessage(errMsg);
+        handleTaskRunnerFault(peer, message, errMsg);
     }
 }

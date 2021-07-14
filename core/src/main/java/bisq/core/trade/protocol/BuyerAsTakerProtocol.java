@@ -26,6 +26,8 @@ import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.TradeTask;
@@ -188,6 +190,16 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
     
     @Override
     public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from SellerAsTakerProtocol");
+    }
+    
+    @Override
+    public void handleSignContractRequest(SignContractRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from SellerAsTakerProtocol");
+    }
+
+    @Override
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
         throw new RuntimeException("Implementation needs copied from SellerAsTakerProtocol");
     }
 }

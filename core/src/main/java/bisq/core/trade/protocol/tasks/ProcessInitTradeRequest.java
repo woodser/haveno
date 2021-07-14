@@ -102,6 +102,7 @@ public class ProcessInitTradeRequest extends TradeTask {
             else if (multisigParticipant.getPaymentAccountId() != request.getPaymentAccountId()) throw new RuntimeException("Payment account id is different from previous");
             multisigParticipant.setPubKeyRing(checkNotNull(request.getPubKeyRing()));
             multisigParticipant.setAccountId(nonEmptyStringOf(request.getAccountId()));
+            multisigParticipant.setPaymentMethodId(nonEmptyStringOf(request.getPaymentMethodId()));
             multisigParticipant.setAccountAgeWitnessNonce(trade.getId().getBytes(Charsets.UTF_8));
             multisigParticipant.setAccountAgeWitnessSignature(request.getAccountAgeWitnessSignatureOfOfferId());
             multisigParticipant.setCurrentDate(request.getCurrentDate());

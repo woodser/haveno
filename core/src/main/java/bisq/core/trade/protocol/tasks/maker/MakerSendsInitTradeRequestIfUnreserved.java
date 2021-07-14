@@ -101,6 +101,7 @@ public class MakerSendsInitTradeRequestIfUnreserved extends TradeTask {
                     trade.getTakerFee().getValue(),
                     processModel.getAccountId(),
                     paymentAccountPayload.getId(),
+                    paymentAccountPayload.getPaymentMethodId(),
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     sig,

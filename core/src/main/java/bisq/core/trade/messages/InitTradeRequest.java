@@ -44,6 +44,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
     private final long tradeFee;
     private final String accountId;
     private final String paymentAccountId;
+    private final String paymentMethodId;
     private final PubKeyRing pubKeyRing;
 
     // added in v 0.6. can be null if we trade with an older peer
@@ -75,6 +76,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                                      long tradeFee,
                                      String accountId,
                                      String paymentAccountId,
+                                     String paymentMethodId,
                                      String uid,
                                      int messageVersion,
                                      @Nullable byte[] accountAgeWitnessSignatureOfOfferId,
@@ -95,6 +97,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
         this.tradeFee = tradeFee;
         this.accountId = accountId;
         this.paymentAccountId = paymentAccountId;
+        this.paymentMethodId = paymentMethodId;
         this.accountAgeWitnessSignatureOfOfferId = accountAgeWitnessSignatureOfOfferId;
         this.currentDate = currentDate;
         this.makerNodeAddress = makerNodeAddress;
@@ -124,6 +127,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 .setTradeFee(tradeFee)
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setPaymentAccountId(paymentAccountId)
+                .setPaymentMethodId(paymentMethodId)
                 .setAccountId(accountId)
                 .setUid(uid);
 
@@ -150,6 +154,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 proto.getTradeFee(),
                 proto.getAccountId(),
                 proto.getPaymentAccountId(),
+                proto.getPaymentMethodId(),
                 proto.getUid(),
                 messageVersion,
                 ProtoUtil.byteArrayOrNullFromProto(proto.getAccountAgeWitnessSignatureOfOfferId()),
@@ -174,6 +179,7 @@ public final class InitTradeRequest extends TradeMessage implements DirectMessag
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     accountId='" + accountId + '\'' +
                 ",\n     paymentAccountId=" + paymentAccountId +
+                ",\n     paymentMethodId=" + paymentMethodId +
                 ",\n     arbitratorNodeAddress=" + arbitratorNodeAddress +
                 ",\n     accountAgeWitnessSignatureOfOfferId=" + Utilities.bytesAsHexString(accountAgeWitnessSignatureOfOfferId) +
                 ",\n     currentDate=" + currentDate +

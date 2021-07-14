@@ -53,6 +53,7 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
             MoneroTxWallet reserveTx = TradeUtils.createReserveTx(model.getXmrWalletService(), offer.getId(), makerFee, depositAmount);
             
             // freeze reserved outputs
+            // TODO (woodser): synchronize to handle potential race condition where concurrent trades freeze each other's outputs
             List<String> frozenKeyImages = new ArrayList<String>();
             MoneroWallet wallet = model.getXmrWalletService().getWallet();
             for (MoneroOutput input : reserveTx.getInputs()) {

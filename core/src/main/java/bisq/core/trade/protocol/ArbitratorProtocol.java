@@ -2,7 +2,6 @@ package bisq.core.trade.protocol;
 
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.protocol.tasks.ApplyFilter;

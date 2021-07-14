@@ -21,10 +21,13 @@ import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
+import bisq.core.offer.OfferPayload.Direction;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.util.ParsingUtils;
 import common.utils.JsonUtils;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.crypto.Sig;
@@ -102,6 +105,7 @@ public class TradeUtils {
                 request.getTradeFee(),
                 request.getAccountId(),
                 request.getPaymentAccountId(),
+                request.getPaymentMethodId(),
                 request.getUid(),
                 request.getMessageVersion(),
                 request.getAccountAgeWitnessSignatureOfOfferId(),
@@ -226,6 +230,42 @@ public class TradeUtils {
         if (!check.isGood()) throw new RuntimeException("Invalid proof of deposit amount");
         BigInteger depositThreshold = depositAmount.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
         if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough, needed " + depositThreshold + " but was " + check.getReceivedAmount());
+    }
+    
+    /**
+     * Create a contract from a trade.
+     * 
+     * TODO (woodser): handle arbitrator trade
+     * TODO (woodser): refactor/reduce trade, process model, and trading peer models
+     * 
+     * @param trade is the trade to create the contract from
+     * @return the contract
+     */
+    public static Contract createContract(Trade trade) {
+        boolean isBuyerMakerAndSellerTaker = trade.getOffer().getDirection() == Direction.BUY;
+        Contract contract = new Contract(
+                trade.getOffer().getOfferPayload(),
+                checkNotNull(trade.getTradeAmount()).value,
+                trade.getTradePrice().getValue(),
+                isBuyerMakerAndSellerTaker ? trade.getMakerNodeAddress() : trade.getTakerNodeAddress(), // buyer node address // TODO (woodser): use maker and taker node address instead of buyer and seller node address for consistency
+                isBuyerMakerAndSellerTaker ? trade.getTakerNodeAddress() : trade.getMakerNodeAddress(), // seller node address
+                trade.getArbitratorNodeAddress(),
+                isBuyerMakerAndSellerTaker,
+                trade instanceof MakerTrade ? trade.getProcessModel().getAccountId() : trade.getProcessModel().getMaker().getAccountId(), // maker account id
+                trade instanceof TakerTrade ? trade.getProcessModel().getAccountId() : trade.getProcessModel().getTaker().getAccountId(), // taker account id
+                checkNotNull(trade instanceof MakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getPaymentMethodId() : trade.getOffer().getOfferPayload().getPaymentMethodId()), // maker payment method id
+                checkNotNull(trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getPaymentMethodId() : trade.getProcessModel().getTaker().getPaymentMethodId()), // taker payment method id
+                trade instanceof MakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getProcessModel().getMaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
+                trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getProcessModel().getTaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
+                trade.getMakerPubKeyRing(),
+                trade.getTakerPubKeyRing(),
+                trade instanceof MakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getMaker().getPayoutAddressString(), // maker payout address
+                trade instanceof TakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getTaker().getPayoutAddressString(), // taker payout address
+                trade.getLockTime(),
+                trade.getMakerDepositTxId(),
+                trade.getTakerDepositTxId()
+        );
+        return contract;
     }
     
     // TODO (woodser): remove the following utitilites?

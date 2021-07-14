@@ -309,17 +309,18 @@ message InitTradeRequest {
     int64 trade_fee = 6;
     string account_id = 7;
     string payment_account_id = 8;
-    string uid = 9;
-    bytes account_age_witness_signature_of_offer_id = 10;
-    int64 current_date = 11;
-    NodeAddress maker_node_address = 12;
-    NodeAddress taker_node_address = 13;
-    NodeAddress arbitrator_node_address = 14;
-    string reserve_tx_hash = 15;
-    string reserve_tx_hex = 16;
-    string reserve_tx_key = 17;
-    string payout_address = 18;
-    string maker_signature = 19;
+    string payment_method_id = 9;
+    string uid = 10;
+    bytes account_age_witness_signature_of_offer_id = 11;
+    int64 current_date = 12;
+    NodeAddress maker_node_address = 13;
+    NodeAddress taker_node_address = 14;
+    NodeAddress arbitrator_node_address = 15;
+    string reserve_tx_hash = 16;
+    string reserve_tx_hex = 17;
+    string reserve_tx_key = 18;
+    string payout_address = 19;
+    string maker_signature = 20;
 }
 
 message MakerReadyToFundMultisigRequest {
@@ -357,7 +358,9 @@ message SignContractRequest {
     PubKeyRing pub_key_ring = 3;
     string uid = 4;
     int64 current_date = 5;
-    string deposit_tx_hash = 6;
+    bytes payment_account_payload_hash = 6;
+    string payout_address = 7;
+    string deposit_tx_hash = 8;
 }
 
 message SignContractResponse {
@@ -1055,16 +1058,20 @@ message Contract {
     bool is_buyer_maker_and_seller_taker = 6;
     string maker_account_id = 7;
     string taker_account_id = 8;
-    PaymentAccountPayload maker_payment_account_payload = 9;
-    PaymentAccountPayload taker_payment_account_payload = 10;
-    PubKeyRing maker_pub_key_ring = 11;
-    PubKeyRing taker_pub_key_ring = 12;
-    NodeAddress buyer_node_address = 13;
-    NodeAddress seller_node_address = 14;
-    string maker_payout_address_string = 15;
-    string taker_payout_address_string = 16;
-    NodeAddress arbitrator_node_address = 17;
-    int64 lock_time = 18;
+    string maker_payment_method_id = 9;
+    string taker_payment_method_id = 10;
+    bytes maker_payment_account_payload_hash = 11;
+    bytes taker_payment_account_payload_hash = 12;
+    PubKeyRing maker_pub_key_ring = 13;
+    PubKeyRing taker_pub_key_ring = 14;
+    NodeAddress buyer_node_address = 15;
+    NodeAddress seller_node_address = 16;
+    string maker_payout_address_string = 17;
+    string taker_payout_address_string = 18;
+    NodeAddress arbitrator_node_address = 19;
+    int64 lock_time = 20;
+    string maker_deposit_tx_hash = 21;
+    string taker_deposit_tx_hash = 22;
 }
 
 message RawTransactionInput {
@@ -1746,20 +1753,22 @@ message ProcessModel {
 message TradingPeer {
     string account_id = 1;
     string payment_account_id = 2;
-    PaymentAccountPayload payment_account_payload = 3;
-    string payout_address_string = 4;
-    string contract_as_json = 5;
-    string contract_signature = 6;
-    bytes signature = 7;	// TODO (woodser): remove unused fields? this was buyer-signed payout tx as bytes
-    PubKeyRing pub_key_ring = 8;
-    bytes multi_sig_pub_key = 9;
-    repeated RawTransactionInput raw_transaction_inputs = 10;
-    int64 change_output_value = 11;
-    string change_output_address = 12;
-    bytes account_age_witness_nonce = 13;
-    bytes account_age_witness_signature = 14;
-    int64 current_date = 15;
-    bytes mediated_payout_tx_signature = 16;
+    string payment_method_id = 3;
+    bytes payment_account_payload_hash = 4;
+    PaymentAccountPayload payment_account_payload = 5;
+    string payout_address_string = 6;
+    string contract_as_json = 7;
+    string contract_signature = 8;
+    bytes signature = 9;	// TODO (woodser): remove unused fields? this was buyer-signed payout tx as bytes
+    PubKeyRing pub_key_ring = 10;
+    bytes multi_sig_pub_key = 11;
+    repeated RawTransactionInput raw_transaction_inputs = 12;
+    int64 change_output_value = 13;
+    string change_output_address = 14;
+    bytes account_age_witness_nonce = 15;
+    bytes account_age_witness_signature = 16;
+    int64 current_date = 17;
+    bytes mediated_payout_tx_signature = 18;
     
     string reserve_tx_hash = 1001;
     string reserve_tx_hex = 1002;

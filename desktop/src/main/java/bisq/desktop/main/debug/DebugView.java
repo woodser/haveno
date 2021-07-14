@@ -44,7 +44,6 @@ import bisq.core.trade.protocol.tasks.buyer_as_maker.BuyerAsMakerSendsInputsForD
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerCreatesDepositTxInputs;
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSendsDepositTxMessage;
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSignsDepositTx;
-import bisq.core.trade.protocol.tasks.maker.MakerCreateAndSignContract;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
 import bisq.core.trade.protocol.tasks.maker.MakerSetsLockTime;
 import bisq.core.trade.protocol.tasks.maker.MakerSetupDepositTxsListener;
@@ -69,7 +68,6 @@ import bisq.core.trade.protocol.tasks.taker.TakerProcessesInputsForDepositTxResp
 import bisq.core.trade.protocol.tasks.taker.TakerProcessesMakerDepositTxMessage;
 import bisq.core.trade.protocol.tasks.taker.TakerPublishFeeTx;
 import bisq.core.trade.protocol.tasks.taker.TakerSetupDepositTxsListener;
-import bisq.core.trade.protocol.tasks.taker.TakerVerifyAndSignContract;
 import bisq.core.trade.protocol.tasks.taker.TakerVerifyMakerFeePayment;
 
 import bisq.common.taskrunner.Task;
@@ -131,7 +129,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         TakerProcessesInputsForDepositTxResponse.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        TakerVerifyAndSignContract.class,
                         TakerPublishFeeTx.class,
                         SellerAsTakerSignsDepositTx.class,
                         SellerCreatesDelayedPayoutTx.class,
@@ -163,7 +160,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         VerifyPeersAccountAgeWitness.class,
                         MakerVerifyTakerFeePayment.class,
                         MakerSetsLockTime.class,
-                        MakerCreateAndSignContract.class,
                         BuyerAsMakerCreatesAndSignsDepositTx.class,
                         MakerSetupDepositTxsListener.class,
                         BuyerAsMakerSendsInputsForDepositTxResponse.class,
@@ -198,7 +194,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         TakerProcessesInputsForDepositTxResponse.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        TakerVerifyAndSignContract.class,
                         TakerPublishFeeTx.class,
                         BuyerAsTakerSignsDepositTx.class,
                         TakerSetupDepositTxsListener.class,
@@ -226,7 +221,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         VerifyPeersAccountAgeWitness.class,
                         MakerVerifyTakerFeePayment.class,
                         MakerSetsLockTime.class,
-                        MakerCreateAndSignContract.class,
                         SellerAsMakerCreatesUnsignedDepositTx.class,
                         SellerAsMakerSendsInputsForDepositTxResponse.class,
                         SetupDepositTxsListener.class,

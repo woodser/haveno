@@ -17,8 +17,6 @@
 
 package bisq.core.trade.protocol.tasks.taker;
 
-import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.InitTradeRequest;
@@ -27,17 +25,9 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.network.p2p.SendDirectMessageListener;
 
 import bisq.common.app.Version;
-import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 
-import com.google.common.base.Charsets;
-
-import java.util.Date;
-import java.util.UUID;
-
 import lombok.extern.slf4j.Slf4j;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 @Slf4j
 public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
@@ -72,6 +62,7 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
                     makerRequest.getTradeFee(),
                     makerRequest.getAccountId(),
                     makerRequest.getPaymentAccountId(),
+                    makerRequest.getPaymentMethodId(),
                     makerRequest.getUid(),
                     Version.getP2PMessageVersion(),
                     makerRequest.getAccountAgeWitnessSignatureOfOfferId(),

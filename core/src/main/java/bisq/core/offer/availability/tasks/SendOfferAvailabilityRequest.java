@@ -55,6 +55,7 @@ public class SendOfferAvailabilityRequest extends Task<OfferAvailabilityModel> {
             XmrWalletService walletService = model.getXmrWalletService();
             OfferUtil offerUtil = model.getOfferUtil();
             String paymentAccountId = model.getPaymentAccountId();
+            String paymentMethodId = user.getPaymentAccount(paymentAccountId).getPaymentAccountPayload().getPaymentMethodId();
             String payoutAddress = walletService.getOrCreateAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString(); // reserve new payout address
             
             // taker signs offer using offer id as nonce to avoid challenge protocol
@@ -70,6 +71,7 @@ public class SendOfferAvailabilityRequest extends Task<OfferAvailabilityModel> {
                     offerUtil.getTakerFee(true, offer.getAmount()).value,
                     user.getAccountId(),
                     paymentAccountId,
+                    paymentMethodId,
                     UUID.randomUUID().toString(),
                     Version.getP2PMessageVersion(),
                     sig,

@@ -24,6 +24,8 @@ import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.trade.messages.SignContractRequest;
+import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
@@ -148,6 +150,16 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
                             }))
                     .withTimeout(30))
             .executeTasks();
+    }
+    
+    @Override
+    public void handleSignContractRequest(SignContractRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+    }
+
+    @Override
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
     }
     
     @Override

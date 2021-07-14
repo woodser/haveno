@@ -60,6 +60,10 @@ public final class TradingPeer implements PersistablePayload {
     @Nullable
     private String paymentAccountId;
     @Nullable
+    private String paymentMethodId;
+    @Nullable
+    private byte[] paymentAccountPayloadHash;
+    @Nullable
     private PaymentAccountPayload paymentAccountPayload;
     @Nullable
     private String payoutAddressString;
@@ -113,6 +117,8 @@ public final class TradingPeer implements PersistablePayload {
                 .setChangeOutputValue(changeOutputValue);
         Optional.ofNullable(accountId).ifPresent(builder::setAccountId);
         Optional.ofNullable(paymentAccountId).ifPresent(builder::setPaymentAccountId);
+        Optional.ofNullable(paymentMethodId).ifPresent(builder::setPaymentMethodId);
+        Optional.ofNullable(paymentAccountPayloadHash).ifPresent(e -> builder.setPaymentAccountPayloadHash(ByteString.copyFrom(paymentAccountPayloadHash)));
         Optional.ofNullable(paymentAccountPayload).ifPresent(e -> builder.setPaymentAccountPayload((protobuf.PaymentAccountPayload) e.toProtoMessage()));
         Optional.ofNullable(payoutAddressString).ifPresent(builder::setPayoutAddressString);
         Optional.ofNullable(contractAsJson).ifPresent(builder::setContractAsJson);
@@ -145,6 +151,8 @@ public final class TradingPeer implements PersistablePayload {
             tradingPeer.setChangeOutputValue(proto.getChangeOutputValue());
             tradingPeer.setAccountId(ProtoUtil.stringOrNullFromProto(proto.getAccountId()));
             tradingPeer.setPaymentAccountId(ProtoUtil.stringOrNullFromProto(proto.getPaymentAccountId()));
+            tradingPeer.setPaymentMethodId(ProtoUtil.stringOrNullFromProto(proto.getPaymentMethodId()));
+            tradingPeer.setPaymentAccountPayloadHash(proto.getPaymentAccountPayloadHash().toByteArray());
             tradingPeer.setPaymentAccountPayload(proto.hasPaymentAccountPayload() ? coreProtoResolver.fromProto(proto.getPaymentAccountPayload()) : null);
             tradingPeer.setPayoutAddressString(ProtoUtil.stringOrNullFromProto(proto.getPayoutAddressString()));
             tradingPeer.setContractAsJson(ProtoUtil.stringOrNullFromProto(proto.getContractAsJson()));
