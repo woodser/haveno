@@ -358,9 +358,10 @@ message SignContractRequest {
     PubKeyRing pub_key_ring = 3;
     string uid = 4;
     int64 current_date = 5;
-    bytes payment_account_payload_hash = 6;
-    string payout_address = 7;
-    string deposit_tx_hash = 8;
+    string account_id = 6;
+    bytes payment_account_payload_hash = 7;
+    string payout_address = 8;;
+    string deposit_tx_hash = 9;
 }
 
 message SignContractResponse {

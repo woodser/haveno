@@ -93,6 +93,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
                   UUID.randomUUID().toString(),
                   Version.getP2PMessageVersion(),
                   new Date().getTime(),
+                  trade.getProcessModel().getAccountId(),
                   trade.getProcessModel().getPaymentAccountPayload(trade).getHash(),
                   trade.getXmrWalletService().getAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString(),
                   depositTx.getHash());

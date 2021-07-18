@@ -476,7 +476,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           //trade.setTradingPeerNodeAddress(sender);
           // TODO (woodser): what if maker's address changes while offer open, or taker's address changes after multisig deposit available? need to verify and update
           trade.setArbitratorPubKeyRing(user.getAcceptedMediatorByAddress(sender).getPubKeyRing());
-          trade.setTakerPubKeyRing(request.getPubKeyRing());
+          trade.setMakerPubKeyRing(trade.getOffer().getPubKeyRing());
           initTradeAndProtocol(trade, getTradeProtocol(trade));
           trade.getProcessModel().setReserveTxHash(offer.getOfferFeePaymentTxId()); // TODO (woodser): initialize in initTradeAndProtocol ?
           trade.getProcessModel().setFrozenKeyImages(openOffer.getFrozenKeyImages());
@@ -632,6 +632,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         trade.getProcessModel().setArbitratorNodeAddress(model.getArbitratorNodeAddress());
                         trade.getProcessModel().setUseSavingsWallet(useSavingsWallet);
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
+                        trade.setTakerPubKeyRing(model.getPubKeyRing());
                         trade.setTakerPaymentAccountId(paymentAccountId);
 
                         TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);

@@ -33,6 +33,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     private final long currentDate;
+    private final String accountId;
     private final byte[] paymentAccountPayloadHash;
     private final String payoutAddress;
     private final String depositTxHash;
@@ -43,6 +44,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
                                      String uid,
                                      int messageVersion,
                                      long currentDate,
+                                     String accountId,
                                      byte[] paymentAccountPayloadHash,
                                      String payoutAddress,
                                      String depositTxHash) {
@@ -50,6 +52,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
         this.currentDate = currentDate;
+        this.accountId = accountId;
         this.paymentAccountPayloadHash = paymentAccountPayloadHash;
         this.payoutAddress = payoutAddress;
         this.depositTxHash = depositTxHash;
@@ -67,6 +70,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setUid(uid)
+                .setAccountId(accountId)
                 .setPaymentAccountPayloadHash(ByteString.copyFrom(paymentAccountPayloadHash))
                 .setPayoutAddress(payoutAddress)
                 .setDepositTxHash(depositTxHash);
@@ -85,6 +89,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
                 proto.getUid(),
                 messageVersion,
                 proto.getCurrentDate(),
+                proto.getAccountId(),
                 proto.getPaymentAccountPayloadHash().toByteArray(),
                 proto.getPayoutAddress(),
                 proto.getDepositTxHash());
@@ -96,6 +101,7 @@ public final class SignContractRequest extends TradeMessage implements DirectMes
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +
+                ",\n     accountId=" + accountId +
                 ",\n     paymentAccountPayloadHash='" + paymentAccountPayloadHash +
                 ",\n     payoutAddress='" + payoutAddress +
                 ",\n     depositTxHash='" + depositTxHash +

@@ -57,6 +57,7 @@ public class ProcessSignContractRequest extends TradeTask {
               trade.setMakerDepositTxId(request.getDepositTxHash());
               peer = processModel.getMaker();
           }
+          peer.setAccountId(request.getAccountId());
           peer.setPaymentAccountPayloadHash(request.getPaymentAccountPayloadHash());
           peer.setPayoutAddressString(request.getPayoutAddress());
           
