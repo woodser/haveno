@@ -55,14 +55,13 @@ import bisq.core.support.messages.ChatMessage;
 import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureResponse;
+import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
-import bisq.core.trade.messages.MakerReadyToFundMultisigRequest;
-import bisq.core.trade.messages.MakerReadyToFundMultisigResponse;
 import bisq.core.trade.messages.MediatedPayoutTxPublishedMessage;
 import bisq.core.trade.messages.MediatedPayoutTxSignatureMessage;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
@@ -172,14 +171,12 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return SignContractRequest.fromProto(proto.getSignContractRequest(), this, messageVersion);
                 case SIGN_CONTRACT_RESPONSE:
                     return SignContractResponse.fromProto(proto.getSignContractResponse(), this, messageVersion);
+                case DEPOSIT_REQUEST:
+                    return DepositRequest.fromProto(proto.getDepositRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_REQUEST:
                   return UpdateMultisigRequest.fromProto(proto.getUpdateMultisigRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_RESPONSE:
                   return UpdateMultisigResponse.fromProto(proto.getUpdateMultisigResponse(), this, messageVersion);
-                case MAKER_READY_TO_FUND_MULTISIG_REQUEST:
-                  return MakerReadyToFundMultisigRequest.fromProto(proto.getMakerReadyToFundMultisigRequest(), this, messageVersion);
-                case MAKER_READY_TO_FUND_MULTISIG_RESPONSE:
-                  return MakerReadyToFundMultisigResponse.fromProto(proto.getMakerReadyToFundMultisigResponse(), this, messageVersion);
                 case INPUTS_FOR_DEPOSIT_TX_REQUEST:
                     return InputsForDepositTxRequest.fromProto(proto.getInputsForDepositTxRequest(), this, messageVersion);
                 case INPUTS_FOR_DEPOSIT_TX_RESPONSE:

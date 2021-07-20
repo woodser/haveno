@@ -18,13 +18,18 @@
 package bisq.core.trade.protocol.tasks;
 
 
+import bisq.common.app.Version;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.TradingPeer;
+import bisq.network.p2p.SendDirectMessageListener;
 import common.utils.GenUtils;
+import java.util.Date;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -77,7 +82,33 @@ public class ProcessSignContractResponse extends TradeTask {
           
           // send deposit request when all contract signatures received
           if (processModel.getArbitrator().getContractSignature() != null && processModel.getMaker().getContractSignature() != null && processModel.getTaker().getContractSignature() != null) {
-              log.error("Ready to send deposit request");
+              
+              // create request for arbitrator to deposit funds to multisig
+              DepositRequest request = new DepositRequest(
+                      trade.getOffer().getId(),
+                      processModel.getMyNodeAddress(),
+                      processModel.getPubKeyRing(),
+                      UUID.randomUUID().toString(),
+                      Version.getP2PMessageVersion(),
+                      new Date().getTime(),
+                      processModel.getSelf().getContractSignature(),
+                      processModel.getDepositTxXmr().getHash(),
+                      processModel.getDepositTxXmr().getFullHex(),
+                      processModel.getDepositTxXmr().getKey());
+              
+              // send request to arbitrator
+              processModel.getP2PService().sendEncryptedDirectMessage(trade.getArbitratorNodeAddress(), trade.getArbitratorPubKeyRing(), request, new SendDirectMessageListener() {
+                  @Override
+                  public void onArrived() {
+                      log.info("{} arrived: trading peer={}; offerId={}; uid={}", request.getClass().getSimpleName(), trade.getArbitratorNodeAddress(), trade.getId());
+                  }
+                  @Override
+                  public void onFault(String errorMessage) {
+                      log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), trade.getArbitratorNodeAddress(), trade.getId(), errorMessage);
+                      appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
+                      failed();
+                  }
+              });
           }
           
           // save trade state

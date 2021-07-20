@@ -37,6 +37,7 @@ import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.trade.handlers.TradeResultHandler;
+import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
@@ -250,6 +251,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleSignContractRequest((SignContractRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof SignContractResponse) {
             handleSignContractResponse((SignContractResponse) networkEnvelope, peer);
+        } else if (networkEnvelope instanceof DepositRequest) {
+            handleDepositRequest((DepositRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof UpdateMultisigRequest) {
             handleUpdateMultisigRequest((UpdateMultisigRequest) networkEnvelope, peer);
         }
@@ -546,6 +549,26 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
         Trade trade = tradeOptional.get();
         ((TraderProtocol) getTradeProtocol(trade)).handleSignContractResponse(request, peer, errorMessage -> {
+              if (takeOfferRequestErrorMessageHandler != null) {
+                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+              }
+        });
+    }
+    
+    private void handleDepositRequest(DepositRequest request, NodeAddress peer) {
+        log.info("Received DepositRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
+
+        try {
+            Validator.nonEmptyStringOf(request.getTradeId());
+        } catch (Throwable t) {
+            log.warn("Invalid DepositRequest message " + request.toString());
+            return;
+        }
+
+        Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
+        if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
+        Trade trade = tradeOptional.get();
+        ((ArbitratorProtocol) getTradeProtocol(trade)).handleDepositRequest(request, peer, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null) {
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
               }

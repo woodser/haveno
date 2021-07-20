@@ -44,7 +44,6 @@ import bisq.core.trade.protocol.tasks.taker.TakerProcessesInputsForDepositTxResp
 import bisq.core.trade.protocol.tasks.taker.TakerPublishFeeTx;
 import bisq.core.trade.protocol.tasks.taker.TakerReservesTradeFunds;
 import bisq.core.trade.protocol.tasks.taker.TakerSendsInitTradeRequestToArbitrator;
-import bisq.core.trade.protocol.tasks.taker.TakerVerifyAndSignContract;
 import bisq.core.trade.protocol.tasks.taker.TakerVerifyMakerFeePayment;
 
 import bisq.network.p2p.NodeAddress;
@@ -106,7 +105,7 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                 .setup(tasks(TakerProcessesInputsForDepositTxResponse.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        TakerVerifyAndSignContract.class,
+                        //TakerVerifyAndSignContract.class,
                         TakerPublishFeeTx.class,
                         BuyerAsTakerSignsDepositTx.class,
                         BuyerSetupDepositTxListener.class,

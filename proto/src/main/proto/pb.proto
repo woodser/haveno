@@ -85,11 +85,11 @@ message NetworkEnvelope {
         SignOfferRequest sign_offer_request = 1001;
         SignOfferResponse sign_offer_response = 1002;
         InitTradeRequest init_trade_request = 1003;
-        MakerReadyToFundMultisigRequest maker_ready_to_fund_multisig_request = 1004;
-        MakerReadyToFundMultisigResponse maker_ready_to_fund_multisig_response = 1005;
-        InitMultisigMessage init_multisig_message = 1006;
-        SignContractRequest sign_contract_request = 1007;
-        SignContractResponse sign_contract_response = 1008;
+        InitMultisigMessage init_multisig_message = 1004;
+        SignContractRequest sign_contract_request = 1005;
+        SignContractResponse sign_contract_response = 1006;
+        DepositRequest deposit_request = 1007;
+        DepositResponse deposit_response = 1008;
         UpdateMultisigRequest update_multisig_request = 1009;
         UpdateMultisigResponse update_multisig_response = 1010;
         ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1011;
@@ -323,25 +323,6 @@ message InitTradeRequest {
     string maker_signature = 20;
 }
 
-message MakerReadyToFundMultisigRequest {
-    string trade_id = 1;
-    NodeAddress sender_node_address = 2;
-    PubKeyRing pub_key_ring = 3;
-    string uid = 4;
-}
-
-message MakerReadyToFundMultisigResponse {
-	string trade_id = 1;
-	string uid = 2;
-	bool is_maker_ready_to_fund_multisig = 3;
-	string maker_contract_as_json = 4;
-    string maker_contract_signature = 5;
-    string maker_payout_address_string = 6;
-    PaymentAccountPayload maker_payment_account_payload = 7;
-    string maker_account_id = 8;
-    int64 current_date = 9;
-}
-
 message InitMultisigMessage {
     string trade_id = 1;
     NodeAddress sender_node_address = 2;
@@ -371,6 +352,26 @@ message SignContractResponse {
     string uid = 4;
     int64 current_date = 5;
     string contract_signature = 6;
+}
+
+message DepositRequest {
+    string trade_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string uid = 4;
+    int64 current_date = 5;
+    string contract_signature = 6;
+    string deposit_tx_hash = 7;
+    string deposit_tx_hex = 8;
+    string deposit_tx_key = 9;
+}
+
+message DepositResponse {
+    string trade_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string uid = 4;
+    int64 current_date = 5;
 }
 
 message UpdateMultisigRequest {

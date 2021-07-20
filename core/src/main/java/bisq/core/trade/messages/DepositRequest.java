@@ -21,7 +21,7 @@ import bisq.core.proto.CoreProtoResolver;
 
 import bisq.network.p2p.DirectMessage;
 import bisq.network.p2p.NodeAddress;
-
+import com.google.protobuf.ByteString;
 import bisq.common.crypto.PubKeyRing;
 
 import lombok.EqualsAndHashCode;
@@ -29,18 +29,33 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class MakerReadyToFundMultisigRequest extends TradeMessage implements DirectMessage {
+public final class DepositRequest extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
+    private final long currentDate;
+    private final String contractSignature;
+    private final String depositTxHash;
+    private final String depositTxHex;
+    private final String depositTxKey;
 
-    public MakerReadyToFundMultisigRequest(String tradeId,
+    public DepositRequest(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
-                                     int messageVersion) {
+                                     int messageVersion,
+                                     long currentDate,
+                                     String contractSignature,
+                                     String depositTxHash,
+                                     String depositTxHex,
+                                     String depositTxKey) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
+        this.currentDate = currentDate;
+        this.contractSignature = contractSignature;
+        this.depositTxHash = depositTxHash;
+        this.depositTxHex = depositTxHex;
+        this.depositTxKey = depositTxKey;
     }
 
 
@@ -50,30 +65,45 @@ public final class MakerReadyToFundMultisigRequest extends TradeMessage implemen
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.MakerReadyToFundMultisigRequest.Builder builder = protobuf.MakerReadyToFundMultisigRequest.newBuilder()
+        protobuf.DepositRequest.Builder builder = protobuf.DepositRequest.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
-                .setUid(uid);
+                .setUid(uid)
+                .setContractSignature(contractSignature)
+                .setDepositTxHash(depositTxHash)
+                .setDepositTxHex(depositTxHex)
+                .setDepositTxKey(depositTxKey);
+        builder.setCurrentDate(currentDate);
 
-        return getNetworkEnvelopeBuilder().setMakerReadyToFundMultisigRequest(builder).build();
+        return getNetworkEnvelopeBuilder().setDepositRequest(builder).build();
     }
 
-    public static MakerReadyToFundMultisigRequest fromProto(protobuf.MakerReadyToFundMultisigRequest proto,
+    public static DepositRequest fromProto(protobuf.DepositRequest proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       int messageVersion) {
-        return new MakerReadyToFundMultisigRequest(proto.getTradeId(),
+        return new DepositRequest(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
-                messageVersion);
+                messageVersion,
+                proto.getCurrentDate(),
+                proto.getContractSignature(),
+                proto.getDepositTxHash(),
+                proto.getDepositTxHex(),
+                proto.getDepositTxKey());
     }
 
     @Override
     public String toString() {
-        return "MakerReadyToFundMultisigRequest{" +
+        return "DepositRequest {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
+                ",\n     currentDate=" + currentDate +
+                ",\n     contractSignature=" + contractSignature +
+                ",\n     depositTxHash='" + depositTxHash +
+                ",\n     depositTxHex='" + depositTxHex +
+                ",\n     depositTxKey='" + depositTxKey +
                 "\n} " + super.toString();
     }
 }

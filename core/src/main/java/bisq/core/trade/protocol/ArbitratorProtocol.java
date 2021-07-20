@@ -2,11 +2,13 @@ package bisq.core.trade.protocol;
 
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitTradeRequestToMakerIfFromTaker;
+import bisq.core.trade.protocol.tasks.ProcessDepositRequest;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessesReserveTx;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitMultisigMessagesIfFundsReserved;
@@ -86,6 +88,26 @@ public class ArbitratorProtocol extends DisputeProtocol {
                       handleTaskRunnerFault(sender, message, errorMessage);
                   })))
           .executeTasks();
+  }
+  
+  public void handleDepositRequest(DepositRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+    System.out.println("ArbitratorProtocol.handleDepositRequest()");
+    Validator.checkTradeId(processModel.getOfferId(), request);
+    processModel.setTradeMessage(request);
+    expect(anyPhase(Trade.Phase.INIT)
+        .with(request)
+        .from(sender))
+        .setup(tasks(
+            ProcessDepositRequest.class)
+            .using(new TradeTaskRunner(trade,
+                () -> {
+                  handleTaskRunnerSuccess(sender, request);
+                },
+                errorMessage -> {
+                    errorMessageHandler.handleErrorMessage(errorMessage);
+                    handleTaskRunnerFault(sender, request, errorMessage);
+                })))
+        .executeTasks();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////
