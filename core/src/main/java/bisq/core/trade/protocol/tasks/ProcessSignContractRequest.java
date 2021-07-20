@@ -53,6 +53,7 @@ public class ProcessSignContractRequest extends TradeTask {
           runInterceptHook();
           
           // extract fields from request
+          // TODO (woodser): verify request
           SignContractRequest request = (SignContractRequest) processModel.getTradeMessage();
           TradingPeer trader;
           if (request.getSenderNodeAddress().equals(trade.getMakerNodeAddress())) {
@@ -80,7 +81,7 @@ public class ProcessSignContractRequest extends TradeTask {
               // save contract and signature
               trade.setContract(contract);
               trade.setContractAsJson(contractAsJson);
-              trade.setTakerContractSignature(signature);
+              processModel.getSelf().setContractSignature(signature);
               
               // create response with contract signature
               SignContractResponse response = new SignContractResponse(
@@ -92,7 +93,7 @@ public class ProcessSignContractRequest extends TradeTask {
                       new Date().getTime(),
                       signature);
               
-              // get recipients
+              // get response recipients, only arbitrator sends response to both peers
               NodeAddress recipient1 = trade instanceof ArbitratorTrade ? trade.getMakerNodeAddress() : trade.getTradingPeerNodeAddress();
               PubKeyRing recipient1PubKey = trade instanceof ArbitratorTrade ? trade.getMakerPubKeyRing() : trade.getTradingPeerPubKeyRing();
               NodeAddress recipient2 = trade instanceof ArbitratorTrade ? trade.getTakerNodeAddress() : null;

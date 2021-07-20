@@ -30,6 +30,7 @@ import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
+import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
@@ -214,9 +215,24 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
     }
     
     @Override
-    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
-        String errMsg = "SellerAsTakerProtocol.handleSignContractResponse() not yet implemented";
-        errorMessageHandler.handleErrorMessage(errMsg);
-        handleTaskRunnerFault(peer, message, errMsg);
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("SellerAsTakerProtocol.handleSignContractResponse()");
+        Validator.checkTradeId(processModel.getOfferId(), message);
+        processModel.setTradeMessage(message);
+        expect(anyPhase(Trade.Phase.INIT)
+            .with(message)
+            .from(sender))
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessSignContractResponse.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, message);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, message, errorMessage);
+                    })))
+            .executeTasks();
     }
 }

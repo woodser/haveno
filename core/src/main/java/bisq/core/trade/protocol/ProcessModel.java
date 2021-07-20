@@ -414,6 +414,13 @@ public class ProcessModel implements Model, PersistablePayload {
     // Delegates
     ///////////////////////////////////////////////////////////////////////////////////////////
     
+    public TradingPeer getSelf() {
+        if (trade instanceof MakerTrade) return getMaker();
+        if (trade instanceof TakerTrade) return getTaker();
+        if (trade instanceof ArbitratorTrade) return getArbitrator();
+        throw new RuntimeException("Trade is not maker, taker, or arbitrator");
+    }
+    
     public XmrWalletService getXmrWalletService() {
         return provider.getXmrWalletService();
     }

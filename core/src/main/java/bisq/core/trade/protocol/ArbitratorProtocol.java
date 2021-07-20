@@ -70,7 +70,7 @@ public class ArbitratorProtocol extends DisputeProtocol {
   public void handleSignContractRequest(SignContractRequest message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
       System.out.println("ArbitratorProtocol.handleSignContractRequest()");
       Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
+      processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
       expect(anyPhase(Trade.Phase.INIT)
           .with(message)
           .from(sender))

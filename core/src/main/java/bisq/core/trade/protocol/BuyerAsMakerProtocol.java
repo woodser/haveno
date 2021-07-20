@@ -29,6 +29,7 @@ import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
+import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.buyer.BuyerFinalizesDelayedPayoutTx;
@@ -156,7 +157,7 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
     public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
       System.out.println("BuyerAsMakerProtocol.handleMultisigMessage()");
       Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
+      processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
       expect(anyPhase(Trade.Phase.INIT)
           .with(message)
           .from(sender))
@@ -200,13 +201,13 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
     public void handleSignContractResponse(SignContractResponse message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
         System.out.println("BuyerAsMakerProtocol.handleSignContractResponse()");
         Validator.checkTradeId(processModel.getOfferId(), message);
-        processModel.setTradeMessage(message);
+        processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
         expect(anyPhase(Trade.Phase.INIT)
             .with(message)
             .from(sender))
-            .setup(tasks()
-                    //VerifySignedContract.class)
-                    //ProcessSignContractRequest.class)
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessSignContractResponse.class)
                 .using(new TradeTaskRunner(trade,
                     () -> {
                       handleTaskRunnerSuccess(sender, message);
