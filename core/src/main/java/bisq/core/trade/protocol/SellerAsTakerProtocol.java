@@ -193,7 +193,7 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
     
     @Override
     public void handleSignContractRequest(SignContractRequest message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-        System.out.println("BuyerAsMakerProtocol.handleSignContractRequest()");
+        System.out.println("SellerAsTakerProtocol.handleSignContractRequest()");
         Validator.checkTradeId(processModel.getOfferId(), message);
         processModel.setTradeMessage(message);
         expect(anyPhase(Trade.Phase.INIT)

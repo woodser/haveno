@@ -40,6 +40,9 @@ import monero.wallet.model.MoneroTxWallet;
 // TODO (woodser): separate classes for deposit tx creation and contract request
 @Slf4j
 public class SendSignContractRequestAfterMultisig extends TradeTask {
+    
+    private boolean ack1 = false;
+    private boolean ack2 = false;
 
     @SuppressWarnings({"unused"})
     public SendSignContractRequestAfterMultisig(TaskRunner taskHandler, Trade trade) {
@@ -85,7 +88,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           if (trade instanceof MakerTrade) trade.setMakerDepositTxId(depositTx.getHash());
           else if (trade instanceof TakerTrade) trade.setTakerDepositTxId(depositTx.getHash());
           
-          // create request for peer to sign contract
+          // create request for peer and arbitrator to sign contract
           SignContractRequest request = new SignContractRequest(
                   trade.getOffer().getId(),
                   processModel.getMyNodeAddress(),
@@ -98,12 +101,13 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
                   trade.getXmrWalletService().getAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString(),
                   depositTx.getHash());
 
-          // send request to peer
+          // send request to trading peer
           processModel.getP2PService().sendEncryptedDirectMessage(trade.getTradingPeerNodeAddress(), trade.getTradingPeerPubKeyRing(), request, new SendDirectMessageListener() {
               @Override
               public void onArrived() {
                   log.info("{} arrived: trading peer={}; offerId={}; uid={}", request.getClass().getSimpleName(), trade.getTradingPeerNodeAddress(), trade.getId());
-                  complete();
+                  ack1 = true;
+                  if (ack1 && ack2) complete();
               }
               @Override
               public void onFault(String errorMessage) {
@@ -111,7 +115,23 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
                   appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
                   failed();
               }
-            });
+          });
+          
+          // send request to arbitrator
+          processModel.getP2PService().sendEncryptedDirectMessage(trade.getArbitratorNodeAddress(), trade.getArbitratorPubKeyRing(), request, new SendDirectMessageListener() {
+              @Override
+              public void onArrived() {
+                  log.info("{} arrived: trading peer={}; offerId={}; uid={}", request.getClass().getSimpleName(), trade.getArbitratorNodeAddress(), trade.getId());
+                  ack2 = true;
+                  if (ack1 && ack2) complete();
+              }
+              @Override
+              public void onFault(String errorMessage) {
+                  log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), trade.getArbitratorNodeAddress(), trade.getId(), errorMessage);
+                  appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
+                  failed();
+              }
+          });
         } catch (Throwable t) {
           failed(t);
         }

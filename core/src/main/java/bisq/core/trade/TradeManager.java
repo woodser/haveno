@@ -525,7 +525,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
         if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
         Trade trade = tradeOptional.get();
-        ((TraderProtocol) getTradeProtocol(trade)).handleSignContractRequest(request, peer, errorMessage -> {
+        getTradeProtocol(trade).handleSignContractRequest(request, peer, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null) {
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
               }

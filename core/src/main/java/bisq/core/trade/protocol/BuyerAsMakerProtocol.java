@@ -206,7 +206,7 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
             .from(sender))
             .setup(tasks()
                     //VerifySignedContract.class)
-                    //SendDepositRequest.class)
+                    //ProcessSignContractRequest.class)
                 .using(new TradeTaskRunner(trade,
                     () -> {
                       handleTaskRunnerSuccess(sender, message);

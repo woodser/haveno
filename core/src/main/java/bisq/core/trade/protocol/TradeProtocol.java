@@ -24,7 +24,6 @@ import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.SignContractRequest;
-import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessUpdateMultisigRequest;
@@ -208,6 +207,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected abstract void onTradeMessage(TradeMessage message, NodeAddress peer);
     public abstract void handleMultisigMessage(InitMultisigMessage message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
+    public abstract void handleSignContractRequest(SignContractRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
 
     // TODO (woodser): update to use fluent for consistency
     public void handleUpdateMultisigRequest(UpdateMultisigRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {

@@ -19,16 +19,18 @@ package bisq.core.trade.protocol.tasks;
 
 
 import bisq.common.app.Version;
+import bisq.common.crypto.PubKeyRing;
 import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.common.util.Utilities;
+import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Contract;
-import bisq.core.trade.MakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.TradingPeer;
+import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import java.util.Date;
 import java.util.UUID;
@@ -36,6 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ProcessSignContractRequest extends TradeTask {
+    
+    private boolean ack1 = false;
+    private boolean ack2 = false;
 
     @SuppressWarnings({"unused"})
     public ProcessSignContractRequest(TaskRunner taskHandler, Trade trade) {
@@ -49,52 +54,84 @@ public class ProcessSignContractRequest extends TradeTask {
           
           // extract fields from request
           SignContractRequest request = (SignContractRequest) processModel.getTradeMessage();
-          TradingPeer peer;
-          if (trade instanceof MakerTrade) {
-              trade.setTakerDepositTxId(request.getDepositTxHash());
-              peer = processModel.getTaker();
-          } else {
+          TradingPeer trader;
+          if (request.getSenderNodeAddress().equals(trade.getMakerNodeAddress())) {
               trade.setMakerDepositTxId(request.getDepositTxHash());
-              peer = processModel.getMaker();
+              trader = processModel.getMaker();
+          } else if (request.getSenderNodeAddress().equals(trade.getTakerNodeAddress())) {
+              trade.setTakerDepositTxId(request.getDepositTxHash());
+              trader = processModel.getTaker();
+          } else {
+              throw new RuntimeException("Sender of SignContractRequest is neither maker nor taker");
           }
-          peer.setAccountId(request.getAccountId());
-          peer.setPaymentAccountPayloadHash(request.getPaymentAccountPayloadHash());
-          peer.setPayoutAddressString(request.getPayoutAddress());
+          trader.setAccountId(request.getAccountId());
+          trader.setPaymentAccountPayloadHash(request.getPaymentAccountPayloadHash());
+          trader.setPayoutAddressString(request.getPayoutAddress());
           
-          // create and sign contract
-          Contract contract = TradeUtils.createContract(trade);
-          String contractAsJson = Utilities.objectToJson(contract);
-          String signature = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), contractAsJson);
+          // return contract signature when ready
+          // TODO (woodser): synchronize contract creation; both requests received at the same time
+          if (trade.getMakerDepositTxId() != null && trade.getTakerDepositTxId() != null) {
+              
+              // create and sign contract
+              Contract contract = TradeUtils.createContract(trade);
+              String contractAsJson = Utilities.objectToJson(contract);
+              String signature = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), contractAsJson);
 
-          // save contract and signature
-          trade.setContract(contract);
-          trade.setContractAsJson(contractAsJson);
-          trade.setTakerContractSignature(signature);
-          
-          // create response with contract signature
-          SignContractResponse response = new SignContractResponse(
-                  trade.getOffer().getId(),
-                  processModel.getMyNodeAddress(),
-                  processModel.getPubKeyRing(),
-                  UUID.randomUUID().toString(),
-                  Version.getP2PMessageVersion(),
-                  new Date().getTime(),
-                  signature);
-
-          // send response to trading peer
-          processModel.getP2PService().sendEncryptedDirectMessage(trade.getTradingPeerNodeAddress(), trade.getTradingPeerPubKeyRing(), response, new SendDirectMessageListener() {
-              @Override
-              public void onArrived() {
-                  log.info("{} arrived: trading peer={}; offerId={}; uid={}", response.getClass().getSimpleName(), trade.getTradingPeerNodeAddress(), trade.getId());
-                  complete();
+              // save contract and signature
+              trade.setContract(contract);
+              trade.setContractAsJson(contractAsJson);
+              trade.setTakerContractSignature(signature);
+              
+              // create response with contract signature
+              SignContractResponse response = new SignContractResponse(
+                      trade.getOffer().getId(),
+                      processModel.getMyNodeAddress(),
+                      processModel.getPubKeyRing(),
+                      UUID.randomUUID().toString(),
+                      Version.getP2PMessageVersion(),
+                      new Date().getTime(),
+                      signature);
+              
+              // get recipients
+              NodeAddress recipient1 = trade instanceof ArbitratorTrade ? trade.getMakerNodeAddress() : trade.getTradingPeerNodeAddress();
+              PubKeyRing recipient1PubKey = trade instanceof ArbitratorTrade ? trade.getMakerPubKeyRing() : trade.getTradingPeerPubKeyRing();
+              NodeAddress recipient2 = trade instanceof ArbitratorTrade ? trade.getTakerNodeAddress() : null;
+              PubKeyRing recipient2PubKey = trade instanceof ArbitratorTrade ? trade.getTakerPubKeyRing() : null;
+              
+              // send response to recipient 1
+              processModel.getP2PService().sendEncryptedDirectMessage(recipient1, recipient1PubKey, response, new SendDirectMessageListener() {
+                  @Override
+                  public void onArrived() {
+                      log.info("{} arrived: trading peer={}; offerId={}; uid={}", response.getClass().getSimpleName(), recipient1, trade.getId());
+                      ack1 = true;
+                      if (ack1 && (recipient2 == null || ack2)) complete();
+                  }
+                  @Override
+                  public void onFault(String errorMessage) {
+                      log.error("Sending {} failed: uid={}; peer={}; error={}", response.getClass().getSimpleName(), recipient1, trade.getId(), errorMessage);
+                      appendToErrorMessage("Sending message failed: message=" + response + "\nerrorMessage=" + errorMessage);
+                      failed();
+                  }
+              });
+              
+              // send response to recipient 2 if applicable
+              if (recipient2 != null) {
+                  processModel.getP2PService().sendEncryptedDirectMessage(recipient2, recipient2PubKey, response, new SendDirectMessageListener() {
+                      @Override
+                      public void onArrived() {
+                          log.info("{} arrived: trading peer={}; offerId={}; uid={}", response.getClass().getSimpleName(), recipient2, trade.getId());
+                          ack2 = true;
+                          if (ack1 && ack2) complete();
+                      }
+                      @Override
+                      public void onFault(String errorMessage) {
+                          log.error("Sending {} failed: uid={}; peer={}; error={}", response.getClass().getSimpleName(), recipient2, trade.getId(), errorMessage);
+                          appendToErrorMessage("Sending message failed: message=" + response + "\nerrorMessage=" + errorMessage);
+                          failed();
+                      }
+                  });
               }
-              @Override
-              public void onFault(String errorMessage) {
-                  log.error("Sending {} failed: uid={}; peer={}; error={}", response.getClass().getSimpleName(), trade.getTradingPeerNodeAddress(), trade.getId(), errorMessage);
-                  appendToErrorMessage("Sending message failed: message=" + response + "\nerrorMessage=" + errorMessage);
-                  failed();
-              }
-            });
+          }
         } catch (Throwable t) {
           failed(t);
         }

@@ -4,12 +4,14 @@ import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitTradeRequestToMakerIfFromTaker;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessesReserveTx;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitMultisigMessagesIfFundsReserved;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
+import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 
@@ -62,6 +64,28 @@ public class ArbitratorProtocol extends DisputeProtocol {
                     handleTaskRunnerFault(sender, message, errorMessage);
                 })))
         .executeTasks();
+  }
+  
+  @Override
+  public void handleSignContractRequest(SignContractRequest message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+      System.out.println("ArbitratorProtocol.handleSignContractRequest()");
+      Validator.checkTradeId(processModel.getOfferId(), message);
+      processModel.setTradeMessage(message);
+      expect(anyPhase(Trade.Phase.INIT)
+          .with(message)
+          .from(sender))
+          .setup(tasks(
+                  // TODO (woodser): validate request
+                  ProcessSignContractRequest.class)
+              .using(new TradeTaskRunner(trade,
+                  () -> {
+                    handleTaskRunnerSuccess(sender, message);
+                  },
+                  errorMessage -> {
+                      errorMessageHandler.handleErrorMessage(errorMessage);
+                      handleTaskRunnerFault(sender, message, errorMessage);
+                  })))
+          .executeTasks();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////
