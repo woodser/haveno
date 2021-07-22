@@ -61,11 +61,6 @@ public class MakerReservesTradeFunds extends Task<PlaceOfferModel> {
                 wallet.freezeOutput(input.getKeyImage().getHex());
             }
             
-            // submit reserve tx to daemon but do not relay
-            MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
-            MoneroSubmitTxResult result = daemon.submitTxHex(reserveTx.getFullHex(), true);
-            if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
-            
             // save offer state
             // TODO (woodser): persist
             model.setReserveTx(reserveTx);

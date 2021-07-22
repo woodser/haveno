@@ -56,6 +56,7 @@ import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureResponse;
 import bisq.core.trade.messages.DepositRequest;
+import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
@@ -173,6 +174,8 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return SignContractResponse.fromProto(proto.getSignContractResponse(), this, messageVersion);
                 case DEPOSIT_REQUEST:
                     return DepositRequest.fromProto(proto.getDepositRequest(), this, messageVersion);
+                case DEPOSIT_RESPONSE:
+                    return DepositResponse.fromProto(proto.getDepositResponse(), this, messageVersion);
                 case UPDATE_MULTISIG_REQUEST:
                   return UpdateMultisigRequest.fromProto(proto.getUpdateMultisigRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_RESPONSE:

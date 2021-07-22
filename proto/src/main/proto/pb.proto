@@ -361,9 +361,8 @@ message DepositRequest {
     string uid = 4;
     int64 current_date = 5;
     string contract_signature = 6;
-    string deposit_tx_hash = 7;
-    string deposit_tx_hex = 8;
-    string deposit_tx_key = 9;
+    string deposit_tx_hex = 7;
+    string deposit_tx_key = 8;
 }
 
 message DepositResponse {
@@ -1543,8 +1542,9 @@ message SignedOfferList {
 
 message SignedOffer {
     string offer_id = 1;
-    string reserve_tx_hex = 2;
-    string arbitrator_signature = 3;
+    string reserve_tx_hash = 2;
+    string reserve_tx_hex = 3;
+    string arbitrator_signature = 4;
 }
 
 message OpenOffer {
@@ -1778,6 +1778,9 @@ message TradingPeer {
     string prepared_multisig_hex = 1004;
     string made_multisig_hex = 1005;
     string signed_payout_tx_hex = 1006;
+    string deposit_tx_hash = 1007;
+    string deposit_tx_hex = 1008;
+    string deposit_tx_key = 1009;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

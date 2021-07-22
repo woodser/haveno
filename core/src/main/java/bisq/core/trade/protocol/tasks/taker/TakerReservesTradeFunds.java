@@ -57,11 +57,6 @@ public class TakerReservesTradeFunds extends TradeTask {
                 wallet.freezeOutput(input.getKeyImage().getHex());
             }
             
-            // submit tx to daemon but do not relay
-            MoneroDaemon daemon = model.getXmrWalletService().getDaemon();
-            MoneroSubmitTxResult result = daemon.submitTxHex(reserveTx.getFullHex(), true);
-            if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
-            
             // save process state
             // TODO (woodser): persist
             processModel.setReserveTx(reserveTx);

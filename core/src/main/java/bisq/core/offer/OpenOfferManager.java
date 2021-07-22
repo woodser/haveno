@@ -626,6 +626,10 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     public Optional<OpenOffer> getOpenOfferById(String offerId) {
         return openOffers.stream().filter(e -> e.getId().equals(offerId)).findFirst();
     }
+    
+    public Optional<SignedOffer> getSignedOfferById(String offerId) {
+        return signedOffers.stream().filter(e -> e.getOfferId().equals(offerId)).findFirst();
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Arbitrator Signs Offer
@@ -671,15 +675,16 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             Offer offer = new Offer(request.getOfferPayload());
             BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(offer.getMakerFee());
             BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(offer.getDirection() == OfferPayload.Direction.SELL ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
-            TradeUtils.processReserveTx(offer,
-                    tradeFee,
-                    tradeAmount,
-                    request.getPayoutAddress(),
+            TradeUtils.processTradeTx(
                     xmrWalletService.getDaemon(),
                     xmrWalletService.getWallet(),
+                    tradeAmount,
+                    request.getPayoutAddress(),
+                    tradeFee,
                     request.getReserveTxHash(),
                     request.getReserveTxHex(),
-                    request.getReserveTxKey());
+                    request.getReserveTxKey(),
+                    true);
 
             // arbitrator signs offer to certify they have valid reserve tx
             String offerPayloadAsJson = Utilities.objectToJson(request.getOfferPayload());
@@ -688,7 +693,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             signedOfferPayload.setArbitratorSignature(signature);
             
             // create record of signed offer
-            SignedOffer signedOffer = new SignedOffer(signedOfferPayload.getId(), request.getReserveTxHex(), signature); // TODO (woodser): no need for signature to be part of SignedOffer?
+            SignedOffer signedOffer = new SignedOffer(signedOfferPayload.getId(), request.getReserveTxHash(), request.getReserveTxHex(), signature); // TODO (woodser): no need for signature to be part of SignedOffer?
             signedOffers.add(signedOffer);
             requestPersistence();
 

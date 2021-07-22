@@ -22,6 +22,7 @@ import bisq.core.offer.Offer;
 import bisq.core.trade.BuyerAsTakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
+import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
@@ -200,5 +201,10 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
     @Override
     public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
         throw new RuntimeException("Implementation needs copied from SellerAsTakerProtocol");
+    }
+    
+    @Override
+    public void handleDepositResponse(DepositResponse response, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
     }
 }

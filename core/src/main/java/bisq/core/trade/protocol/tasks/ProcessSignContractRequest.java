@@ -53,31 +53,24 @@ public class ProcessSignContractRequest extends TradeTask {
           runInterceptHook();
           
           // extract fields from request
-          // TODO (woodser): verify request
+          // TODO (woodser): verify request and from maker or taker
           SignContractRequest request = (SignContractRequest) processModel.getTradeMessage();
-          TradingPeer trader;
-          if (request.getSenderNodeAddress().equals(trade.getMakerNodeAddress())) {
-              trade.setMakerDepositTxId(request.getDepositTxHash());
-              trader = processModel.getMaker();
-          } else if (request.getSenderNodeAddress().equals(trade.getTakerNodeAddress())) {
-              trade.setTakerDepositTxId(request.getDepositTxHash());
-              trader = processModel.getTaker();
-          } else {
-              throw new RuntimeException("Sender of SignContractRequest is neither maker nor taker");
-          }
+          TradingPeer trader = processModel.getTradingPeer(request.getSenderNodeAddress());
+          trader.setDepositTxHash(request.getDepositTxHash());
           trader.setAccountId(request.getAccountId());
           trader.setPaymentAccountPayloadHash(request.getPaymentAccountPayloadHash());
           trader.setPayoutAddressString(request.getPayoutAddress());
           
           // return contract signature when ready
           // TODO (woodser): synchronize contract creation; both requests received at the same time
-          if (trade.getMakerDepositTxId() != null && trade.getTakerDepositTxId() != null) {
+          // TODO (woodser): remove makerDepositTxId and takerDepositTxId from Trade
+          if (processModel.getMaker().getDepositTxHash() != null && processModel.getTaker().getDepositTxHash() != null) {
               
               // create and sign contract
               Contract contract = TradeUtils.createContract(trade);
               String contractAsJson = Utilities.objectToJson(contract);
               String signature = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), contractAsJson);
-
+              
               // save contract and signature
               trade.setContract(contract);
               trade.setContractAsJson(contractAsJson);
@@ -93,7 +86,7 @@ public class ProcessSignContractRequest extends TradeTask {
                       new Date().getTime(),
                       signature);
               
-              // get response recipients, only arbitrator sends response to both peers
+              // get response recipients. only arbitrator sends response to both peers
               NodeAddress recipient1 = trade instanceof ArbitratorTrade ? trade.getMakerNodeAddress() : trade.getTradingPeerNodeAddress();
               PubKeyRing recipient1PubKey = trade instanceof ArbitratorTrade ? trade.getMakerPubKeyRing() : trade.getTradingPeerPubKeyRing();
               NodeAddress recipient2 = trade instanceof ArbitratorTrade ? trade.getTakerNodeAddress() : null;

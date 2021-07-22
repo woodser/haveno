@@ -15,16 +15,28 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.core.trade.protocol;
+package bisq.core.trade.protocol.tasks;
 
 
-import bisq.core.trade.messages.DepositResponse;
-import bisq.core.trade.messages.SignContractResponse;
-import bisq.network.p2p.NodeAddress;
+import bisq.common.taskrunner.TaskRunner;
+import bisq.core.trade.Trade;
+import lombok.extern.slf4j.Slf4j;
 
-import bisq.common.handlers.ErrorMessageHandler;
+@Slf4j
+public class ProcessDepositResponse extends TradeTask {
+    
+    @SuppressWarnings({"unused"})
+    public ProcessDepositResponse(TaskRunner taskHandler, Trade trade) {
+        super(taskHandler, trade);
+    }
 
-public interface TraderProtocol {
-    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
-    public void handleDepositResponse(DepositResponse response, NodeAddress peer, ErrorMessageHandler errorMessageHandler);
+    @Override
+    protected void run() {
+        try {
+          runInterceptHook();
+          throw new RuntimeException("ProcessDepositResponse not implemented");
+        } catch (Throwable t) {
+          failed(t);
+        }
+    }
 }

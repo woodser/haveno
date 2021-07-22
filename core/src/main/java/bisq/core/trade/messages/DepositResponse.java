@@ -29,30 +29,21 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class DepositRequest extends TradeMessage implements DirectMessage {
+public final class DepositResponse extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     private final long currentDate;
-    private final String contractSignature;
-    private final String depositTxHex;
-    private final String depositTxKey;
 
-    public DepositRequest(String tradeId,
+    public DepositResponse(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
                                      int messageVersion,
-                                     long currentDate,
-                                     String contractSignature,
-                                     String depositTxHex,
-                                     String depositTxKey) {
+                                     long currentDate) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
         this.currentDate = currentDate;
-        this.contractSignature = contractSignature;
-        this.depositTxHex = depositTxHex;
-        this.depositTxKey = depositTxKey;
     }
 
 
@@ -62,42 +53,33 @@ public final class DepositRequest extends TradeMessage implements DirectMessage 
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.DepositRequest.Builder builder = protobuf.DepositRequest.newBuilder()
+        protobuf.DepositResponse.Builder builder = protobuf.DepositResponse.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
-                .setUid(uid)
-                .setContractSignature(contractSignature)
-                .setDepositTxHex(depositTxHex)
-                .setDepositTxKey(depositTxKey);
+                .setUid(uid);
         builder.setCurrentDate(currentDate);
 
-        return getNetworkEnvelopeBuilder().setDepositRequest(builder).build();
+        return getNetworkEnvelopeBuilder().setDepositResponse(builder).build();
     }
 
-    public static DepositRequest fromProto(protobuf.DepositRequest proto,
+    public static DepositResponse fromProto(protobuf.DepositResponse depositResponse,
                                                       CoreProtoResolver coreProtoResolver,
                                                       int messageVersion) {
-        return new DepositRequest(proto.getTradeId(),
-                NodeAddress.fromProto(proto.getSenderNodeAddress()),
-                PubKeyRing.fromProto(proto.getPubKeyRing()),
-                proto.getUid(),
+        return new DepositResponse(depositResponse.getTradeId(),
+                NodeAddress.fromProto(depositResponse.getSenderNodeAddress()),
+                PubKeyRing.fromProto(depositResponse.getPubKeyRing()),
+                depositResponse.getUid(),
                 messageVersion,
-                proto.getCurrentDate(),
-                proto.getContractSignature(),
-                proto.getDepositTxHex(),
-                proto.getDepositTxKey());
+                depositResponse.getCurrentDate());
     }
 
     @Override
     public String toString() {
-        return "DepositRequest {" +
+        return "DepositResponse {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +
-                ",\n     contractSignature=" + contractSignature +
-                ",\n     depositTxHex='" + depositTxHex +
-                ",\n     depositTxKey='" + depositTxKey +
                 "\n} " + super.toString();
     }
 }

@@ -20,12 +20,14 @@ package bisq.core.trade.protocol;
 import bisq.core.trade.BuyerAsMakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
+import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
+import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
@@ -215,6 +217,28 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     errorMessage -> {
                         errorMessageHandler.handleErrorMessage(errorMessage);
                         handleTaskRunnerFault(sender, message, errorMessage);
+                    })))
+            .executeTasks();
+    }
+    
+    @Override
+    public void handleDepositResponse(DepositResponse response, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("BuyerAsMakerProtocol.handleDepositResponse()");
+        Validator.checkTradeId(processModel.getOfferId(), response);
+        processModel.setTradeMessage(response);
+        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+            .with(response)
+            .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessDepositResponse.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, response);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, response, errorMessage);
                     })))
             .executeTasks();
     }

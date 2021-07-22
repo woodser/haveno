@@ -51,31 +51,22 @@ public class ProcessSignContractResponse extends TradeTask {
               GenUtils.waitFor(250);
           }
           
-          // verify contract signature
+          // get contract and signature
           String contractAsJson = trade.getContractAsJson();
           SignContractResponse response = (SignContractResponse) processModel.getTradeMessage(); // TODO (woodser): verify response
           String signature = response.getContractSignature();
           
           // get peer info
           // TODO (woodser): make these utilities / refactor model
-          TradingPeer peer;
           PubKeyRing peerPubKeyRing;
-          if (trade.getArbitratorNodeAddress().equals(response.getSenderNodeAddress())) {
-              peer = processModel.getArbitrator();
-              peerPubKeyRing = trade.getArbitratorPubKeyRing();
-          } else if (trade.getMakerNodeAddress().equals(response.getSenderNodeAddress())) {
-              peer = processModel.getMaker();
-              peerPubKeyRing = trade.getMakerPubKeyRing();
-          } else if (trade.getTakerNodeAddress().equals(response.getSenderNodeAddress())) {
-              peer = processModel.getTaker();
-              peerPubKeyRing = trade.getTakerPubKeyRing();
-          } else throw new RuntimeException(response.getClass().getSimpleName() + " is not from maker, taker, or arbitrator");
+          TradingPeer peer = processModel.getTradingPeer(response.getSenderNodeAddress());
+          if (peer == processModel.getArbitrator()) peerPubKeyRing = trade.getArbitratorPubKeyRing();
+          else if (peer == processModel.getMaker()) peerPubKeyRing = trade.getMakerPubKeyRing();
+          else if (peer == processModel.getTaker()) peerPubKeyRing = trade.getTakerPubKeyRing();
+          else throw new RuntimeException(response.getClass().getSimpleName() + " is not from maker, taker, or arbitrator");
           
           // verify signature
-          boolean isValid = Sig.verify(peerPubKeyRing.getSignaturePubKey(),
-                  contractAsJson,
-                  signature);
-          if (!isValid) throw new RuntimeException("Peer's contract signature is invalid");
+          if (!Sig.verify(peerPubKeyRing.getSignaturePubKey(), contractAsJson, signature)) throw new RuntimeException("Peer's contract signature is invalid");
           
           // set peer's signature
           peer.setContractSignature(signature);
@@ -92,7 +83,6 @@ public class ProcessSignContractResponse extends TradeTask {
                       Version.getP2PMessageVersion(),
                       new Date().getTime(),
                       processModel.getSelf().getContractSignature(),
-                      processModel.getDepositTxXmr().getHash(),
                       processModel.getDepositTxXmr().getFullHex(),
                       processModel.getDepositTxXmr().getKey());
               

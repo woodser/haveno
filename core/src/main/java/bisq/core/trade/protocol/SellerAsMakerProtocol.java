@@ -21,6 +21,7 @@ package bisq.core.trade.protocol;
 import bisq.core.trade.SellerAsMakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
+import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
@@ -28,6 +29,7 @@ import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
+import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
@@ -39,7 +41,7 @@ import bisq.core.trade.protocol.tasks.seller.SellerSendDelayedPayoutTxSignatureR
 import bisq.core.trade.protocol.tasks.seller.SellerSignsDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.seller_as_maker.SellerAsMakerFinalizesDepositTx;
 import bisq.core.trade.protocol.tasks.seller_as_maker.SellerAsMakerProcessDepositTxMessage;
-
+import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 
 import bisq.common.handlers.ErrorMessageHandler;
@@ -159,6 +161,11 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
 
     @Override
     public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+    }
+    
+    @Override
+    public void handleDepositResponse(DepositResponse response, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
         throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
     }
     

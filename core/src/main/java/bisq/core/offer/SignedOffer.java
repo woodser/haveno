@@ -29,12 +29,15 @@ public final class SignedOffer implements PersistablePayload {
     @Getter
     private final String offerId;
     @Getter
+    private final String reserveTxHash;
+    @Getter
     private final String reserveTxHex;
     @Getter
     private final String arbitratorSignature;
     
-    public SignedOffer(String offerId, String reserveTxHex, String arbitratorSignature) {
+    public SignedOffer(String offerId, String reserveTxHash, String reserveTxHex, String arbitratorSignature) {
         this.offerId = offerId;
+        this.reserveTxHash = reserveTxHash;
         this.reserveTxHex = reserveTxHex;
         this.arbitratorSignature = arbitratorSignature;
     }
@@ -54,7 +57,7 @@ public final class SignedOffer implements PersistablePayload {
     }
 
     public static SignedOffer fromProto(protobuf.SignedOffer proto) {
-        return new SignedOffer(proto.getOfferId(), proto.getReserveTxHex(), proto.getArbitratorSignature());
+        return new SignedOffer(proto.getOfferId(), proto.getReserveTxHash(), proto.getReserveTxHex(), proto.getArbitratorSignature());
     }
 
 
@@ -66,6 +69,7 @@ public final class SignedOffer implements PersistablePayload {
     public String toString() {
         return "SignedOffer{" +
                 ",\n     offerId=" + offerId +
+                ",\n     reserveTxHash=" + reserveTxHash +
                 ",\n     reserveTxHex=" + reserveTxHex +
                 ",\n     arbitratorSignature=" + arbitratorSignature +
                 "\n}";

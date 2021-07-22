@@ -59,10 +59,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           
           // skip if deposit tx already created
           if (processModel.getDepositTxXmr() != null) return;
-          
-          // flush reserve tx from pool
-          trade.getXmrWalletService().getDaemon().flushTxPool(processModel.getReserveTxHash());
-          
+
           // thaw reserved outputs
           System.out.println(processModel.getFrozenKeyImages());
           MoneroWallet wallet = trade.getXmrWalletService().getWallet();
@@ -74,7 +71,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(trade instanceof MakerTrade ? trade.getOffer().getMakerFee() : trade.getTakerFee());
           Offer offer = processModel.getOffer();
           BigInteger depositAmount = ParsingUtils.coinToAtomicUnits(trade instanceof SellerTrade ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
-          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId());
+          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): only get, do not create
           String multisigAddress = multisigWallet.getPrimaryAddress();
           MoneroTxWallet depositTx = TradeUtils.createDepositTx(trade.getXmrWalletService(), tradeFee, multisigAddress, depositAmount);
           
@@ -85,8 +82,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           
           // save process state
           processModel.setDepositTxXmr(depositTx);
-          if (trade instanceof MakerTrade) trade.setMakerDepositTxId(depositTx.getHash());
-          else if (trade instanceof TakerTrade) trade.setTakerDepositTxId(depositTx.getHash());
+          processModel.getSelf().setDepositTxHash(depositTx.getHash());
           
           // create request for peer and arbitrator to sign contract
           SignContractRequest request = new SignContractRequest(

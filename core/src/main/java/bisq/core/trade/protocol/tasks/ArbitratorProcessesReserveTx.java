@@ -22,22 +22,13 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
-import bisq.core.offer.messages.SignOfferRequest;
-import bisq.core.trade.MakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.protocol.TradingPeer;
 import bisq.core.util.ParsingUtils;
-import common.utils.JsonUtils;
 import java.math.BigInteger;
 import lombok.extern.slf4j.Slf4j;
-import monero.common.MoneroError;
-import monero.daemon.MoneroDaemon;
-import monero.daemon.model.MoneroSubmitTxResult;
-import monero.daemon.model.MoneroTx;
-import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroCheckTx;
 
 /**
  * Arbitrator verifies reserve tx from maker or taker.
@@ -58,7 +49,6 @@ public class ArbitratorProcessesReserveTx extends TradeTask {
             runInterceptHook();
             Offer offer = trade.getOffer();
             InitTradeRequest request = (InitTradeRequest) processModel.getTradeMessage();
-            checkNotNull(request);
             boolean isFromTaker = request.getSenderNodeAddress().equals(request.getTakerNodeAddress());
             
             // TODO (woodser): if signer online, should never be called by maker
@@ -66,15 +56,16 @@ public class ArbitratorProcessesReserveTx extends TradeTask {
             // process reserve tx with expected terms
             BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(isFromTaker ? trade.getTakerFee() : offer.getMakerFee());
             BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(offer.getDirection() == OfferPayload.Direction.SELL ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
-            TradeUtils.processReserveTx(trade.getOffer(),
-                    tradeFee,
-                    tradeAmount,
-                    request.getPayoutAddress(),
+            TradeUtils.processTradeTx(
                     processModel.getXmrWalletService().getDaemon(),
                     processModel.getXmrWalletService().getWallet(),
+                    tradeAmount,
+                    request.getPayoutAddress(),
+                    tradeFee,
                     request.getReserveTxHash(),
                     request.getReserveTxHex(),
-                    request.getReserveTxKey());
+                    request.getReserveTxKey(),
+                    true);
             
             // save reserve tx to model
             TradingPeer trader = isFromTaker ? processModel.getTaker() : processModel.getMaker();

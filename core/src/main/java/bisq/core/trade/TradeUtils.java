@@ -19,7 +19,6 @@ package bisq.core.trade;
 
 import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.XmrWalletService;
-import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.offer.OfferPayload.Direction;
 import bisq.core.support.dispute.mediation.mediator.Mediator;
@@ -35,7 +34,6 @@ import bisq.common.util.Tuple2;
 import bisq.common.util.Utilities;
 import java.math.BigInteger;
 import java.util.Objects;
-import monero.common.MoneroError;
 import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroSubmitTxResult;
 import monero.daemon.model.MoneroTx;
@@ -183,59 +181,58 @@ public class TradeUtils {
     }
     
     /**
-     * Processes a reserve tx by submitting to a daemon to check for double spends
-     * and verifying the trade fee, reserved deposit amount, and mining fee.
+     * Process a reserve or deposit transaction used during trading.
+     * Checks double spends, deposit amount and destination, trade fee, and mining fee.
+     * The transaction is submitted but not relayed to the pool.
      * 
-     * @param offer the offer to verify the reserve tx
-     * @param fromMaker specifies if reserve tx is from the maker or taker
      * @param daemon is the Monero daemon to check for double spends
-     * @param wallet is the Monero wallet to verify the reserve tx
-     * @param txHash is the reserve tx hash
-     * @param txHex is the reserve tx full hex
-     * @param txKey is the reserve tx secret key
+     * @param wallet is the Monero wallet to verify the tx
+     * @param depositAmount is the expected amount deposited to multisig
+     * @param depositAddress is the expected destination address for the deposit amount
+     * @param tradeFee is the expected fee for trading
+     * @param txHash is the transaction hash
+     * @param txHex is the transaction hex
+     * @param txKey is the transaction key
+     * @param isReserveTx indicates if the tx is a reserve tx, which requires fee padding
      */
-    public static void processReserveTx(Offer offer, BigInteger tradeFee, BigInteger depositAmount, String returnAddress, MoneroDaemon daemon, MoneroWallet wallet, String txHash, String txHex, String txKey) {
-
-        try {
-            
-            // get reserve tx from daemon
-            MoneroTx tx = daemon.getTx(txHash); // TODO (woodser): return null if tx not found instead of throwing?
-            
-            // reserve tx must not be relayed
-            if (tx.isRelayed()) throw new RuntimeException("Reserve tx must not be relayed");
-
-        } catch (MoneroError e) {
-            
-            // submit reserve tx to daemon but do not relay
+    public static void processTradeTx(MoneroDaemon daemon, MoneroWallet wallet, BigInteger depositAmount, String depositAddress, BigInteger tradeFee, String txHash, String txHex, String txKey, boolean isReserveTx) {
+        
+        // get tx from daemon
+        MoneroTx tx = daemon.getTx(txHash);
+        
+        // if tx is not submitted, submit but do not relay
+        if (tx == null) {
             MoneroSubmitTxResult result = daemon.submitTxHex(txHex, true); // TODO (woodser): invert doNotRelay flag to relay for library consistency?
-            if (!result.isGood()) throw new RuntimeException("Failed to submit reserve tx to daemon: " + JsonUtils.serialize(result));
+            if (!result.isGood()) throw new RuntimeException("Failed to submit tx to daemon: " + JsonUtils.serialize(result));
+        } else if (tx.isRelayed()) {
+            throw new RuntimeException("Reserve tx must not be relayed");
         }
-
+        
         // verify trade fee
         String feeAddress = TradeUtils.FEE_ADDRESS;
         MoneroCheckTx check = wallet.checkTxKey(txHash, txKey, feeAddress);
         if (!check.isGood()) throw new RuntimeException("Invalid proof of trade fee");
-        if (!check.getReceivedAmount().equals(tradeFee)) throw new RuntimeException("Reserved trade fee is incorrect amount, expected " + tradeFee + " but was " + check.getReceivedAmount());
+        if (!check.getReceivedAmount().equals(tradeFee)) throw new RuntimeException("Trade fee is incorrect amount, expected " + tradeFee + " but was " + check.getReceivedAmount());
 
         // verify mining fee
         BigInteger feeEstimate = daemon.getFeeEstimate().multiply(BigInteger.valueOf(txHex.length())); // TODO (woodser): fee estimates are too high, use more accurate estimate
         BigInteger feeThreshold = feeEstimate.multiply(BigInteger.valueOf(1l)).divide(BigInteger.valueOf(2l)); // must be at least 50% of estimated fee
-        MoneroTx tx = daemon.getTx(txHash);
+        tx = daemon.getTx(txHash);
         if (tx.getFee().compareTo(feeThreshold) < 0) {
-            throw new RuntimeException("Reserve tx mining fee is not enough, needed " + feeThreshold + " but was " + tx.getFee());
+            throw new RuntimeException("Mining fee is not enough, needed " + feeThreshold + " but was " + tx.getFee());
         }
 
         // verify deposit amount
-        check = wallet.checkTxKey(txHash, txKey, returnAddress);
+        check = wallet.checkTxKey(txHash, txKey, depositAddress);
         if (!check.isGood()) throw new RuntimeException("Invalid proof of deposit amount");
-        BigInteger depositThreshold = depositAmount.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
-        if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Reserve tx deposit amount is not enough, needed " + depositThreshold + " but was " + check.getReceivedAmount());
+        BigInteger depositThreshold = depositAmount;
+        if (isReserveTx) depositThreshold  = depositThreshold.add(feeThreshold.multiply(BigInteger.valueOf(3l))); // prove reserve of at least deposit amount + (3 * min mining fee)
+        if (check.getReceivedAmount().compareTo(depositThreshold) < 0) throw new RuntimeException("Deposit amount is not enough, needed " + depositThreshold + " but was " + check.getReceivedAmount());
     }
     
     /**
      * Create a contract from a trade.
      * 
-     * TODO (woodser): handle arbitrator trade
      * TODO (woodser): refactor/reduce trade, process model, and trading peer models
      * 
      * @param trade is the trade to create the contract from
@@ -262,8 +259,8 @@ public class TradeUtils {
                 trade instanceof MakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getMaker().getPayoutAddressString(), // maker payout address
                 trade instanceof TakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getTaker().getPayoutAddressString(), // taker payout address
                 trade.getLockTime(),
-                trade.getMakerDepositTxId(),
-                trade.getTakerDepositTxId()
+                trade.getProcessModel().getMaker().getDepositTxHash(),
+                trade.getProcessModel().getTaker().getDepositTxHash()
         );
         return contract;
     }
