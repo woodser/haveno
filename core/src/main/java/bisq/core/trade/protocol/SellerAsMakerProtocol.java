@@ -25,6 +25,7 @@ import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxMessage;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
+import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
@@ -171,6 +172,11 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
     
     @Override
     public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+    }
+    
+    @Override
+    public void handlePaymentAccountPayloadRequest(PaymentAccountPayloadRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
         throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
     }
 }

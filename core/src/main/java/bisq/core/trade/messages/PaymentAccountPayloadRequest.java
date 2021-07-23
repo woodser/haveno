@@ -17,6 +17,7 @@
 
 package bisq.core.trade.messages;
 
+import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.proto.CoreProtoResolver;
 
 import bisq.network.p2p.DirectMessage;
@@ -29,21 +30,24 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class DepositResponse extends TradeMessage implements DirectMessage {
+public final class PaymentAccountPayloadRequest extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     private final long currentDate;
+    private final PaymentAccountPayload paymentAccountPayload;
 
-    public DepositResponse(String tradeId,
+    public PaymentAccountPayloadRequest(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
                                      int messageVersion,
-                                     long currentDate) {
+                                     long currentDate,
+                                     PaymentAccountPayload paymentAccountPayload) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
         this.currentDate = currentDate;
+        this.paymentAccountPayload = paymentAccountPayload;
     }
 
 
@@ -53,33 +57,36 @@ public final class DepositResponse extends TradeMessage implements DirectMessage
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.DepositResponse.Builder builder = protobuf.DepositResponse.newBuilder()
+        protobuf.PaymentAccountPayloadRequest.Builder builder = protobuf.PaymentAccountPayloadRequest.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
-                .setUid(uid);
+                .setUid(uid)
+                .setPaymentAccountPayload((protobuf.PaymentAccountPayload) paymentAccountPayload.toProtoMessage());
         builder.setCurrentDate(currentDate);
 
-        return getNetworkEnvelopeBuilder().setDepositResponse(builder).build();
+        return getNetworkEnvelopeBuilder().setPaymentAccountPayloadRequest(builder).build();
     }
 
-    public static DepositResponse fromProto(protobuf.DepositResponse proto,
+    public static PaymentAccountPayloadRequest fromProto(protobuf.PaymentAccountPayloadRequest proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       int messageVersion) {
-        return new DepositResponse(proto.getTradeId(),
+        return new PaymentAccountPayloadRequest(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
                 messageVersion,
-                proto.getCurrentDate());
+                proto.getCurrentDate(),
+                coreProtoResolver.fromProto(proto.getPaymentAccountPayload()));
     }
 
     @Override
     public String toString() {
-        return "DepositResponse {" +
+        return "PaymentAccountPayloadRequest {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +
+                ",\n     paymentAccountPayload=" + paymentAccountPayload +
                 "\n} " + super.toString();
     }
 }

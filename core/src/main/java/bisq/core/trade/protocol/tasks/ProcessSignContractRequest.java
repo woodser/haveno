@@ -64,7 +64,7 @@ public class ProcessSignContractRequest extends TradeTask {
           // return contract signature when ready
           // TODO (woodser): synchronize contract creation; both requests received at the same time
           // TODO (woodser): remove makerDepositTxId and takerDepositTxId from Trade
-          if (processModel.getMaker().getDepositTxHash() != null && processModel.getTaker().getDepositTxHash() != null) {
+          if (processModel.getMaker().getDepositTxHash() != null && processModel.getTaker().getDepositTxHash() != null) { // TODO (woodser): synchronize on process model before setting hash so response only sent once
               
               // create and sign contract
               Contract contract = TradeUtils.createContract(trade);

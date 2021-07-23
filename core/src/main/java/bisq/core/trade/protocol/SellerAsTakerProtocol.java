@@ -25,12 +25,14 @@ import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
+import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
+import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
@@ -255,6 +257,28 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                     errorMessage -> {
                         errorMessageHandler.handleErrorMessage(errorMessage);
                         handleTaskRunnerFault(sender, response, errorMessage);
+                    })))
+            .executeTasks();
+    }
+    
+    @Override
+    public void handlePaymentAccountPayloadRequest(PaymentAccountPayloadRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("SellerAsTakerProtocol.handlePaymentAccountPayloadRequest()");
+        Validator.checkTradeId(processModel.getOfferId(), request);
+        processModel.setTradeMessage(request);
+        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+            .with(request)
+            .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessPaymentAccountPayloadRequest.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, request);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, request, errorMessage);
                     })))
             .executeTasks();
     }

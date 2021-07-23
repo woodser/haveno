@@ -109,7 +109,7 @@ public class ProcessDepositRequest extends TradeTask {
               trader.setDepositTxKey(request.getDepositTxKey());
               
               // relay deposit txs when both available
-              if (processModel.getMaker().getDepositTxHash() != null && processModel.getTaker().getDepositTxHash() != null) {
+              if (processModel.getMaker().getDepositTxHex() != null && processModel.getTaker().getDepositTxHex() != null) {
                   
                   // relay txs
                   // TODO (woodser): really relay!

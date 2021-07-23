@@ -65,6 +65,7 @@ import bisq.core.trade.messages.InputsForDepositTxRequest;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
 import bisq.core.trade.messages.MediatedPayoutTxPublishedMessage;
 import bisq.core.trade.messages.MediatedPayoutTxSignatureMessage;
+import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.PeerPublishedDelayedPayoutTxMessage;
 import bisq.core.trade.messages.RefreshTradeStateRequest;
@@ -176,6 +177,8 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return DepositRequest.fromProto(proto.getDepositRequest(), this, messageVersion);
                 case DEPOSIT_RESPONSE:
                     return DepositResponse.fromProto(proto.getDepositResponse(), this, messageVersion);
+                case PAYMENT_ACCOUNT_PAYLOAD_REQUEST:
+                    return PaymentAccountPayloadRequest.fromProto(proto.getPaymentAccountPayloadRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_REQUEST:
                   return UpdateMultisigRequest.fromProto(proto.getUpdateMultisigRequest(), this, messageVersion);
                 case UPDATE_MULTISIG_RESPONSE:

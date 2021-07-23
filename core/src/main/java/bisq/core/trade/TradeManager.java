@@ -43,6 +43,7 @@ import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.InitMultisigMessage;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
+import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.UpdateMultisigRequest;
@@ -257,6 +258,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleDepositRequest((DepositRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof DepositResponse) {
             handleDepositResponse((DepositResponse) networkEnvelope, peer);
+        } else if (networkEnvelope instanceof PaymentAccountPayloadRequest) {
+            handlePaymentAccountPayloadRequest((PaymentAccountPayloadRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof UpdateMultisigRequest) {
             handleUpdateMultisigRequest((UpdateMultisigRequest) networkEnvelope, peer);
         }
@@ -586,12 +589,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
     
     private void handleDepositResponse(DepositResponse response, NodeAddress peer) {
-        log.info("Received DepositRequest from {} with tradeId {} and uid {}", peer, response.getTradeId(), response.getUid());
+        log.info("Received DepositResponse from {} with tradeId {} and uid {}", peer, response.getTradeId(), response.getUid());
 
         try {
             Validator.nonEmptyStringOf(response.getTradeId());
         } catch (Throwable t) {
-            log.warn("Invalid DepositRequest message " + response.toString());
+            log.warn("Invalid DepositResponse message " + response.toString());
             return;
         }
 
@@ -599,6 +602,26 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + response.getTradeId()); // TODO (woodser): error handling
         Trade trade = tradeOptional.get();
         ((TraderProtocol) getTradeProtocol(trade)).handleDepositResponse(response, peer, errorMessage -> {
+              if (takeOfferRequestErrorMessageHandler != null) {
+                  takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
+              }
+        });
+    }
+    
+    private void handlePaymentAccountPayloadRequest(PaymentAccountPayloadRequest request, NodeAddress peer) {
+        log.info("Received PaymentAccountPayloadRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
+
+        try {
+            Validator.nonEmptyStringOf(request.getTradeId());
+        } catch (Throwable t) {
+            log.warn("Invalid PaymentAccountPayloadRequest message " + request.toString());
+            return;
+        }
+
+        Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
+        if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
+        Trade trade = tradeOptional.get();
+        ((TraderProtocol) getTradeProtocol(trade)).handlePaymentAccountPayloadRequest(request, peer, errorMessage -> {
               if (takeOfferRequestErrorMessageHandler != null) {
                   takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
               }

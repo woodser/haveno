@@ -90,10 +90,11 @@ message NetworkEnvelope {
         SignContractResponse sign_contract_response = 1006;
         DepositRequest deposit_request = 1007;
         DepositResponse deposit_response = 1008;
-        UpdateMultisigRequest update_multisig_request = 1009;
-        UpdateMultisigResponse update_multisig_response = 1010;
-        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1011;
-        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1012;
+        PaymentAccountPayloadRequest payment_account_payload_request = 1009;
+        UpdateMultisigRequest update_multisig_request = 1010;
+        UpdateMultisigResponse update_multisig_response = 1011;
+        ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1012;
+        ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1013;
     }
 }
 
@@ -371,6 +372,15 @@ message DepositResponse {
     PubKeyRing pub_key_ring = 3;
     string uid = 4;
     int64 current_date = 5;
+}
+
+message PaymentAccountPayloadRequest {
+    string trade_id = 1;
+    NodeAddress sender_node_address = 2;
+    PubKeyRing pub_key_ring = 3;
+    string uid = 4;
+    int64 current_date = 5;
+    PaymentAccountPayload payment_account_payload = 6;
 }
 
 message UpdateMultisigRequest {
