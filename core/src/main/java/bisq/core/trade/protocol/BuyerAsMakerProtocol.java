@@ -146,7 +146,6 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     MakerRemovesOpenOffer.class).
                     using(new TradeTaskRunner(trade,
                             () -> {
-                              stopTimeout();
                               handleTaskRunnerSuccess(peer, message);
                             },
                             errorMessage -> {
@@ -258,7 +257,8 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                     ProcessPaymentAccountPayloadRequest.class)
                 .using(new TradeTaskRunner(trade,
                     () -> {
-                      handleTaskRunnerSuccess(sender, request);
+                        stopTimeout();
+                        handleTaskRunnerSuccess(sender, request);
                     },
                     errorMessage -> {
                         errorMessageHandler.handleErrorMessage(errorMessage);

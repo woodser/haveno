@@ -28,7 +28,6 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositResponse;
-import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.TradingPeer;
 import bisq.core.util.ParsingUtils;
 import bisq.network.p2p.NodeAddress;
@@ -112,9 +111,8 @@ public class ProcessDepositRequest extends TradeTask {
               if (processModel.getMaker().getDepositTxHex() != null && processModel.getTaker().getDepositTxHex() != null) {
                   
                   // relay txs
-                  // TODO (woodser): really relay!
-                  //daemon.relayTxByHash(processModel.getMaker().getDepositTxHash());
-                  //daemon.relayTxByHash(processModel.getTaker().getDepositTxHash());
+                  daemon.relayTxByHash(processModel.getMaker().getDepositTxHash());
+                  daemon.relayTxByHash(processModel.getTaker().getDepositTxHash());
                   
                   // create deposit response
                   DepositResponse response = new DepositResponse(

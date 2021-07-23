@@ -272,9 +272,10 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
             .setup(tasks(
                     // TODO (woodser): validate request
                     ProcessPaymentAccountPayloadRequest.class)
-                .using(new TradeTaskRunner(trade,
+            .using(new TradeTaskRunner(trade,
                     () -> {
-                      handleTaskRunnerSuccess(sender, request);
+                        stopTimeout();
+                        handleTaskRunnerSuccess(sender, request);
                     },
                     errorMessage -> {
                         errorMessageHandler.handleErrorMessage(errorMessage);
