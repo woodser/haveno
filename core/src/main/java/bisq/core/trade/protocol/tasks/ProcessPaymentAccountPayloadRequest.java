@@ -19,7 +19,11 @@ package bisq.core.trade.protocol.tasks;
 
 
 import bisq.common.taskrunner.TaskRunner;
+import bisq.core.payment.payload.PaymentAccountPayload;
+import bisq.core.trade.MakerTrade;
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.PaymentAccountPayloadRequest;
+import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -34,7 +38,21 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
     protected void run() {
         try {
           runInterceptHook();
-          throw new RuntimeException("ProcessPaymentAccountPayloadRequest not implemented");
+          
+          // get peer's payment account payload
+          PaymentAccountPayloadRequest request = (PaymentAccountPayloadRequest) processModel.getTradeMessage(); // TODO (woodser): verify request
+          PaymentAccountPayload paymentAccountPayload = request.getPaymentAccountPayload();
+          
+          // verify hash of payment account payload
+          byte[] peerPaymentAccountPayloadHash = trade instanceof MakerTrade ? trade.getContract().getTakerPaymentAccountPayloadHash() : trade.getContract().getMakerPaymentAccountPayloadHash();
+          if (!Arrays.equals(paymentAccountPayload.getHash(), peerPaymentAccountPayloadHash)) throw new RuntimeException("Hash of peer's payment account payload does not match contract");
+          
+          // listen for deposit transactions
+          // TODO (woodser): listen for deposit transaction
+          
+          // set trade state
+          
+          complete();
         } catch (Throwable t) {
           failed(t);
         }

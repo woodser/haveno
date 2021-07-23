@@ -37,7 +37,7 @@ import monero.daemon.model.MoneroOutput;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 
-// TODO (woodser): separate classes for deposit tx creation and contract request
+// TODO (woodser): separate classes for deposit tx creation and contract request, or combine into ProcessInitMultisigRequest
 @Slf4j
 public class SendSignContractRequestAfterMultisig extends TradeTask {
     
@@ -61,7 +61,6 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           if (processModel.getDepositTxXmr() != null) return;
 
           // thaw reserved outputs
-          System.out.println(processModel.getFrozenKeyImages());
           MoneroWallet wallet = trade.getXmrWalletService().getWallet();
           for (String frozenKeyImage : processModel.getFrozenKeyImages()) {
               wallet.thawOutput(frozenKeyImage);
