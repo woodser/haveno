@@ -64,6 +64,8 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           // verify hash of payment account payload
           byte[] peerPaymentAccountPayloadHash = trade instanceof MakerTrade ? trade.getContract().getTakerPaymentAccountPayloadHash() : trade.getContract().getMakerPaymentAccountPayloadHash();
           if (!Arrays.equals(paymentAccountPayload.getHash(), peerPaymentAccountPayloadHash)) throw new RuntimeException("Hash of peer's payment account payload does not match contract");
+          
+          // set payment account payload
           processModel.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
           
           // create listener for deposit transactions
@@ -127,7 +129,7 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
         if (trade.getMakerDepositTx() == null && trade.getTakerDepositTx() == null) {
             trade.applyDepositTxs(makerDepositTx, takerDepositTx);
             XmrWalletService.printTxs("depositTxs received from network", makerDepositTx, takerDepositTx);
-            trade.setState(Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK);  // TODO (woodser): MAKER_PUBLISHED_DEPOSIT_TX
+            trade.setState(Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK);  // TODO (woodser): maker and taker?
         } else {
             log.info("We got the deposit tx already set from MakerCreateAndPublishDepositTx.  tradeId={}, state={}", trade.getId(), trade.getState());
         }

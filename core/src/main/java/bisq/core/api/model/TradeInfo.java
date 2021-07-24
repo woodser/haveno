@@ -108,8 +108,8 @@ public class TradeInfo implements Payload {
                     contract.isBuyerMakerAndSellerTaker(),
                     contract.getMakerAccountId(),
                     contract.getTakerAccountId(),
-                    toPaymentAccountPayloadInfo(contract.getMakerPaymentAccountPayload()),
-                    toPaymentAccountPayloadInfo(contract.getTakerPaymentAccountPayload()),
+                    toPaymentAccountPayloadInfo(trade.getProcessModel().getMaker().getPaymentAccountPayload()),
+                    toPaymentAccountPayloadInfo(trade.getProcessModel().getTaker().getPaymentAccountPayload()),
                     contract.getMakerPayoutAddressString(),
                     contract.getTakerPayoutAddressString(),
                     contract.getLockTime());

@@ -451,8 +451,8 @@ public class ClosedTradesView extends ActivatableViewAndModel<VBox, ClosedTrades
                 if (contract != null) {
                     isBuyerOnion = contract.getBuyerNodeAddress().getFullAddress().contains(filterString);
                     isSellerOnion = contract.getSellerNodeAddress().getFullAddress().contains(filterString);
-                    matchesBuyersPaymentAccountData = contract.getBuyerPaymentAccountPayload().getPaymentDetails().contains(filterString);
-                    matchesSellersPaymentAccountData = contract.getSellerPaymentAccountPayload().getPaymentDetails().contains(filterString);
+                    matchesBuyersPaymentAccountData = trade.getProcessModel().getBuyer().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
+                    matchesSellersPaymentAccountData = trade.getProcessModel().getSeller().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
                 }
                 return isBuyerOnion || isSellerOnion ||
                         matchesBuyersPaymentAccountData || matchesSellersPaymentAccountData;

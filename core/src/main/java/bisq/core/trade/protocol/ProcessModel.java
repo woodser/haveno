@@ -27,6 +27,7 @@ import bisq.core.dao.DaoFacade;
 import bisq.core.filter.FilterManager;
 import bisq.core.network.MessageState;
 import bisq.core.offer.Offer;
+import bisq.core.offer.OfferPayload.Direction;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.payment.payload.PaymentAccountPayload;
@@ -375,19 +376,20 @@ public class ProcessModel implements Model, PersistablePayload {
             tradeManager.requestPersistence();
         }
     }
-
-    public void setTradingPeer(TradingPeer peer) {
-      if (trade == null) throw new RuntimeException("Cannot set trading peer because trade is null");
-      else if (trade instanceof MakerTrade) taker = peer;
-      else if (trade instanceof TakerTrade) maker = peer;
-      else throw new RuntimeException("Must be maker or taker to set trading peer");
-    }
     
     public TradingPeer getSelf() {
         if (trade instanceof MakerTrade) return getMaker();
         if (trade instanceof TakerTrade) return getTaker();
         if (trade instanceof ArbitratorTrade) return getArbitrator();
         throw new RuntimeException("Trade is not maker, taker, or arbitrator");
+    }
+    
+    public TradingPeer getBuyer() {
+        return trade.getOffer().getDirection() == Direction.BUY ? getMaker() : getTaker();
+    }
+    
+    public TradingPeer getSeller() {
+        return trade.getOffer().getDirection() == Direction.BUY ? getTaker() : getMaker();
     }
 
     /**

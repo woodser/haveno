@@ -21,7 +21,6 @@ import bisq.core.locale.CurrencyUtil;
 import bisq.core.monetary.Price;
 import bisq.core.monetary.Volume;
 import bisq.core.offer.OfferPayload;
-import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.payment.payload.PaymentMethod;
 import bisq.core.proto.CoreProtoResolver;
 import bisq.core.util.VolumeUtil;
@@ -205,27 +204,6 @@ public final class Contract implements NetworkPayload {
         return isBuyerMakerAndSellerTaker ? takerPaymentAccountPayloadHash : makerPaymentAccountPayloadHash;
     }
     
-    // TODO (woodser): remove these methods
-    @Nullable
-    public PaymentAccountPayload getMakerPaymentAccountPayload() {
-        return null;
-    }
-
-    @Nullable
-    public PaymentAccountPayload getTakerPaymentAccountPayload() {
-        return null;
-    }
-    
-    @Nullable
-    public PaymentAccountPayload getBuyerPaymentAccountPayload() {
-        return null;
-    }
-
-    @Nullable
-    public PaymentAccountPayload getSellerPaymentAccountPayload() {
-        return null;
-    }
-
     public String getPaymentMethodId() {
         return makerPaymentMethodId;
     }

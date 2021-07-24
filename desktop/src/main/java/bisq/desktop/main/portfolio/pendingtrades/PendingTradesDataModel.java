@@ -341,18 +341,14 @@ public class PendingTradesDataModel extends ActivatableDataModel {
 
     @Nullable
     public PaymentAccountPayload getSellersPaymentAccountPayload() {
-        if (getTrade() != null && getTrade().getContract() != null)
-            return getTrade().getContract().getSellerPaymentAccountPayload();
-        else
-            return null;
+        if (getTrade() == null) return null;
+        return getTrade().getProcessModel().getSeller().getPaymentAccountPayload();
     }
 
     @Nullable
     public PaymentAccountPayload getBuyersPaymentAccountPayload() {
-        if (getTrade() != null && getTrade().getContract() != null)
-            return getTrade().getContract().getBuyerPaymentAccountPayload();
-        else
-            return null;
+        if (getTrade() == null) return null;
+        return getTrade().getProcessModel().getBuyer().getPaymentAccountPayload();
     }
 
     public String getReference() {
@@ -563,6 +559,8 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                     trade.getContractAsJson(),
                     trade.getMakerContractSignature(),
                     trade.getTakerContractSignature(),
+                    trade.getProcessModel().getMaker().getPaymentAccountPayload(),
+                    trade.getProcessModel().getTaker().getPaymentAccountPayload(),
                     arbitratorPubKeyRing,
                     isSupportTicket,
                     SupportType.MEDIATION);
@@ -597,6 +595,8 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                   trade.getContractAsJson(),
                   trade.getMakerContractSignature(),
                   trade.getTakerContractSignature(),
+                  trade.getProcessModel().getMaker().getPaymentAccountPayload(),
+                  trade.getProcessModel().getTaker().getPaymentAccountPayload(),
                   arbitratorPubKeyRing,
                   isSupportTicket,
                   SupportType.ARBITRATION);

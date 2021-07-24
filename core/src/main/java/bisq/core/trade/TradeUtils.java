@@ -44,6 +44,8 @@ import monero.wallet.model.MoneroTxWallet;
 
 /**
  * Collection of utilities for trading.
+ * 
+ * TODO (woodser): combine with TradeUtil.java ?
  */
 public class TradeUtils {
     

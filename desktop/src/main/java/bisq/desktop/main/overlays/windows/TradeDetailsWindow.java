@@ -180,8 +180,8 @@ public class TradeDetailsWindow extends Overlay<TradeDetailsWindow> {
         if (contract != null) {
             rows++;
 
-            buyerPaymentAccountPayload = contract.getBuyerPaymentAccountPayload();
-            sellerPaymentAccountPayload = contract.getSellerPaymentAccountPayload();
+            buyerPaymentAccountPayload = trade.getProcessModel().getBuyer().getPaymentAccountPayload();
+            sellerPaymentAccountPayload = trade.getProcessModel().getSeller().getPaymentAccountPayload();
             if (buyerPaymentAccountPayload != null)
                 rows++;
 

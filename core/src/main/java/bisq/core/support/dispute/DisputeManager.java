@@ -244,6 +244,7 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    @Override
     public void onAllServicesInitialized() {
         super.onAllServicesInitialized();
         disputeListService.onAllServicesInitialized();
@@ -581,6 +582,8 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
                 disputeFromOpener.getContractAsJson(),
                 disputeFromOpener.getMakerContractSignature(),
                 disputeFromOpener.getTakerContractSignature(),
+                disputeFromOpener.getMakerPaymentAccountPayload(),
+                disputeFromOpener.getTakerPaymentAccountPayload(),
                 disputeFromOpener.getAgentPubKeyRing(),
                 disputeFromOpener.isSupportTicket(),
                 disputeFromOpener.getSupportType());
