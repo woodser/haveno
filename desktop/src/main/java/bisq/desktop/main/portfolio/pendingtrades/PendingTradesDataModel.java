@@ -455,19 +455,19 @@ public class PendingTradesDataModel extends ActivatableDataModel {
       // in such cases. The mediators or arbitrators could not help anyway with a payout in such cases.
       String depositTxId = null;
       if (isMaker) {
-        if (trade.getMakerDepositTxId() == null) {
+        if (trade.getProcessModel().getMaker().getDepositTxHash() == null) {
           log.error("Deposit tx must not be null");
           new Popup().instruction(Res.get("portfolio.pending.error.depositTxNull")).show();
           return;
         }
-        depositTxId = trade.getMakerDepositTxId();
+        depositTxId = trade.getProcessModel().getMaker().getDepositTxHash();
       } else {
-        if (trade.getTakerDepositTxId() == null) {
+        if (trade.getProcessModel().getTaker().getDepositTxHash() == null) {
           log.error("Deposit tx must not be null");
           new Popup().instruction(Res.get("portfolio.pending.error.depositTxNull")).show();
           return;
         }
-        depositTxId = trade.getTakerDepositTxId();
+        depositTxId = trade.getProcessModel().getTaker().getDepositTxHash();
       }
 
       Offer offer = trade.getOffer();

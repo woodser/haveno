@@ -74,8 +74,8 @@ public class BuyerCreateAndSignPayoutTx extends TradeTask {
             String buyerPayoutAddress = trade instanceof MakerTrade ? trade.getContract().getMakerPayoutAddressString() : trade.getContract().getTakerPayoutAddressString();
             Preconditions.checkNotNull(sellerPayoutAddress, "sellerPayoutAddress must not be null");
             Preconditions.checkNotNull(buyerPayoutAddress, "buyerPayoutAddress must not be null");
-            BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTakerPreparedDepositTxId() : processModel.getMakerPreparedDepositTxId()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
-            BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMakerPreparedDepositTxId() : processModel.getTakerPreparedDepositTxId()).getIncomingAmount();
+            BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTaker().getDepositTxHash() : processModel.getMaker().getDepositTxHash()).getIncomingAmount();
+            BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMaker().getDepositTxHash() : processModel.getTaker().getDepositTxHash()).getIncomingAmount();
             BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(trade.getTradeAmount());
             BigInteger buyerPayoutAmount = buyerDepositAmount.add(tradeAmount);
             BigInteger sellerPayoutAmount = sellerDepositAmount.subtract(tradeAmount);

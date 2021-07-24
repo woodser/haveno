@@ -40,6 +40,9 @@ public class ProcessDepositResponse extends TradeTask {
         try {
           runInterceptHook();
           
+          // set payment account payload
+          processModel.getSelf().setPaymentAccountPayload(processModel.getPaymentAccountPayload(trade));
+          
           // create request with payment account payload
           PaymentAccountPayloadRequest request = new PaymentAccountPayloadRequest(
                   trade.getOffer().getId(),
@@ -48,7 +51,7 @@ public class ProcessDepositResponse extends TradeTask {
                   UUID.randomUUID().toString(),
                   Version.getP2PMessageVersion(),
                   new Date().getTime(),
-                  processModel.getPaymentAccountPayload(trade));
+                  processModel.getSelf().getPaymentAccountPayload());
           
           // send payment account payload to trading peer
           processModel.getP2PService().sendEncryptedDirectMessage(trade.getTradingPeerNodeAddress(), trade.getTradingPeerPubKeyRing(), request, new SendDirectMessageListener() {

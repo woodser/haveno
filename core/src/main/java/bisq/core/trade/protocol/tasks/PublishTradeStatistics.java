@@ -69,8 +69,8 @@ public class PublishTradeStatistics extends TradeTask {
                 trade.getTradePrice(),
                 trade.getTradeAmount(),
                 trade.getDate(),
-                trade.getMakerDepositTxId(),
-                trade.getTakerDepositTxId(),
+                trade.getProcessModel().getMaker().getDepositTxHash(),
+                trade.getProcessModel().getTaker().getDepositTxHash(),
                 extraDataMap);
             processModel.getP2PService().addPersistableNetworkPayload(tradeStatistics, true);
 

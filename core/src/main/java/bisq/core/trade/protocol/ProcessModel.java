@@ -204,14 +204,7 @@ public class ProcessModel implements Model, PersistablePayload {
     @Setter
     private boolean multisigDepositInitiated;
     @Nullable
-    @Setter
-    private String makerPreparedDepositTxId; // TODO (woodser): remove
-    @Nullable
-    @Setter
-    private String takerPreparedDepositTxId; // TODO (woodser): remove
-    @Nullable
     transient private MoneroTxWallet buyerSignedPayoutTx; // TODO (woodser): remove
-
 
 
     // We want to indicate the user the state of the message delivery of the
@@ -266,8 +259,6 @@ public class ProcessModel implements Model, PersistablePayload {
         Optional.ofNullable(takeOfferFeeTxId).ifPresent(builder::setTakeOfferFeeTxId);
         Optional.ofNullable(reserveTxHash).ifPresent(e -> builder.setReserveTxHash(reserveTxHash));
         Optional.ofNullable(payoutTxSignature).ifPresent(e -> builder.setPayoutTxSignature(ByteString.copyFrom(payoutTxSignature)));
-        Optional.ofNullable(makerPreparedDepositTxId).ifPresent(e -> builder.setMakerPreparedDepositTxId(makerPreparedDepositTxId));
-        Optional.ofNullable(takerPreparedDepositTxId).ifPresent(e -> builder.setTakerPreparedDepositTxId(takerPreparedDepositTxId));
         Optional.ofNullable(rawTransactionInputs).ifPresent(e -> builder.addAllRawTransactionInputs(ProtoUtil.collectionToProto(rawTransactionInputs, protobuf.RawTransactionInput.class)));
         Optional.ofNullable(changeOutputAddress).ifPresent(builder::setChangeOutputAddress);
         Optional.ofNullable(myMultiSigPubKey).ifPresent(e -> builder.setMyMultiSigPubKey(ByteString.copyFrom(myMultiSigPubKey)));
@@ -314,8 +305,6 @@ public class ProcessModel implements Model, PersistablePayload {
         processModel.setMultisigSetupComplete(proto.getMultisigSetupComplete());
         processModel.setMakerReadyToFundMultisig(proto.getMakerReadyToFundMultisig());
         processModel.setMultisigDepositInitiated(proto.getMultisigDepositInitiated());
-        processModel.setMakerPreparedDepositTxId(proto.getMakerPreparedDepositTxId());
-        processModel.setTakerPreparedDepositTxId(proto.getTakerPreparedDepositTxId());
 
         String paymentStartedMessageStateString = ProtoUtil.stringOrNullFromProto(proto.getPaymentStartedMessageState());
         MessageState paymentStartedMessageState = ProtoUtil.enumFromProto(MessageState.class, paymentStartedMessageStateString);

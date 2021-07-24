@@ -665,8 +665,8 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       DisputeResult disputeResult = dispute.getDisputeResultProperty().get();
 
 //    Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");
-//    BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getMakerDepositTxId() : trade.getTakerDepositTxId()).getIncomingAmount();   // TODO (woodser): use contract instead of trade to get deposit tx ids when contract has deposit tx ids
-//    BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getTakerDepositTxId() : trade.getMakerDepositTxId()).getIncomingAmount();
+//    BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getProcessModel().getMaker().getDepositTxHash() : trade.getProcessModel().getTaker().getDepositTxHash()).getIncomingAmount();   // TODO (woodser): use contract instead of trade to get deposit tx ids when contract has deposit tx ids
+//    BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? trade.getProcessModel().getTaker().getDepositTxHash() : trade.getProcessModel().getMaker().getDepositTxHash()).getIncomingAmount();
 //    BigInteger tradeAmount = BigInteger.valueOf(contract.getTradeAmount().value).multiply(ParsingUtils.XMR_SATOSHI_MULTIPLIER);
       BigInteger buyerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getBuyerPayoutAmount());
       BigInteger sellerPayoutAmount = ParsingUtils.coinToAtomicUnits(disputeResult.getSellerPayoutAmount());

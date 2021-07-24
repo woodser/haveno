@@ -1697,12 +1697,10 @@ message Trade {
     string asset_tx_proof_result = 38; // name of AssetTxProofResult enum
     string uid = 39;
     
-    NodeAddress taker_node_address = 100;
-    PubKeyRing taker_pub_key_ring = 101;
-    string taker_deposit_tx_id = 102;
-    NodeAddress maker_node_address = 103;
-    PubKeyRing maker_pub_key_ring = 104;
-    string maker_deposit_tx_id = 105;
+    NodeAddress maker_node_address = 100;
+    NodeAddress taker_node_address = 101;
+    PubKeyRing taker_pub_key_ring = 102;
+    PubKeyRing maker_pub_key_ring = 103;
 }
 
 message BuyerAsMakerTrade {
@@ -1760,8 +1758,6 @@ message ProcessModel {
     bool multisig_setup_complete = 1011;
     bool maker_ready_to_fund_multisig = 1012;
     bool multisig_deposit_initiated = 1013;
-    string taker_prepared_deposit_tx_id = 1014;
-    string maker_prepared_deposit_tx_id = 1015; // TODO (woodser): remove unused fields
 }
 
 message TradingPeer {

@@ -27,7 +27,6 @@ import bisq.core.offer.placeoffer.tasks.AddToOfferBook;
 import bisq.core.offer.placeoffer.tasks.MakerReservesTradeFunds;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
-import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.core.trade.protocol.tasks.buyer.BuyerCreateAndSignPayoutTx;
 import bisq.core.trade.protocol.tasks.buyer.BuyerProcessDelayedPayoutTxSignatureRequest;
@@ -46,7 +45,6 @@ import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSendsDepositTxM
 import bisq.core.trade.protocol.tasks.buyer_as_taker.BuyerAsTakerSignsDepositTx;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
 import bisq.core.trade.protocol.tasks.maker.MakerSetsLockTime;
-import bisq.core.trade.protocol.tasks.maker.MakerSetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerFeePayment;
 import bisq.core.trade.protocol.tasks.seller.SellerCreatesDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.seller.SellerFinalizesDelayedPayoutTx;
@@ -65,9 +63,7 @@ import bisq.core.trade.protocol.tasks.seller_as_taker.SellerAsTakerCreatesDeposi
 import bisq.core.trade.protocol.tasks.seller_as_taker.SellerAsTakerSignsDepositTx;
 import bisq.core.trade.protocol.tasks.taker.TakerCreateFeeTx;
 import bisq.core.trade.protocol.tasks.taker.TakerProcessesInputsForDepositTxResponse;
-import bisq.core.trade.protocol.tasks.taker.TakerProcessesMakerDepositTxMessage;
 import bisq.core.trade.protocol.tasks.taker.TakerPublishFeeTx;
-import bisq.core.trade.protocol.tasks.taker.TakerSetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.taker.TakerVerifyMakerFeePayment;
 
 import bisq.common.taskrunner.Task;
@@ -138,7 +134,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         SellerSignsDelayedPayoutTx.class,
                         SellerFinalizesDelayedPayoutTx.class,
                         //SellerSendsDepositTxAndDelayedPayoutTxMessage.class,
-                        TakerProcessesMakerDepositTxMessage.class,
                         SellerPublishesDepositTx.class,
                         SellerPublishesTradeStatistics.class,
 
@@ -161,7 +156,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         MakerVerifyTakerFeePayment.class,
                         MakerSetsLockTime.class,
                         BuyerAsMakerCreatesAndSignsDepositTx.class,
-                        MakerSetupDepositTxsListener.class,
                         BuyerAsMakerSendsInputsForDepositTxResponse.class,
 
                         BuyerProcessDelayedPayoutTxSignatureRequest.class,
@@ -196,7 +190,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         VerifyPeersAccountAgeWitness.class,
                         TakerPublishFeeTx.class,
                         BuyerAsTakerSignsDepositTx.class,
-                        TakerSetupDepositTxsListener.class,
                         BuyerAsTakerSendsDepositTxMessage.class,
 
                         BuyerProcessDelayedPayoutTxSignatureRequest.class,
@@ -223,7 +216,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         MakerSetsLockTime.class,
                         SellerAsMakerCreatesUnsignedDepositTx.class,
                         SellerAsMakerSendsInputsForDepositTxResponse.class,
-                        SetupDepositTxsListener.class,
 
                         //SellerAsMakerProcessDepositTxMessage.class,
                         MakerRemovesOpenOffer.class,

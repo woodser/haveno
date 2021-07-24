@@ -60,8 +60,8 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
             String buyerSignedPayoutTxHex = processModel.getTradingPeer().getSignedPayoutTxHex();
             Contract contract = trade.getContract();
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");
-            BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMakerPreparedDepositTxId() : processModel.getTakerPreparedDepositTxId()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
-            BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTakerPreparedDepositTxId() : processModel.getMakerPreparedDepositTxId()).getIncomingAmount();
+            BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMaker().getDepositTxHash() : processModel.getTaker().getDepositTxHash()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
+            BigInteger buyerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getTaker().getDepositTxHash() : processModel.getMaker().getDepositTxHash()).getIncomingAmount();
             BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(trade.getTradeAmount());
 
             System.out.println("SELLER VERIFYING PAYOUT TX");

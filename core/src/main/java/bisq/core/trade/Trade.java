@@ -469,14 +469,6 @@ public abstract class Trade implements Tradable, Model {
     transient private MoneroTxWallet makerDepositTx;
     @Nullable
     transient private MoneroTxWallet takerDepositTx;
-    @Nullable
-    @Getter
-    @Setter
-    private String makerDepositTxId;
-    @Nullable
-    @Getter
-    @Setter
-    private String takerDepositTxId;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor, initialization
@@ -597,8 +589,6 @@ public abstract class Trade implements Tradable, Model {
                 .setUid(uid);
 
         Optional.ofNullable(takerFeeTxId).ifPresent(builder::setTakerFeeTxId);
-        Optional.ofNullable(takerDepositTxId).ifPresent(builder::setTakerDepositTxId);
-        Optional.ofNullable(makerDepositTxId).ifPresent(builder::setMakerDepositTxId);
         Optional.ofNullable(payoutTxId).ifPresent(builder::setPayoutTxId);
         Optional.ofNullable(contract).ifPresent(e -> builder.setContract(contract.toProtoMessage()));
         Optional.ofNullable(contractAsJson).ifPresent(builder::setContractAsJson);
@@ -631,8 +621,6 @@ public abstract class Trade implements Tradable, Model {
         trade.setDisputeState(DisputeState.fromProto(proto.getDisputeState()));
         trade.setTradePeriodState(TradePeriodState.fromProto(proto.getTradePeriodState()));
         trade.setTakerFeeTxId(ProtoUtil.stringOrNullFromProto(proto.getTakerFeeTxId()));
-        trade.setMakerDepositTxId(ProtoUtil.stringOrNullFromProto(proto.getMakerDepositTxId()));
-        trade.setTakerDepositTxId(ProtoUtil.stringOrNullFromProto(proto.getTakerDepositTxId()));
         trade.setPayoutTxId(ProtoUtil.stringOrNullFromProto(proto.getPayoutTxId()));
         trade.setContract(proto.hasContract() ? Contract.fromProto(proto.getContract(), coreProtoResolver) : null);
         trade.setContractAsJson(ProtoUtil.stringOrNullFromProto(proto.getContractAsJson()));
@@ -721,15 +709,13 @@ public abstract class Trade implements Tradable, Model {
         if (getMakerDepositTx() != null && getTakerDepositTx() != null) {
             System.out.println(processModel.getProvider().getXmrWalletService());
             MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(getId());
-          applyDepositTxs(multisigWallet.getTx(getMakerDepositTxId()), multisigWallet.getTx(getTakerDepositTxId()));
+          applyDepositTxs(multisigWallet.getTx(getMakerDepositTx().getHash()), multisigWallet.getTx(getTakerDepositTx().getHash()));
         }
     }
 
     public void applyDepositTxs(MoneroTxWallet makerDepositTx, MoneroTxWallet takerDepositTx) {
         this.makerDepositTx = makerDepositTx;
         this.takerDepositTx = takerDepositTx;
-        makerDepositTxId = makerDepositTx.getHash();
-        takerDepositTxId = takerDepositTx.getHash();
         //setupConfirmationListener();  // TODO (woodser): listening disabled here, using SetupDepositTxsListener in buyer and seller
         if (!makerDepositTx.isLocked() && !takerDepositTx.isLocked()) {
           setConfirmedState();  // TODO (woodser): bisq "confirmed" = xmr unlocked after 10 confirmations
@@ -738,24 +724,26 @@ public abstract class Trade implements Tradable, Model {
 
     @Nullable
     public MoneroTxWallet getTakerDepositTx() {
-      try {
-        if (takerDepositTx == null) takerDepositTx = takerDepositTxId != null ? xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(takerDepositTxId) : null;
-        return takerDepositTx;
-      } catch (MoneroError e) {
-        log.error("Wallet is missing taker deposit tx " + takerDepositTxId);
-        return null;
-      }
+        String depositTxHash = getProcessModel().getTaker().getDepositTxHash();
+        try {
+            if (takerDepositTx == null) takerDepositTx = depositTxHash == null ? null : xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(depositTxHash);
+            return takerDepositTx;
+        } catch (MoneroError e) {
+            log.error("Wallet is missing taker deposit tx " + depositTxHash);
+            return null;
+        }
     }
 
     @Nullable
     public MoneroTxWallet getMakerDepositTx() {
-      try {
-        if (makerDepositTx == null) makerDepositTx = makerDepositTxId != null ? xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(makerDepositTxId) : null;
-        return makerDepositTx;
-      } catch (MoneroError e) {
-        log.error("Wallet is missing maker deposit tx " + makerDepositTxId);
-        return null;
-      }
+        String depositTxHash = getProcessModel().getMaker().getDepositTxHash();
+        try {
+            if (makerDepositTx == null) makerDepositTx = depositTxHash == null ? null : xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(depositTxHash);
+            return makerDepositTx;
+        } catch (MoneroError e) {
+            log.error("Wallet is missing maker deposit tx " + depositTxHash);
+            return null;
+        }
     }
 
     public void applyDelayedPayoutTx(Transaction delayedPayoutTx) {
@@ -1153,8 +1141,8 @@ public abstract class Trade implements Tradable, Model {
     public boolean isTxChainInvalid() {
         return offer.getOfferFeePaymentTxId() == null ||
                 getTakerFeeTxId() == null ||
-                getMakerDepositTxId() == null ||
-                getTakerDepositTxId() == null ||
+                processModel.getMaker().getDepositTxHash() == null ||
+                processModel.getMaker().getDepositTxHash() == null ||
                 getDelayedPayoutTxBytes() == null;
     }
 
@@ -1236,7 +1224,6 @@ public abstract class Trade implements Tradable, Model {
                 ",\n     takeOfferDate=" + takeOfferDate +
                 ",\n     processModel=" + processModel +
                 ",\n     takerFeeTxId='" + takerFeeTxId + '\'' +
-                ",\n     takerDepositTxId='" + takerDepositTxId + '\'' +
                 ",\n     payoutTxId='" + payoutTxId + '\'' +
                 ",\n     tradeAmountAsLong=" + tradeAmountAsLong +
                 ",\n     tradePrice=" + tradePrice +
