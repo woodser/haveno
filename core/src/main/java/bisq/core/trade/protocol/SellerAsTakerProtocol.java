@@ -189,7 +189,8 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                       System.out.println("error in handle multisig pipeline!!!: " + errorMessage);
                       errorMessageHandler.handleErrorMessage(errorMessage);
                       handleTaskRunnerFault(sender, message, errorMessage);
-                  })))
+                  }))
+          .withTimeout(30))
           .executeTasks();
     }
     
@@ -211,7 +212,8 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                     errorMessage -> {
                         errorMessageHandler.handleErrorMessage(errorMessage);
                         handleTaskRunnerFault(sender, message, errorMessage);
-                    })))
+                    }))
+            .withTimeout(30))
             .executeTasks();
     }
     
