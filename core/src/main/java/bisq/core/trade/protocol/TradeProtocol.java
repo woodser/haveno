@@ -69,7 +69,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     public TradeProtocol(Trade trade) {
         this.trade = trade;
         this.processModel = trade.getProcessModel();
-        this.processModel.setTrade(trade);  // TODO (woodser): added to explicitly set trade circular loop, keep?
     }
 
 

@@ -492,6 +492,7 @@ public abstract class Trade implements Tradable, Model {
         this.tradePrice = tradePrice;
         this.xmrWalletService = xmrWalletService;
         this.processModel = processModel;
+        this.processModel.setTrade(this);
         this.uid = uid;
 
         this.txFeeAsLong = txFee.value;
