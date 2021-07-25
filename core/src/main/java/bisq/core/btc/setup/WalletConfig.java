@@ -367,7 +367,8 @@ public class WalletConfig extends AbstractIdleService {
 //            vXmrWallet.rescanBlockchain();
             vXmrWallet.sync();
             vXmrWallet.save();
-            System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance());
+            System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance(0));
+            System.out.println("Loaded wallet unlocked balance: " + vXmrWallet.getUnlockedBalance(0));
 
             String btcPrefix = "_BTC";
             vBtcWalletFile = new File(directory, filePrefix + btcPrefix + ".wallet");

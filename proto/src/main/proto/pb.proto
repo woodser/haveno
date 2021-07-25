@@ -1511,7 +1511,7 @@ message XmrAddressEntry {
         TRADE_PAYOUT = 6;
     }
 
-	int32 account_index = 7;
+	int32 subaddress_index = 7;
 	string address_string = 8;
     string offer_id = 9;
     Context context = 10;

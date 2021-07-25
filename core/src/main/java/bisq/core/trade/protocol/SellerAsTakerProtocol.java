@@ -61,7 +61,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 // TODO (woodser): remove unused request handling
 @Slf4j
 public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtocol {
-    private ResultHandler takeOfferListener;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -190,7 +189,6 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                       System.out.println("error in handle multisig pipeline!!!: " + errorMessage);
                       errorMessageHandler.handleErrorMessage(errorMessage);
                       handleTaskRunnerFault(sender, message, errorMessage);
-                      takeOfferListener.handleResult();
                   })))
           .executeTasks();
     }

@@ -755,6 +755,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     // Complete trade
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    // TODO (woodser): remove this function
     public void onWithdrawRequest(String toAddress,
           Coin amount,
           Coin fee,
@@ -763,35 +764,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           @Nullable String memo,
           ResultHandler resultHandler,
           FaultHandler faultHandler) {
-      int fromAccountIdx = xmrWalletService.getOrCreateAddressEntry(trade.getId(),
-          XmrAddressEntry.Context.TRADE_PAYOUT).getAccountIndex();
-      FutureCallback<MoneroTxWallet> callback = new FutureCallback<MoneroTxWallet>() {
-        @Override
-        public void onSuccess(@javax.annotation.Nullable MoneroTxWallet transaction) {
-          if (transaction != null) {
-            log.debug("onWithdraw onSuccess tx ID:" + transaction.getHash());
-            onTradeCompleted(trade);
-            trade.setState(Trade.State.WITHDRAW_COMPLETED);
-            getTradeProtocol(trade).onWithdrawCompleted();
-            requestPersistence();
-            resultHandler.handleResult();
-          }
-        }
-
-        @Override
-        public void onFailure(@NotNull Throwable t) {
-          t.printStackTrace();
-          log.error(t.getMessage());
-          faultHandler.handleFault("An exception occurred at requestWithdraw (onFailure).", t);
-        }
-      };
-      try {
-        xmrWalletService.sendFunds(fromAccountIdx, toAddress, amount, XmrAddressEntry.Context.TRADE_PAYOUT, callback);
-      } catch (AddressFormatException | InsufficientMoneyException | AddressEntryException e) {
-        e.printStackTrace();
-        log.error(e.getMessage());
-        faultHandler.handleFault("An exception occurred at requestWithdraw.", e);
-      }
+        throw new RuntimeException("Withdraw trade funds after payout to Haveno wallet not supported");
     }
 
     // If trade was completed (closed without fault but might be closed by a dispute) we move it to the closed trades

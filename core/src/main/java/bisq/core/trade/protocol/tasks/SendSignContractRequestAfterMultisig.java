@@ -75,8 +75,9 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           MoneroTxWallet depositTx = TradeUtils.createDepositTx(trade.getXmrWalletService(), tradeFee, multisigAddress, depositAmount);
           
           // freeze deposit outputs
+          // TODO (woodser): save frozen key images and unfreeze if trade fails before sent to multisig
           for (MoneroOutput input : depositTx.getInputs()) {
-              //wallet.freezeOutput(input.getKeyImage().getHex()); // TODO (woodser): actually freeze outputs!
+              wallet.freezeOutput(input.getKeyImage().getHex());
           }
           
           // save process state

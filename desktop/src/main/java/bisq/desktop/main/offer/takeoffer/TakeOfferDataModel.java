@@ -265,7 +265,7 @@ class TakeOfferDataModel extends OfferDataModel {
         calculateVolume();
         calculateTotalToPay();
 
-        balanceListener = new XmrBalanceListener(addressEntry.getAccountIndex()) {
+        balanceListener = new XmrBalanceListener(addressEntry.getSubaddressIndex()) {
             @Override
             public void onBalanceChanged(BigInteger balance) {
                 updateBalance();

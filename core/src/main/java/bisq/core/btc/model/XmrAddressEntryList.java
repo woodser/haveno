@@ -38,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 
 
 import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroAccount;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroWalletListener;
 
@@ -131,10 +130,6 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
 //            });
 //
 //            toBeRemoved.forEach(entrySet::remove);
-        } else {
-            // As long the old arbitration domain is not removed from the code base we still support it here.
-            MoneroAccount account = wallet.createAccount();
-            entrySet.add(new XmrAddressEntry(account.getIndex(), account.getPrimaryAddress(), XmrAddressEntry.Context.ARBITRATOR));
         }
 
         // In case we restore from seed words and have balance we need to add the relevant addresses to our list.
@@ -184,7 +179,7 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
 
     public void swapToAvailable(XmrAddressEntry addressEntry) {
         boolean setChangedByRemove = entrySet.remove(addressEntry);
-        boolean setChangedByAdd = entrySet.add(new XmrAddressEntry(addressEntry.getAccountIndex(), addressEntry.getAddressString(),
+        boolean setChangedByAdd = entrySet.add(new XmrAddressEntry(addressEntry.getSubaddressIndex(), addressEntry.getAddressString(),
                 XmrAddressEntry.Context.AVAILABLE));
         if (setChangedByRemove || setChangedByAdd) {
             requestPersistence();
@@ -195,7 +190,7 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
                                                                XmrAddressEntry.Context context,
                                                                String offerId) {
         boolean setChangedByRemove = entrySet.remove(addressEntry);
-        final XmrAddressEntry newAddressEntry = new XmrAddressEntry(addressEntry.getAccountIndex(), addressEntry.getAddressString(), context, offerId, null);
+        final XmrAddressEntry newAddressEntry = new XmrAddressEntry(addressEntry.getSubaddressIndex(), addressEntry.getAddressString(), context, offerId, null);
         boolean setChangedByAdd = entrySet.add(newAddressEntry);
         if (setChangedByRemove || setChangedByAdd)
             requestPersistence();
