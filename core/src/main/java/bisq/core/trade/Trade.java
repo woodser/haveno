@@ -22,6 +22,7 @@ import bisq.core.locale.CurrencyUtil;
 import bisq.core.monetary.Price;
 import bisq.core.monetary.Volume;
 import bisq.core.offer.Offer;
+import bisq.core.offer.OfferPayload.Direction;
 import bisq.core.payment.payload.PaymentMethod;
 import bisq.core.proto.CoreProtoResolver;
 import bisq.core.support.dispute.arbitration.arbitrator.Arbitrator;
@@ -32,6 +33,7 @@ import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.ProcessModel;
 import bisq.core.trade.protocol.ProcessModelServiceProvider;
 import bisq.core.trade.protocol.TradeListener;
+import bisq.core.trade.protocol.TradingPeer;
 import bisq.core.trade.txproof.AssetTxProofResult;
 import bisq.core.util.VolumeUtil;
 import bisq.network.p2p.AckMessage;
@@ -492,7 +494,6 @@ public abstract class Trade implements Tradable, Model {
         this.tradePrice = tradePrice;
         this.xmrWalletService = xmrWalletService;
         this.processModel = processModel;
-        this.processModel.setTrade(this);
         this.uid = uid;
 
         this.txFeeAsLong = txFee.value;
@@ -919,6 +920,56 @@ public abstract class Trade implements Tradable, Model {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Getter
     ///////////////////////////////////////////////////////////////////////////////////////////
+    
+    public TradingPeer getSelf() {
+        if (this instanceof MakerTrade) return processModel.getMaker();
+        if (this instanceof TakerTrade) return processModel.getTaker();
+        if (this instanceof ArbitratorTrade) return processModel.getArbitrator();
+        throw new RuntimeException("Trade is not maker, taker, or arbitrator");
+    }
+    
+    public TradingPeer getMaker() {
+        return processModel.getMaker();
+    }
+    
+    public TradingPeer getTaker() {
+        return processModel.getTaker();
+    }
+    
+    public TradingPeer getBuyer() {
+        return offer.getDirection() == Direction.BUY ? processModel.getMaker() : processModel.getTaker();
+    }
+    
+    public TradingPeer getSeller() {
+        return offer.getDirection() == Direction.BUY ? processModel.getTaker() : processModel.getMaker();
+    }
+
+    /**
+     * Get the taker if maker, maker if taker, null if arbitrator.
+     * 
+     * @return the trade peer
+     */
+    public TradingPeer getTradingPeer() {
+      if (this instanceof MakerTrade) return processModel.getTaker();
+      else if (this instanceof TakerTrade) return processModel.getMaker();
+      else if (this instanceof ArbitratorTrade) return null;
+      else throw new RuntimeException("Unknown trade type: " + getClass().getName());
+    }
+    
+    /**
+     * Get the peer with the given address which can be self.
+     * 
+     * TODO (woodser): this naming convention is confusing
+     * 
+     * @param address is the address of the peer to get
+     * @return the trade peer
+     */
+    public TradingPeer getTradingPeer(NodeAddress address) {
+        if (address.equals(getMakerNodeAddress())) return processModel.getMaker();
+        if (address.equals(getTakerNodeAddress())) return processModel.getTaker();
+        if (address.equals(getArbitratorNodeAddress())) return processModel.getArbitrator();
+        throw new RuntimeException("No protocol participant has node address: " + address);
+    }
 
     public Date getTakeOfferDate() {
         return new Date(takeOfferDate);

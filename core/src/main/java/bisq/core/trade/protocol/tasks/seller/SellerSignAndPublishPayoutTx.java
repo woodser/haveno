@@ -56,8 +56,8 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
 
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
-            String buyerSignedPayoutTxHex = processModel.getTradingPeer().getSignedPayoutTxHex();
+            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(trade.getId());
+            String buyerSignedPayoutTxHex = trade.getTradingPeer().getSignedPayoutTxHex();
             Contract contract = trade.getContract();
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");
             BigInteger sellerDepositAmount = multisigWallet.getTx(trade instanceof MakerTrade ? processModel.getMaker().getDepositTxHash() : processModel.getTaker().getDepositTxHash()).getIncomingAmount(); 	// TODO (woodser): redundancy of processModel.getPreparedDepositTxId() vs trade.getDepositTxId() necessary or avoidable?
@@ -129,7 +129,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
 //            checkNotNull(trade.getTradeAmount(), "trade.getTradeAmount() must not be null");
 //
 //            Offer offer = trade.getOffer();
-//            TradingPeer tradingPeer = processModel.getTradingPeer();
+//            TradingPeer tradingPeer = trade.getTradingPeer();
 //            BtcWalletService walletService = processModel.getBtcWalletService();
 //            String id = processModel.getOffer().getId();
 //

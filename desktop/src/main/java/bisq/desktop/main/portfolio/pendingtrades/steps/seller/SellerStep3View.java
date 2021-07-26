@@ -209,8 +209,8 @@ public class SellerStep3View extends TradeStepView {
         String currencyName = getCurrencyName(trade);
         Contract contract = trade.getContract();
         if (contract != null) {
-            PaymentAccountPayload myPaymentAccountPayload = trade.getProcessModel().getSeller().getPaymentAccountPayload();
-            PaymentAccountPayload peersPaymentAccountPayload = trade.getProcessModel().getBuyer().getPaymentAccountPayload();
+            PaymentAccountPayload myPaymentAccountPayload = trade.getSeller().getPaymentAccountPayload();
+            PaymentAccountPayload peersPaymentAccountPayload = trade.getBuyer().getPaymentAccountPayload();
 
             myPaymentDetails = PaymentAccountUtil.findPaymentAccount(myPaymentAccountPayload, model.getUser())
                     .map(PaymentAccount::getAccountName)
@@ -453,7 +453,7 @@ public class SellerStep3View extends TradeStepView {
     private Optional<String> getOptionalHolderName() {
         Contract contract = trade.getContract();
         if (contract != null) {
-            PaymentAccountPayload paymentAccountPayload = trade.getProcessModel().getBuyer().getPaymentAccountPayload();
+            PaymentAccountPayload paymentAccountPayload = trade.getBuyer().getPaymentAccountPayload();
             if (paymentAccountPayload instanceof BankAccountPayload)
                 return Optional.of(((BankAccountPayload) paymentAccountPayload).getHolderName());
             else if (paymentAccountPayload instanceof SepaAccountPayload)

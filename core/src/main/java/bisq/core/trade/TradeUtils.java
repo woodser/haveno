@@ -250,19 +250,19 @@ public class TradeUtils {
                 isBuyerMakerAndSellerTaker ? trade.getTakerNodeAddress() : trade.getMakerNodeAddress(), // seller node address
                 trade.getArbitratorNodeAddress(),
                 isBuyerMakerAndSellerTaker,
-                trade instanceof MakerTrade ? trade.getProcessModel().getAccountId() : trade.getProcessModel().getMaker().getAccountId(), // maker account id
-                trade instanceof TakerTrade ? trade.getProcessModel().getAccountId() : trade.getProcessModel().getTaker().getAccountId(), // taker account id
+                trade instanceof MakerTrade ? trade.getProcessModel().getAccountId() : trade.getMaker().getAccountId(), // maker account id
+                trade instanceof TakerTrade ? trade.getProcessModel().getAccountId() : trade.getTaker().getAccountId(), // taker account id
                 checkNotNull(trade instanceof MakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getPaymentMethodId() : trade.getOffer().getOfferPayload().getPaymentMethodId()), // maker payment method id
-                checkNotNull(trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getPaymentMethodId() : trade.getProcessModel().getTaker().getPaymentMethodId()), // taker payment method id
-                trade instanceof MakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getProcessModel().getMaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
-                trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getProcessModel().getTaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
+                checkNotNull(trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getPaymentMethodId() : trade.getTaker().getPaymentMethodId()), // taker payment method id
+                trade instanceof MakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getMaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
+                trade instanceof TakerTrade ? trade.getProcessModel().getPaymentAccountPayload(trade).getHash() : trade.getTaker().getPaymentAccountPayloadHash(), // maker payment account payload hash
                 trade.getMakerPubKeyRing(),
                 trade.getTakerPubKeyRing(),
-                trade instanceof MakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getMaker().getPayoutAddressString(), // maker payout address
-                trade instanceof TakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getProcessModel().getTaker().getPayoutAddressString(), // taker payout address
+                trade instanceof MakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getMaker().getPayoutAddressString(), // maker payout address
+                trade instanceof TakerTrade ? trade.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString() : trade.getTaker().getPayoutAddressString(), // taker payout address
                 trade.getLockTime(),
-                trade.getProcessModel().getMaker().getDepositTxHash(),
-                trade.getProcessModel().getTaker().getDepositTxHash()
+                trade.getMaker().getDepositTxHash(),
+                trade.getTaker().getDepositTxHash()
         );
         return contract;
     }

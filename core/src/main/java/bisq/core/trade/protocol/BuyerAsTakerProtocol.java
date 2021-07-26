@@ -69,7 +69,7 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
         super(trade);
 
         Offer offer = checkNotNull(trade.getOffer());
-        processModel.getTradingPeer().setPubKeyRing(offer.getPubKeyRing());
+        trade.getTradingPeer().setPubKeyRing(offer.getPubKeyRing());
 
        // TODO (woodser): setup deposit and payout listeners on construction for startup like before rebase?
     }

@@ -97,8 +97,8 @@ public final class TradeStatistics2 implements ProcessOncePersistableNetworkPayl
                 trade.getTradePrice(),
                 trade.getTradeAmount(),
                 trade.getDate(),
-                trade.getProcessModel().getMaker().getDepositTxHash(),
-                trade.getProcessModel().getTaker().getDepositTxHash(),
+                trade.getMaker().getDepositTxHash(),
+                trade.getTaker().getDepositTxHash(),
                 extraDataMap);
     }
 

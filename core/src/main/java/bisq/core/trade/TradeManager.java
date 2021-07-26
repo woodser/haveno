@@ -423,7 +423,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
               Optional<SignedOffer> signedOfferOptional = openOfferManager.getSignedOfferById(request.getTradeId());
               if (!signedOfferOptional.isPresent()) return;
               SignedOffer signedOffer = signedOfferOptional.get();
-              trade.getProcessModel().getMaker().setReserveTxHash(signedOffer.getReserveTxHash());
+              trade.getMaker().setReserveTxHash(signedOffer.getReserveTxHash());
               initTradeAndProtocol(trade, getTradeProtocol(trade));
               tradableList.add(trade);
           }

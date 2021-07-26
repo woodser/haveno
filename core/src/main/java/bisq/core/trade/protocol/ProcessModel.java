@@ -92,8 +92,6 @@ public class ProcessModel implements Model, PersistablePayload {
     transient private ProcessModelServiceProvider provider;
     transient private TradeManager tradeManager;
     transient private Offer offer;
-    @Setter
-    transient private Trade trade;
 
     // Added in v1.2.0
     @Setter
@@ -366,49 +364,6 @@ public class ProcessModel implements Model, PersistablePayload {
         }
     }
     
-    public TradingPeer getSelf() {
-        if (trade instanceof MakerTrade) return getMaker();
-        if (trade instanceof TakerTrade) return getTaker();
-        if (trade instanceof ArbitratorTrade) return getArbitrator();
-        throw new RuntimeException("Trade is not maker, taker, or arbitrator");
-    }
-    
-    public TradingPeer getBuyer() {
-        return trade.getOffer().getDirection() == Direction.BUY ? getMaker() : getTaker();
-    }
-    
-    public TradingPeer getSeller() {
-        return trade.getOffer().getDirection() == Direction.BUY ? getTaker() : getMaker();
-    }
-
-    /**
-     * Get the taker if maker, maker if taker, null if arbitrator.
-     * 
-     * @return the trade peer
-     */
-    public TradingPeer getTradingPeer() {
-      if (trade == null) throw new RuntimeException("Cannot get trading peer because trade is null");
-      else if (trade instanceof MakerTrade) return taker;
-      else if (trade instanceof TakerTrade) return maker;
-      else if (trade instanceof ArbitratorTrade) return null;
-      else throw new RuntimeException("Unknown trade type: " + trade.getClass().getName());
-    }
-    
-    /**
-     * Get the peer with the given address which can be self.
-     * 
-     * TODO (woodser): this naming convention is confusing
-     * 
-     * @param address is the address of the peer to get
-     * @return the trade peer
-     */
-    public TradingPeer getTradingPeer(NodeAddress address) {
-        if (address.equals(trade.getMakerNodeAddress())) return maker;
-        if (address.equals(trade.getTakerNodeAddress())) return taker;
-        if (address.equals(trade.getArbitratorNodeAddress())) return arbitrator;
-        throw new RuntimeException("No protocol participant has node address: " + address);
-    }
-
     void setDepositTxSentAckMessage(AckMessage ackMessage) {
         MessageState messageState = ackMessage.isSuccess() ?
                 MessageState.ACKNOWLEDGED :

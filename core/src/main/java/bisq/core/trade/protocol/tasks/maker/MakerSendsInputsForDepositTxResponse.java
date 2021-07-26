@@ -95,7 +95,7 @@ public abstract class MakerSendsInputsForDepositTxResponse extends TradeTask {
                     message.getClass().getSimpleName(), peersNodeAddress, message.getTradeId(), message.getUid());
             processModel.getP2PService().sendEncryptedDirectMessage(
                     peersNodeAddress,
-                    processModel.getTradingPeer().getPubKeyRing(),
+                    trade.getTradingPeer().getPubKeyRing(),
                     message,
                     new SendDirectMessageListener() {
                         @Override

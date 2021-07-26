@@ -55,7 +55,7 @@ public class ProcessUpdateMultisigRequest extends TradeTask {
           UpdateMultisigRequest request = (UpdateMultisigRequest) processModel.getTradeMessage();
           checkNotNull(request);
           checkTradeId(processModel.getOfferId(), request);
-          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());
+          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId());
 
           System.out.println("PROCESS UPDATE MULTISIG REQUEST");
           System.out.println(request);

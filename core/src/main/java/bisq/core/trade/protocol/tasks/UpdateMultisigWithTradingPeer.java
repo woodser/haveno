@@ -57,7 +57,7 @@ public class UpdateMultisigWithTradingPeer extends TradeTask {
 
             // fetch relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
+            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(trade.getId());
 
             // skip if multisig wallet does not need updated
             if (!multisigWallet.isMultisigImportNeeded()) {

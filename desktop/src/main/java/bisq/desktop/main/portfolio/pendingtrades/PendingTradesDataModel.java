@@ -342,13 +342,13 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     @Nullable
     public PaymentAccountPayload getSellersPaymentAccountPayload() {
         if (getTrade() == null) return null;
-        return getTrade().getProcessModel().getSeller().getPaymentAccountPayload();
+        return getTrade().getSeller().getPaymentAccountPayload();
     }
 
     @Nullable
     public PaymentAccountPayload getBuyersPaymentAccountPayload() {
         if (getTrade() == null) return null;
-        return getTrade().getProcessModel().getBuyer().getPaymentAccountPayload();
+        return getTrade().getBuyer().getPaymentAccountPayload();
     }
 
     public String getReference() {
@@ -455,19 +455,19 @@ public class PendingTradesDataModel extends ActivatableDataModel {
       // in such cases. The mediators or arbitrators could not help anyway with a payout in such cases.
       String depositTxId = null;
       if (isMaker) {
-        if (trade.getProcessModel().getMaker().getDepositTxHash() == null) {
+        if (trade.getMaker().getDepositTxHash() == null) {
           log.error("Deposit tx must not be null");
           new Popup().instruction(Res.get("portfolio.pending.error.depositTxNull")).show();
           return;
         }
-        depositTxId = trade.getProcessModel().getMaker().getDepositTxHash();
+        depositTxId = trade.getMaker().getDepositTxHash();
       } else {
-        if (trade.getProcessModel().getTaker().getDepositTxHash() == null) {
+        if (trade.getTaker().getDepositTxHash() == null) {
           log.error("Deposit tx must not be null");
           new Popup().instruction(Res.get("portfolio.pending.error.depositTxNull")).show();
           return;
         }
-        depositTxId = trade.getProcessModel().getTaker().getDepositTxHash();
+        depositTxId = trade.getTaker().getDepositTxHash();
       }
 
       Offer offer = trade.getOffer();
@@ -559,8 +559,8 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                     trade.getContractAsJson(),
                     trade.getMakerContractSignature(),
                     trade.getTakerContractSignature(),
-                    trade.getProcessModel().getMaker().getPaymentAccountPayload(),
-                    trade.getProcessModel().getTaker().getPaymentAccountPayload(),
+                    trade.getMaker().getPaymentAccountPayload(),
+                    trade.getTaker().getPaymentAccountPayload(),
                     arbitratorPubKeyRing,
                     isSupportTicket,
                     SupportType.MEDIATION);
@@ -595,8 +595,8 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                   trade.getContractAsJson(),
                   trade.getMakerContractSignature(),
                   trade.getTakerContractSignature(),
-                  trade.getProcessModel().getMaker().getPaymentAccountPayload(),
-                  trade.getProcessModel().getTaker().getPaymentAccountPayload(),
+                  trade.getMaker().getPaymentAccountPayload(),
+                  trade.getTaker().getPaymentAccountPayload(),
                   arbitratorPubKeyRing,
                   isSupportTicket,
                   SupportType.ARBITRATION);

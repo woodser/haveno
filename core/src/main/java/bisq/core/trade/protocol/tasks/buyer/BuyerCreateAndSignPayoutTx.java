@@ -69,8 +69,8 @@ public class BuyerCreateAndSignPayoutTx extends TradeTask {
 
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(processModel.getTrade().getId());
-            String sellerPayoutAddress = processModel.getTradingPeer().getPayoutAddressString();
+            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(trade.getId());
+            String sellerPayoutAddress = trade.getTradingPeer().getPayoutAddressString();
             String buyerPayoutAddress = trade instanceof MakerTrade ? trade.getContract().getMakerPayoutAddressString() : trade.getContract().getTakerPayoutAddressString();
             Preconditions.checkNotNull(sellerPayoutAddress, "sellerPayoutAddress must not be null");
             Preconditions.checkNotNull(buyerPayoutAddress, "buyerPayoutAddress must not be null");

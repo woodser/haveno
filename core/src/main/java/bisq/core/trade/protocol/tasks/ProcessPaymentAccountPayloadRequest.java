@@ -66,10 +66,10 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           if (!Arrays.equals(paymentAccountPayload.getHash(), peerPaymentAccountPayloadHash)) throw new RuntimeException("Hash of peer's payment account payload does not match contract");
           
           // set payment account payload
-          processModel.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
+          trade.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
           
           // create listener for deposit transactions
-          MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId());// TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
+          MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
           depositTxListener = processModel.getXmrWalletService().new HavenoWalletListener(new MoneroWalletListener() { // TODO (woodser): separate into own class file
               @Override
               public void onOutputReceived(MoneroOutputWallet output) {

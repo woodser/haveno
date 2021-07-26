@@ -282,10 +282,10 @@ public class FailedTradesView extends ActivatableViewAndModel<VBox, FailedTrades
             if (trade.getTakerFeeTxId() != null && trade.getTakerFeeTxId().contains(filterString)) {
                 return true;
             }
-            if (trade.getProcessModel().getMaker().getDepositTxHash() != null && trade.getProcessModel().getMaker().getDepositTxHash().contains(filterString)) {
+            if (trade.getMaker().getDepositTxHash() != null && trade.getMaker().getDepositTxHash().contains(filterString)) {
                 return true;
             }
-            if (trade.getProcessModel().getTaker().getDepositTxHash() != null && trade.getProcessModel().getTaker().getDepositTxHash().contains(filterString)) {
+            if (trade.getTaker().getDepositTxHash() != null && trade.getTaker().getDepositTxHash().contains(filterString)) {
                 return true;
             }
             if (trade.getPayoutTxId() != null && trade.getPayoutTxId().contains(filterString)) {
@@ -301,8 +301,8 @@ public class FailedTradesView extends ActivatableViewAndModel<VBox, FailedTrades
             if (contract != null) {
                 isBuyerOnion = contract.getBuyerNodeAddress().getFullAddress().contains(filterString);
                 isSellerOnion = contract.getSellerNodeAddress().getFullAddress().contains(filterString);
-                matchesBuyersPaymentAccountData = trade.getProcessModel().getBuyer().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
-                matchesSellersPaymentAccountData = trade.getProcessModel().getSeller().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
+                matchesBuyersPaymentAccountData = trade.getBuyer().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
+                matchesSellersPaymentAccountData = trade.getSeller().getPaymentAccountPayload().getPaymentDetails().contains(filterString);
             }
             return isBuyerOnion || isSellerOnion ||
                     matchesBuyersPaymentAccountData || matchesSellersPaymentAccountData;

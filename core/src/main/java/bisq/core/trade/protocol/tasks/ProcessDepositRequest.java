@@ -61,7 +61,7 @@ public class ProcessDepositRequest extends TradeTask {
           // TODO (woodser): make these utilities / refactor model
           // TODO (woodser): verify request
           PubKeyRing peerPubKeyRing;
-          TradingPeer peer = processModel.getTradingPeer(request.getSenderNodeAddress());
+          TradingPeer peer = trade.getTradingPeer(request.getSenderNodeAddress());
           if (peer == processModel.getArbitrator()) peerPubKeyRing = trade.getArbitratorPubKeyRing();
           else if (peer == processModel.getMaker()) peerPubKeyRing = trade.getMakerPubKeyRing();
           else if (peer == processModel.getTaker()) peerPubKeyRing = trade.getTakerPubKeyRing();
@@ -79,7 +79,7 @@ public class ProcessDepositRequest extends TradeTask {
           MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): only get, do not create
           String depositAddress = multisigWallet.getPrimaryAddress();
           BigInteger tradeFee;
-          TradingPeer trader = processModel.getTradingPeer(request.getSenderNodeAddress());
+          TradingPeer trader = trade.getTradingPeer(request.getSenderNodeAddress());
           if (trader == processModel.getMaker()) tradeFee = ParsingUtils.coinToAtomicUnits(trade.getOffer().getMakerFee());
           else if (trader == processModel.getTaker()) tradeFee = ParsingUtils.coinToAtomicUnits(trade.getTakerFee());
           else throw new RuntimeException("DepositRequest is not from maker or taker");

@@ -61,7 +61,7 @@ public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTas
             }
             
             // create wallet for multisig
-            MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(processModel.getTrade().getId()); // TODO (woodser): assert that wallet does not already exist
+            MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): assert that wallet does not already exist
             
             // prepare multisig
             String preparedHex = multisigWallet.prepareMultisig();

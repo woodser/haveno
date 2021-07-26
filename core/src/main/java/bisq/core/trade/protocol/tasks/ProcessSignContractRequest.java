@@ -55,7 +55,7 @@ public class ProcessSignContractRequest extends TradeTask {
           // extract fields from request
           // TODO (woodser): verify request and from maker or taker
           SignContractRequest request = (SignContractRequest) processModel.getTradeMessage();
-          TradingPeer trader = processModel.getTradingPeer(request.getSenderNodeAddress());
+          TradingPeer trader = trade.getTradingPeer(request.getSenderNodeAddress());
           trader.setDepositTxHash(request.getDepositTxHash());
           trader.setAccountId(request.getAccountId());
           trader.setPaymentAccountPayloadHash(request.getPaymentAccountPayloadHash());
@@ -74,7 +74,7 @@ public class ProcessSignContractRequest extends TradeTask {
               // save contract and signature
               trade.setContract(contract);
               trade.setContractAsJson(contractAsJson);
-              processModel.getSelf().setContractSignature(signature);
+              trade.getSelf().setContractSignature(signature);
               
               // create response with contract signature
               SignContractResponse response = new SignContractResponse(

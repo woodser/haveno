@@ -302,7 +302,7 @@ public class AccountAgeWitnessService {
 
     private Optional<AccountAgeWitness> findTradePeerWitness(Trade trade) {
         if (trade instanceof ArbitratorTrade) return Optional.empty();  // TODO (woodser): arbitrator trade has two peers
-        TradingPeer tradingPeer = trade.getProcessModel().getTradingPeer();
+        TradingPeer tradingPeer = trade.getTradingPeer();
         return (tradingPeer == null ||
                 tradingPeer.getPaymentAccountPayload() == null ||
                 tradingPeer.getPubKeyRing() == null) ?
@@ -726,8 +726,8 @@ public class AccountAgeWitnessService {
     public Optional<SignedWitness> traderSignAndPublishPeersAccountAgeWitness(Trade trade) {
         AccountAgeWitness peersWitness = findTradePeerWitness(trade).orElse(null);
         Coin tradeAmount = trade.getTradeAmount();
-        checkNotNull(trade.getProcessModel().getTradingPeer().getPubKeyRing(), "Peer must have a keyring");
-        PublicKey peersPubKey = trade.getProcessModel().getTradingPeer().getPubKeyRing().getSignaturePubKey();
+        checkNotNull(trade.getTradingPeer().getPubKeyRing(), "Peer must have a keyring");
+        PublicKey peersPubKey = trade.getTradingPeer().getPubKeyRing().getSignaturePubKey();
         checkNotNull(peersWitness, "Not able to find peers witness, unable to sign for trade {}",
                 trade.toString());
         checkNotNull(tradeAmount, "Trade amount must not be null");
@@ -909,7 +909,7 @@ public class AccountAgeWitnessService {
     public boolean isSignWitnessTrade(Trade trade) {
         checkNotNull(trade, "trade must not be null");
         checkNotNull(trade.getOffer(), "offer must not be null");
-        PaymentAccountPayload sellerPaymentAccountPayload = trade.getProcessModel().getSeller().getPaymentAccountPayload();
+        PaymentAccountPayload sellerPaymentAccountPayload = trade.getSeller().getPaymentAccountPayload();
         AccountAgeWitness myWitness = getMyWitness(sellerPaymentAccountPayload);
 
         getAccountAgeWitnessUtils().witnessDebugLog(trade, myWitness);

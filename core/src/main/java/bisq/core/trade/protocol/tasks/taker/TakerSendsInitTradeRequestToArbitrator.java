@@ -49,7 +49,7 @@ public class TakerSendsInitTradeRequestToArbitrator extends TradeTask {
             // save pub keys
             processModel.getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
             trade.setArbitratorPubKeyRing(processModel.getArbitrator().getPubKeyRing());
-            trade.setMakerPubKeyRing(processModel.getTradingPeer().getPubKeyRing());
+            trade.setMakerPubKeyRing(trade.getTradingPeer().getPubKeyRing());
             
             // send trade request to arbitrator
             InitTradeRequest makerRequest = (InitTradeRequest) processModel.getTradeMessage();

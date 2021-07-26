@@ -59,7 +59,7 @@ public class ProcessSignContractResponse extends TradeTask {
           // get peer info
           // TODO (woodser): make these utilities / refactor model
           PubKeyRing peerPubKeyRing;
-          TradingPeer peer = processModel.getTradingPeer(response.getSenderNodeAddress());
+          TradingPeer peer = trade.getTradingPeer(response.getSenderNodeAddress());
           if (peer == processModel.getArbitrator()) peerPubKeyRing = trade.getArbitratorPubKeyRing();
           else if (peer == processModel.getMaker()) peerPubKeyRing = trade.getMakerPubKeyRing();
           else if (peer == processModel.getTaker()) peerPubKeyRing = trade.getTakerPubKeyRing();
@@ -82,7 +82,7 @@ public class ProcessSignContractResponse extends TradeTask {
                       UUID.randomUUID().toString(),
                       Version.getP2PMessageVersion(),
                       new Date().getTime(),
-                      processModel.getSelf().getContractSignature(),
+                      trade.getSelf().getContractSignature(),
                       processModel.getDepositTxXmr().getFullHex(),
                       processModel.getDepositTxXmr().getKey());
               

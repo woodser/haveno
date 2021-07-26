@@ -82,7 +82,7 @@ public class SendSignContractRequestAfterMultisig extends TradeTask {
           
           // save process state
           processModel.setDepositTxXmr(depositTx);
-          processModel.getSelf().setDepositTxHash(depositTx.getHash());
+          trade.getSelf().setDepositTxHash(depositTx.getHash());
           
           // create request for peer and arbitrator to sign contract
           SignContractRequest request = new SignContractRequest(
