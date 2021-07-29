@@ -17,7 +17,6 @@
 
 package bisq.core.trade;
 
-import bisq.core.btc.exceptions.AddressEntryException;
 import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.wallet.BsqWalletService;
 import bisq.core.btc.wallet.XmrWalletService;
@@ -77,14 +76,10 @@ import bisq.common.persistence.PersistenceManager;
 import bisq.common.proto.network.NetworkEnvelope;
 import bisq.common.proto.persistable.PersistedDataHost;
 
-import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.InsufficientMoneyException;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-
-import com.google.common.util.concurrent.FutureCallback;
 
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.LongProperty;
@@ -112,8 +107,6 @@ import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
 import lombok.Setter;
-
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 
