@@ -78,7 +78,7 @@ public abstract class MakerSendsInputsForDepositTxResponse extends TradeTask {
                     processModel.getAccountId(),
                     makerMultiSigPubKey,
                     trade.getContractAsJson(),
-                    trade.getMakerContractSignature(),
+                    trade.getMaker().getContractSignature(),
                     makerPayoutAddressEntry.getAddressString(),
                     preparedDepositTx,
                     processModel.getRawTransactionInputs(),

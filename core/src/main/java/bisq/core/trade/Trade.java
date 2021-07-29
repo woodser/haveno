@@ -347,14 +347,6 @@ public abstract class Trade implements Tradable, Model {
     @Nullable
     @Getter
     @Setter
-    private String takerContractSignature;
-    @Nullable
-    @Getter
-    @Setter
-    private String makerContractSignature;
-    @Nullable
-    @Getter
-    @Setter
     private NodeAddress arbitratorNodeAddress;
     @Nullable
     @Setter
@@ -595,8 +587,6 @@ public abstract class Trade implements Tradable, Model {
         Optional.ofNullable(contract).ifPresent(e -> builder.setContract(contract.toProtoMessage()));
         Optional.ofNullable(contractAsJson).ifPresent(builder::setContractAsJson);
         Optional.ofNullable(contractHash).ifPresent(e -> builder.setContractHash(ByteString.copyFrom(contractHash)));
-        Optional.ofNullable(takerContractSignature).ifPresent(builder::setTakerContractSignature);
-        Optional.ofNullable(makerContractSignature).ifPresent(builder::setMakerContractSignature);
         Optional.ofNullable(arbitratorNodeAddress).ifPresent(e -> builder.setArbitratorNodeAddress(arbitratorNodeAddress.toProtoMessage()));
         Optional.ofNullable(refundAgentNodeAddress).ifPresent(e -> builder.setRefundAgentNodeAddress(refundAgentNodeAddress.toProtoMessage()));
         Optional.ofNullable(arbitratorBtcPubKey).ifPresent(e -> builder.setArbitratorBtcPubKey(ByteString.copyFrom(arbitratorBtcPubKey)));
@@ -627,8 +617,6 @@ public abstract class Trade implements Tradable, Model {
         trade.setContract(proto.hasContract() ? Contract.fromProto(proto.getContract(), coreProtoResolver) : null);
         trade.setContractAsJson(ProtoUtil.stringOrNullFromProto(proto.getContractAsJson()));
         trade.setContractHash(ProtoUtil.byteArrayOrNullFromProto(proto.getContractHash()));
-        trade.setTakerContractSignature(ProtoUtil.stringOrNullFromProto(proto.getTakerContractSignature()));
-        trade.setMakerContractSignature(ProtoUtil.stringOrNullFromProto(proto.getMakerContractSignature()));
         trade.setArbitratorNodeAddress(proto.hasArbitratorNodeAddress() ? NodeAddress.fromProto(proto.getArbitratorNodeAddress()) : null);
         trade.setRefundAgentNodeAddress(proto.hasRefundAgentNodeAddress() ? NodeAddress.fromProto(proto.getRefundAgentNodeAddress()) : null);
         trade.setArbitratorBtcPubKey(ProtoUtil.byteArrayOrNullFromProto(proto.getArbitratorBtcPubKey()));
@@ -1285,8 +1273,6 @@ public abstract class Trade implements Tradable, Model {
                 ",\n     contract=" + contract +
                 ",\n     contractAsJson='" + contractAsJson + '\'' +
                 ",\n     contractHash=" + Utilities.bytesAsHexString(contractHash) +
-                ",\n     takerContractSignature='" + takerContractSignature + '\'' +
-                ",\n     makerContractSignature='" + makerContractSignature + '\'' +
                 ",\n     arbitratorBtcPubKey=" + Utilities.bytesAsHexString(arbitratorBtcPubKey) +
                 ",\n     takerPaymentAccountId='" + takerPaymentAccountId + '\'' +
                 ",\n     errorMessage='" + errorMessage + '\'' +

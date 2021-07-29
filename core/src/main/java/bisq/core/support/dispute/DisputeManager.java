@@ -365,12 +365,14 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
         addMediationResultMessage(dispute);
 
         try {
+            TradeDataValidation.validatePaymentAccountPayloads(dispute);
             TradeDataValidation.validateDonationAddress(dispute.getDonationAddressOfDelayedPayoutTx(), daoFacade);
             //TradeDataValidation.testIfDisputeTriesReplay(dispute, disputeList.getList()); // TODO (woodser): disabled for xmr, needed?
             TradeDataValidation.validateNodeAddress(dispute, dispute.getContract().getBuyerNodeAddress(), config);
             TradeDataValidation.validateNodeAddress(dispute, dispute.getContract().getSellerNodeAddress(), config);
         } catch (TradeDataValidation.AddressException |
-                TradeDataValidation.NodeAddressException e) {
+                TradeDataValidation.NodeAddressException |
+                TradeDataValidation.InvalidPaymentAccountPayloadException e) {
             log.error(e.toString());
             validationExceptions.add(e);
         }
