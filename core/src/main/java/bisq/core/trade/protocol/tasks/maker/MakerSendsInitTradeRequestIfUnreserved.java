@@ -91,6 +91,8 @@ public class MakerSendsInitTradeRequestIfUnreserved extends TradeTask {
             System.out.println("MAKER SENDING ARBITRTATOR SENDER NODE ADDRESS");
             System.out.println(processModel.getMyNodeAddress());
             
+            if (true) throw new RuntimeException("Not yet implemented");
+            
             // create message to initialize trade
             InitTradeRequest message = new InitTradeRequest(
                     offerId,
@@ -109,7 +111,7 @@ public class MakerSendsInitTradeRequestIfUnreserved extends TradeTask {
                     trade.getMakerNodeAddress(),
                     trade.getTakerNodeAddress(),
                     trade.getArbitratorNodeAddress(),
-                    processModel.getReserveTx().getHash(),
+                    processModel.getReserveTx().getHash(), // TODO (woodser): need to first create and save reserve tx
                     processModel.getReserveTx().getFullHex(),
                     processModel.getReserveTx().getKey(),
                     processModel.getXmrWalletService().getAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).get().getAddressString(),

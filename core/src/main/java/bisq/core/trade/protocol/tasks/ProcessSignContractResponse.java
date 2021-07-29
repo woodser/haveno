@@ -66,6 +66,7 @@ public class ProcessSignContractResponse extends TradeTask {
           else throw new RuntimeException(response.getClass().getSimpleName() + " is not from maker, taker, or arbitrator");
           
           // verify signature
+          // TODO (woodser): transfer contract for convenient comparison?
           if (!Sig.verify(peerPubKeyRing.getSignaturePubKey(), contractAsJson, signature)) throw new RuntimeException("Peer's contract signature is invalid");
           
           // set peer's signature

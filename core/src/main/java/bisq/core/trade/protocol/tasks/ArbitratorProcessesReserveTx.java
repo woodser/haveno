@@ -17,8 +17,6 @@
 
 package bisq.core.trade.protocol.tasks;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
@@ -50,17 +48,18 @@ public class ArbitratorProcessesReserveTx extends TradeTask {
             Offer offer = trade.getOffer();
             InitTradeRequest request = (InitTradeRequest) processModel.getTradeMessage();
             boolean isFromTaker = request.getSenderNodeAddress().equals(request.getTakerNodeAddress());
+            boolean isFromBuyer = isFromTaker ? offer.getDirection() == OfferPayload.Direction.SELL : offer.getDirection() == OfferPayload.Direction.BUY;
             
             // TODO (woodser): if signer online, should never be called by maker
             
             // process reserve tx with expected terms
             BigInteger tradeFee = ParsingUtils.coinToAtomicUnits(isFromTaker ? trade.getTakerFee() : offer.getMakerFee());
-            BigInteger tradeAmount = ParsingUtils.coinToAtomicUnits(offer.getDirection() == OfferPayload.Direction.SELL ? offer.getAmount().add(offer.getSellerSecurityDeposit()) : offer.getBuyerSecurityDeposit());
+            BigInteger depositAmount = ParsingUtils.coinToAtomicUnits(isFromBuyer ? offer.getBuyerSecurityDeposit() : offer.getAmount().add(offer.getSellerSecurityDeposit()));
             TradeUtils.processTradeTx(
                     processModel.getXmrWalletService().getDaemon(),
                     processModel.getXmrWalletService().getWallet(),
-                    tradeAmount,
                     request.getPayoutAddress(),
+                    depositAmount,
                     tradeFee,
                     request.getReserveTxHash(),
                     request.getReserveTxHex(),

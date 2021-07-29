@@ -20,6 +20,7 @@ package bisq.core.offer.placeoffer.tasks;
 import bisq.common.app.Version;
 import bisq.common.taskrunner.Task;
 import bisq.common.taskrunner.TaskRunner;
+import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.offer.Offer;
 import bisq.core.offer.messages.SignOfferRequest;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
@@ -50,6 +51,7 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
             runInterceptHook();
             
             // create request for arbitrator to sign offer
+            String returnAddress = model.getXmrWalletService().getOrCreateAddressEntry(offer.getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString();
             SignOfferRequest request = new SignOfferRequest(
                     model.getOffer().getId(),
                     P2PService.getMyNodeAddress(),
@@ -62,7 +64,7 @@ public class MakerSendsSignOfferRequest extends Task<PlaceOfferModel> {
                     model.getReserveTx().getHash(),
                     model.getReserveTx().getFullHex(),
                     model.getReserveTx().getKey(),
-                    model.getXmrWalletService().getWallet().getPrimaryAddress()); // TODO (woodser): reserve tx verification should fail since sending primary address instead of payout address
+                    returnAddress);
             
             // get signing arbitrator
             Mediator arbitrator = checkNotNull(model.getUser().getAcceptedMediatorByAddress(offer.getOfferPayload().getArbitratorNodeAddress()), "user.getAcceptedMediatorByAddress(mediatorNodeAddress) must not be null");

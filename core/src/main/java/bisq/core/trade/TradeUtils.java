@@ -144,25 +144,22 @@ public class TradeUtils {
      * @param depositAmount
      * @return a transaction to reserve a trade
      */
-    public static MoneroTxWallet createReserveTx(XmrWalletService xmrWalletService, String offerId, BigInteger tradeFee, BigInteger depositAmount) {
-        
-        // use payout address as recipient of deposit amount
-        String payoutAddress = xmrWalletService.getOrCreateAddressEntry(offerId, XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString();
+    public static MoneroTxWallet createReserveTx(XmrWalletService xmrWalletService, String offerId, BigInteger tradeFee, String returnAddress, BigInteger depositAmount) {
         
         // get expected mining fee
         MoneroWallet wallet = xmrWalletService.getWallet();
         MoneroTxWallet miningFeeTx = wallet.createTx(new MoneroTxConfig()
                 .setAccountIndex(0)
                 .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
-                .addDestination(payoutAddress, depositAmount));
+                .addDestination(returnAddress, depositAmount));
         BigInteger miningFee = miningFeeTx.getFee();
         
         // create reserve tx
         MoneroTxWallet reserveTx = wallet.createTx(new MoneroTxConfig()
                 .setAccountIndex(0)
                 .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
-                .addDestination(payoutAddress, depositAmount.add(miningFee.multiply(BigInteger.valueOf(3l))))); // add thrice the mining fee
-        
+                .addDestination(returnAddress, depositAmount.add(miningFee.multiply(BigInteger.valueOf(3l))))); // add thrice the mining fee // TODO (woodser): really require more funds on top of security deposit?
+
         return reserveTx;
     }
     
@@ -172,14 +169,14 @@ public class TradeUtils {
      * @param xmrWalletService
      * @param tradeFee
      * @param destinationAddress
-     * @param depositDestination
+     * @param depositAddress
      * @return MoneroTxWallet
      */
-    public static MoneroTxWallet createDepositTx(XmrWalletService xmrWalletService, BigInteger tradeFee, String depositDestination, BigInteger depositAmount) {
+    public static MoneroTxWallet createDepositTx(XmrWalletService xmrWalletService, BigInteger tradeFee, String depositAddress, BigInteger depositAmount) {
         return xmrWalletService.getWallet().createTx(new MoneroTxConfig()
                 .setAccountIndex(0)
                 .addDestination(TradeUtils.FEE_ADDRESS, tradeFee)
-                .addDestination(depositDestination, depositAmount));
+                .addDestination(depositAddress, depositAmount));
     }
     
     /**
@@ -189,15 +186,15 @@ public class TradeUtils {
      * 
      * @param daemon is the Monero daemon to check for double spends
      * @param wallet is the Monero wallet to verify the tx
-     * @param depositAmount is the expected amount deposited to multisig
      * @param depositAddress is the expected destination address for the deposit amount
+     * @param depositAmount is the expected amount deposited to multisig
      * @param tradeFee is the expected fee for trading
      * @param txHash is the transaction hash
      * @param txHex is the transaction hex
      * @param txKey is the transaction key
      * @param isReserveTx indicates if the tx is a reserve tx, which requires fee padding
      */
-    public static void processTradeTx(MoneroDaemon daemon, MoneroWallet wallet, BigInteger depositAmount, String depositAddress, BigInteger tradeFee, String txHash, String txHex, String txKey, boolean isReserveTx) {
+    public static void processTradeTx(MoneroDaemon daemon, MoneroWallet wallet, String depositAddress, BigInteger depositAmount, BigInteger tradeFee, String txHash, String txHex, String txKey, boolean isReserveTx) {
         
         // get tx from daemon
         MoneroTx tx = daemon.getTx(txHash);

@@ -678,8 +678,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             TradeUtils.processTradeTx(
                     xmrWalletService.getDaemon(),
                     xmrWalletService.getWallet(),
-                    tradeAmount,
                     request.getPayoutAddress(),
+                    tradeAmount,
                     tradeFee,
                     request.getReserveTxHash(),
                     request.getReserveTxHex(),

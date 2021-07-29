@@ -18,17 +18,15 @@
 package bisq.core.trade.protocol.tasks.taker;
 
 import bisq.common.taskrunner.TaskRunner;
+import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeUtils;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.ParsingUtils;
-import common.utils.JsonUtils;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroOutput;
-import monero.daemon.model.MoneroSubmitTxResult;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 
@@ -44,9 +42,10 @@ public class TakerReservesTradeFunds extends TradeTask {
             runInterceptHook();
             
             // create transaction to reserve trade
+            String returnAddress = model.getXmrWalletService().getOrCreateAddressEntry(trade.getOffer().getId(), XmrAddressEntry.Context.TRADE_PAYOUT).getAddressString();
             BigInteger takerFee = ParsingUtils.coinToAtomicUnits(trade.getTakerFee());
             BigInteger depositAmount = ParsingUtils.centinerosToAtomicUnits(processModel.getFundsNeededForTradeAsLong());
-            MoneroTxWallet reserveTx = TradeUtils.createReserveTx(model.getXmrWalletService(), trade.getId(), takerFee, depositAmount);
+            MoneroTxWallet reserveTx = TradeUtils.createReserveTx(model.getXmrWalletService(), trade.getId(), takerFee, returnAddress, depositAmount);
             
             // freeze trade funds
             // TODO (woodser): synchronize to handle potential race condition where concurrent trades freeze each other's outputs

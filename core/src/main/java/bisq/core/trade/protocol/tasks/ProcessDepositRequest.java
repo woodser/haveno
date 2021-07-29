@@ -92,8 +92,8 @@ public class ProcessDepositRequest extends TradeTask {
           TradeUtils.processTradeTx(
                   daemon,
                   trade.getXmrWalletService().getWallet(),
-                  depositAmount,
                   depositAddress,
+                  depositAmount,
                   tradeFee,
                   trader.getDepositTxHash(),
                   request.getDepositTxHex(),
