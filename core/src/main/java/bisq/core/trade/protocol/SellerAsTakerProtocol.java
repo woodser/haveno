@@ -165,10 +165,6 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
 
     // TODO (woodser): these methods are duplicated with BuyerAsTakerProtocol due to single inheritance
 
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // Incoming message handling
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
     @Override
     public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
       System.out.println("BuyerAsTakerProtocol.handleMultisigMessage()");

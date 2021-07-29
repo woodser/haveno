@@ -29,13 +29,15 @@ import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
-import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
+import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
+import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
+import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
+import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
+import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
 import bisq.core.trade.protocol.tasks.TradeTask;
-import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
-import bisq.core.trade.protocol.tasks.maker.MakerSendsInitTradeRequestIfUnreserved;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerFeePayment;
 import bisq.core.trade.protocol.tasks.seller.SellerCreatesDelayedPayoutTx;
 import bisq.core.trade.protocol.tasks.seller.SellerSendDelayedPayoutTxSignatureRequest;
@@ -126,8 +128,10 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    // MakerProtocol  TODO (woodser): these methods are duplicated with SellerAsMakerProtocol due to single inheritance
+    // MakerProtocol
     ///////////////////////////////////////////////////////////////////////////////////////////
+    
+    // TODO (woodser): these methods are duplicated with BuyerAsMakerProtocol due to single inheritance
 
     @Override
     public void handleInitTradeRequest(InitTradeRequest message,
@@ -138,13 +142,12 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
             .from(peer))
             .setup(tasks(
                     ProcessInitTradeRequest.class,
-                    ApplyFilter.class, // TODO (woodser): these checks apply when maker signs availability request, but not here
-                    VerifyPeersAccountAgeWitness.class, // TODO (woodser): these checks apply after in multisig, means if rejected need to reimburse other's fee
-                    MakerSendsInitTradeRequestIfUnreserved.class, // TODO (woodser): contact arbitrator here?  probably later when ready to create multisig
+                    //ApplyFilter.class, // TODO (woodser): these checks apply when maker signs availability request, but not here
+                    //VerifyPeersAccountAgeWitness.class, // TODO (woodser): these checks apply after in multisig, means if rejected need to reimburse other's fee
+                    //MakerSendsInitTradeRequestIfUnreserved.class, // TODO (woodser): implement this
                     MakerRemovesOpenOffer.class).
                     using(new TradeTaskRunner(trade,
                             () -> {
-                              stopTimeout();
                               handleTaskRunnerSuccess(peer, message);
                             },
                             errorMessage -> {
@@ -156,27 +159,113 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
     }
     
     @Override
-    public void handleSignContractRequest(SignContractRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
-        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+      System.out.println("BuyerAsMakerProtocol.handleMultisigMessage()");
+      Validator.checkTradeId(processModel.getOfferId(), message);
+      processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
+      expect(anyPhase(Trade.Phase.INIT)
+          .with(message)
+          .from(sender))
+          .setup(tasks(
+                  ProcessInitMultisigMessage.class,
+                  SendSignContractRequestAfterMultisig.class)
+              .using(new TradeTaskRunner(trade,
+                  () -> {
+                    handleTaskRunnerSuccess(sender, message);
+                  },
+                  errorMessage -> {
+                      errorMessageHandler.handleErrorMessage(errorMessage);
+                      handleTaskRunnerFault(sender, message, errorMessage);
+                  })))
+          .executeTasks();
+    }
+    
+    @Override
+    public void handleSignContractRequest(SignContractRequest message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("BuyerAsMakerProtocol.handleSignContractRequest()");
+        Validator.checkTradeId(processModel.getOfferId(), message);
+        processModel.setTradeMessage(message);
+        expect(anyPhase(Trade.Phase.INIT)
+            .with(message)
+            .from(sender))
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessSignContractRequest.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, message);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, message, errorMessage);
+                    })))
+            .executeTasks();
     }
 
     @Override
-    public void handleSignContractResponse(SignContractResponse message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
-        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+    public void handleSignContractResponse(SignContractResponse message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+        System.out.println("BuyerAsMakerProtocol.handleSignContractResponse()");
+        Validator.checkTradeId(processModel.getOfferId(), message);
+        processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
+        expect(anyPhase(Trade.Phase.INIT)
+            .with(message)
+            .from(sender))
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessSignContractResponse.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, message);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, message, errorMessage);
+                    })))
+            .executeTasks();
     }
     
     @Override
     public void handleDepositResponse(DepositResponse response, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
-    }
-    
-    @Override
-    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+        System.out.println("BuyerAsMakerProtocol.handleDepositResponse()");
+        Validator.checkTradeId(processModel.getOfferId(), response);
+        processModel.setTradeMessage(response);
+        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+            .with(response)
+            .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessDepositResponse.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                      handleTaskRunnerSuccess(sender, response);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, response, errorMessage);
+                    })))
+            .executeTasks();
     }
     
     @Override
     public void handlePaymentAccountPayloadRequest(PaymentAccountPayloadRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-        throw new RuntimeException("Implementation needs copied from BuyerAsMakerProtocol");
+        System.out.println("BuyerAsMakerProtocol.handlePaymentAccountPayloadRequest()");
+        Validator.checkTradeId(processModel.getOfferId(), request);
+        processModel.setTradeMessage(request);
+        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+            .with(request)
+            .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
+            .setup(tasks(
+                    // TODO (woodser): validate request
+                    ProcessPaymentAccountPayloadRequest.class)
+                .using(new TradeTaskRunner(trade,
+                    () -> {
+                        stopTimeout();
+                        handleTaskRunnerSuccess(sender, request);
+                    },
+                    errorMessage -> {
+                        errorMessageHandler.handleErrorMessage(errorMessage);
+                        handleTaskRunnerFault(sender, request, errorMessage);
+                    })))
+            .executeTasks();
     }
 }
