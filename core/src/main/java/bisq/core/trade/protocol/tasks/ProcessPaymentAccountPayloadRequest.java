@@ -23,28 +23,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import bisq.common.UserThread;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.MakerTrade;
-import bisq.core.trade.TakerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
 import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroTxWallet;
-import monero.wallet.model.MoneroWalletListener;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
 
 @Slf4j
 public class ProcessPaymentAccountPayloadRequest extends TradeTask {
     
-    // use instance fields to avoid garbage collection
-    private MoneroWalletListener depositTxListener;
-    private Boolean makerDepositLocked; // null when unknown, true while locked, false when unlocked
-    private Boolean takerDepositLocked;
     private Subscription tradeStateSubscription;
     
     @SuppressWarnings({"unused"})
@@ -69,43 +61,8 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           // set payment account payload
           trade.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
           
-          // create listener for deposit transactions
-          MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
-          depositTxListener = processModel.getXmrWalletService().new HavenoWalletListener(new MoneroWalletListener() { // TODO (woodser): separate into own class file
-              @Override
-              public void onOutputReceived(MoneroOutputWallet output) {
-
-                // ignore if no longer listening
-                if (depositTxListener == null) return;
-
-                // TODO (woodser): remove this
-                if (output.getTx().isConfirmed() && (processModel.getMaker().getDepositTxHash().equals(output.getTx().getHash()) || processModel.getTaker().getDepositTxHash().equals(output.getTx().getHash()))) {
-                  System.out.println("Deposit output for tx " + output.getTx().getHash() + " is confirmed at height " + output.getTx().getHeight());
-                }
-
-                // update locked state
-                if (output.getTx().getHash().equals(processModel.getMaker().getDepositTxHash())) makerDepositLocked = output.getTx().isLocked();
-                else if (output.getTx().getHash().equals(processModel.getTaker().getDepositTxHash())) takerDepositLocked = output.getTx().isLocked();
-
-                // deposit txs seen when both locked states seen
-                if (makerDepositLocked != null && takerDepositLocked != null) {
-                  trade.setState(trade instanceof MakerTrade ? Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK : Trade.State.TAKER_SAW_DEPOSIT_TX_IN_NETWORK);
-                }
-
-                // confirm trade and update ui when both deposits unlock
-                if (Boolean.FALSE.equals(makerDepositLocked) && Boolean.FALSE.equals(takerDepositLocked)) {
-                  System.out.println("Multisig deposit txs unlocked!");
-                  trade.applyDepositTxs(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()), multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
-                  multisigWallet.removeListener(depositTxListener); // remove listener when notified
-                  depositTxListener = null; // prevent re-applying trade state in subsequent requests
-                }
-              }
-            });
-          
-          // register wallet listener
-          multisigWallet.addListener(depositTxListener);
-          
           // apply published transaction which notifies ui
+          MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
           MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash())); // TODO (woodser): this will fail if seeing broadcast txs is delayed
           MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
           applyPublishedDepositTxs(makerDepositTx, takerDepositTx);
@@ -131,14 +88,14 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
         trade.setState(Trade.State.MAKER_RECEIVED_DEPOSIT_TX_PUBLISHED_MSG); // TODO (woodser): maker and taker?
         swapReservedForTradeEntry();
         UserThread.execute(this::unSubscribe); // need delay as it can be called inside the listener handler before listener and tradeStateSubscription are actually set.
-      }
+    }
 
-      private void swapReservedForTradeEntry() {
-          log.info("swapReservedForTradeEntry");
-          processModel.getProvider().getXmrWalletService().swapTradeEntryToAvailableEntry(trade.getId(), XmrAddressEntry.Context.RESERVED_FOR_TRADE);
-      }
+    private void swapReservedForTradeEntry() {
+        log.info("swapReservedForTradeEntry");
+        processModel.getProvider().getXmrWalletService().swapTradeEntryToAvailableEntry(trade.getId(), XmrAddressEntry.Context.RESERVED_FOR_TRADE);
+    }
 
-      private void unSubscribe() {
-          if (tradeStateSubscription != null) tradeStateSubscription.unsubscribe();
-      }
+    private void unSubscribe() {
+        if (tradeStateSubscription != null) tradeStateSubscription.unsubscribe();
+    }
 }

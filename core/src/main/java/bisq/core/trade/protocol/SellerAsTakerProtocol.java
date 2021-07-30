@@ -36,6 +36,7 @@ import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
+import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.core.trade.protocol.tasks.seller.SellerCreatesDelayedPayoutTx;
@@ -267,7 +268,8 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
             .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
             .setup(tasks(
                     // TODO (woodser): validate request
-                    ProcessPaymentAccountPayloadRequest.class)
+                    ProcessPaymentAccountPayloadRequest.class,
+                    SetupDepositTxsListener.class)
             .using(new TradeTaskRunner(trade,
                     () -> {
                         stopTimeout();
