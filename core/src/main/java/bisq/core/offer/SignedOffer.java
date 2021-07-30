@@ -50,6 +50,7 @@ public final class SignedOffer implements PersistablePayload {
     public protobuf.SignedOffer toProtoMessage() {
         protobuf.SignedOffer.Builder builder = protobuf.SignedOffer.newBuilder()
                 .setOfferId(offerId)
+                .setReserveTxHash(reserveTxHash)
                 .setReserveTxHex(reserveTxHex)
                 .setArbitratorSignature(arbitratorSignature);
         
