@@ -56,6 +56,7 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
     protected void run() {
         try {
           runInterceptHook();
+          if (trade.getTradingPeer().getPaymentAccountPayload() != null) throw new RuntimeException("Peer's payment account payload has already been set");
           
           // get peer's payment account payload
           PaymentAccountPayloadRequest request = (PaymentAccountPayloadRequest) processModel.getTradeMessage(); // TODO (woodser): verify request
@@ -88,12 +89,12 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
 
                 // deposit txs seen when both locked states seen
                 if (makerDepositLocked != null && takerDepositLocked != null) {
-                  trade.setState(trade instanceof TakerTrade ? Trade.State.TAKER_SAW_DEPOSIT_TX_IN_NETWORK : Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK);
+                  trade.setState(trade instanceof MakerTrade ? Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK : Trade.State.TAKER_SAW_DEPOSIT_TX_IN_NETWORK);
                 }
 
                 // confirm trade and update ui when both deposits unlock
                 if (Boolean.FALSE.equals(makerDepositLocked) && Boolean.FALSE.equals(takerDepositLocked)) {
-                  System.out.println("MULTISIG DEPOSIT TXS UNLOCKED!!!");
+                  System.out.println("Multisig deposit txs unlocked!");
                   trade.applyDepositTxs(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()), multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
                   multisigWallet.removeListener(depositTxListener); // remove listener when notified
                   depositTxListener = null; // prevent re-applying trade state in subsequent requests
@@ -105,7 +106,7 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           multisigWallet.addListener(depositTxListener);
           
           // apply published transaction which notifies ui
-          MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()));
+          MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash())); // TODO (woodser): this will fail if seeing broadcast txs is delayed
           MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
           applyPublishedDepositTxs(makerDepositTx, takerDepositTx);
 
@@ -126,18 +127,10 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
     }
     
     private void applyPublishedDepositTxs(MoneroTxWallet makerDepositTx, MoneroTxWallet takerDepositTx) {
-        if (trade.getMakerDepositTx() == null && trade.getTakerDepositTx() == null) {
-            trade.applyDepositTxs(makerDepositTx, takerDepositTx);
-            XmrWalletService.printTxs("depositTxs received from network", makerDepositTx, takerDepositTx);
-            trade.setState(Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK);  // TODO (woodser): maker and taker?
-        } else {
-            log.info("We got the deposit tx already set from MakerCreateAndPublishDepositTx.  tradeId={}, state={}", trade.getId(), trade.getState());
-        }
-
+        trade.applyDepositTxs(makerDepositTx, takerDepositTx);
+        trade.setState(Trade.State.MAKER_RECEIVED_DEPOSIT_TX_PUBLISHED_MSG); // TODO (woodser): maker and taker?
         swapReservedForTradeEntry();
-
-        // need delay as it can be called inside the listener handler before listener and tradeStateSubscription are actually set.
-        UserThread.execute(this::unSubscribe);
+        UserThread.execute(this::unSubscribe); // need delay as it can be called inside the listener handler before listener and tradeStateSubscription are actually set.
       }
 
       private void swapReservedForTradeEntry() {
