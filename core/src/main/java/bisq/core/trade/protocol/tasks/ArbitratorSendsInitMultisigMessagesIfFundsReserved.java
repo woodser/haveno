@@ -53,8 +53,7 @@ public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTas
             runInterceptHook();
             
             // skip if arbitrator does not have maker reserve tx
-            // TODO (woodser): need to read this from signed offer store
-            if (false && processModel.getMaker().getReserveTxHash() == null) {
+            if (processModel.getMaker().getReserveTxHash() == null) {
                 log.info("Arbitrator does not have maker reserve tx for offerId {}, waiting to receive before initializing multisig wallet", processModel.getOffer().getId());
                 complete();
                 return;
