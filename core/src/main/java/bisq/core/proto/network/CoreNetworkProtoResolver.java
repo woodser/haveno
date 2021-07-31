@@ -59,7 +59,7 @@ import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
 import bisq.core.trade.messages.DepositTxMessage;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
@@ -167,8 +167,8 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return RefreshTradeStateRequest.fromProto(proto.getRefreshTradeStateRequest(), messageVersion);
                 case INIT_TRADE_REQUEST:
                   return InitTradeRequest.fromProto(proto.getInitTradeRequest(), this, messageVersion);
-                case INIT_MULTISIG_MESSAGE:
-                  return InitMultisigMessage.fromProto(proto.getInitMultisigMessage(), this, messageVersion);
+                case INIT_MULTISIG_REQUEST:
+                  return InitMultisigRequest.fromProto(proto.getInitMultisigRequest(), this, messageVersion);
                 case SIGN_CONTRACT_REQUEST:
                     return SignContractRequest.fromProto(proto.getSignContractRequest(), this, messageVersion);
                 case SIGN_CONTRACT_RESPONSE:

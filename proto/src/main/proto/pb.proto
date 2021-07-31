@@ -85,7 +85,7 @@ message NetworkEnvelope {
         SignOfferRequest sign_offer_request = 1001;
         SignOfferResponse sign_offer_response = 1002;
         InitTradeRequest init_trade_request = 1003;
-        InitMultisigMessage init_multisig_message = 1004;
+        InitMultisigRequest init_multisig_request = 1004;
         SignContractRequest sign_contract_request = 1005;
         SignContractResponse sign_contract_response = 1006;
         DepositRequest deposit_request = 1007;
@@ -324,7 +324,7 @@ message InitTradeRequest {
     string maker_signature = 20;
 }
 
-message InitMultisigMessage {
+message InitMultisigRequest {
     string trade_id = 1;
     NodeAddress sender_node_address = 2;
     PubKeyRing pub_key_ring = 3;

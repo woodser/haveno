@@ -24,7 +24,7 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InputsForDepositTxResponse;
 import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
@@ -33,7 +33,7 @@ import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
-import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
+import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
@@ -192,25 +192,25 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
     // TODO (woodser): these methods are duplicated with SellerAsTakerProtocol due to single inheritance
 
     @Override
-    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-      System.out.println("BuyerAsTakerProtocol.handleMultisigMessage()");
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message);
+    public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+      System.out.println("BuyerAsTakerProtocol.handleInitMultisigRequest()");
+      Validator.checkTradeId(processModel.getOfferId(), request);
+      processModel.setTradeMessage(request);
       expect(anyPhase(Trade.Phase.INIT)
-          .with(message)
+          .with(request)
           .from(sender))
           .setup(tasks(
-              ProcessInitMultisigMessage.class,
+              ProcessInitMultisigRequest.class,
               SendSignContractRequestAfterMultisig.class)
               .using(new TradeTaskRunner(trade,
                   () -> {
                     System.out.println("handle multisig pipeline completed successfully!");
-                    handleTaskRunnerSuccess(sender, message);
+                    handleTaskRunnerSuccess(sender, request);
                   },
                   errorMessage -> {
                       System.out.println("error in handle multisig pipeline!!!: " + errorMessage);
                       errorMessageHandler.handleErrorMessage(errorMessage);
-                      handleTaskRunnerFault(sender, message, errorMessage);
+                      handleTaskRunnerFault(sender, request, errorMessage);
                   }))
           .withTimeout(30))
           .executeTasks();

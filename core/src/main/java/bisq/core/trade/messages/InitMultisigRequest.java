@@ -34,7 +34,7 @@ import javax.annotation.Nullable;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class InitMultisigMessage extends TradeMessage implements DirectMessage {
+public final class InitMultisigRequest extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     private final long currentDate;
@@ -43,7 +43,7 @@ public final class InitMultisigMessage extends TradeMessage implements DirectMes
     @Nullable
     private final String madeMultisigHex;
 
-    public InitMultisigMessage(String tradeId,
+    public InitMultisigRequest(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
@@ -66,7 +66,7 @@ public final class InitMultisigMessage extends TradeMessage implements DirectMes
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.InitMultisigMessage.Builder builder = protobuf.InitMultisigMessage.newBuilder()
+        protobuf.InitMultisigRequest.Builder builder = protobuf.InitMultisigRequest.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
@@ -77,13 +77,13 @@ public final class InitMultisigMessage extends TradeMessage implements DirectMes
 
         builder.setCurrentDate(currentDate);
 
-        return getNetworkEnvelopeBuilder().setInitMultisigMessage(builder).build();
+        return getNetworkEnvelopeBuilder().setInitMultisigRequest(builder).build();
     }
 
-    public static InitMultisigMessage fromProto(protobuf.InitMultisigMessage proto,
+    public static InitMultisigRequest fromProto(protobuf.InitMultisigRequest proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       int messageVersion) {
-        return new InitMultisigMessage(proto.getTradeId(),
+        return new InitMultisigRequest(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
@@ -95,7 +95,7 @@ public final class InitMultisigMessage extends TradeMessage implements DirectMes
 
     @Override
     public String toString() {
-        return "MultisigMessage {" +
+        return "InitMultisigRequest {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     currentDate=" + currentDate +

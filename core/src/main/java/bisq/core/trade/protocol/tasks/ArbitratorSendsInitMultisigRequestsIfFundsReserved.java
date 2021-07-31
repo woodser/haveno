@@ -24,7 +24,7 @@ import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.network.p2p.SendDirectMessageListener;
 import com.google.common.base.Charsets;
@@ -34,16 +34,16 @@ import lombok.extern.slf4j.Slf4j;
 import monero.wallet.MoneroWallet;
 
 /**
- * Arbitrator sends InitMultisigMessage to maker and taker if both reserve txs received.
+ * Arbitrator sends InitMultisigRequest to maker and taker if both reserve txs received.
  */
 @Slf4j
-public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTask {
+public class ArbitratorSendsInitMultisigRequestsIfFundsReserved extends TradeTask {
     
     private boolean takerAck;
     private boolean makerAck;
     
     @SuppressWarnings({"unused"})
-    public ArbitratorSendsInitMultisigMessagesIfFundsReserved(TaskRunner taskHandler, Trade trade) {
+    public ArbitratorSendsInitMultisigRequestsIfFundsReserved(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 
@@ -67,7 +67,7 @@ public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTas
             processModel.setPreparedMultisigHex(preparedHex);
 
             // create message to initialize multisig
-            InitMultisigMessage message = new InitMultisigMessage(
+            InitMultisigRequest request = new InitMultisigRequest(
                     processModel.getOffer().getId(),
                     processModel.getMyNodeAddress(),
                     processModel.getPubKeyRing(),
@@ -78,44 +78,44 @@ public class ArbitratorSendsInitMultisigMessagesIfFundsReserved extends TradeTas
                     null);
 
             // send request to maker
-            log.info("Send {} with offerId {} and uid {} to maker {}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid(), trade.getMakerNodeAddress());
+            log.info("Send {} with offerId {} and uid {} to maker {}", request.getClass().getSimpleName(), request.getTradeId(), request.getUid(), trade.getMakerNodeAddress());
             processModel.getP2PService().sendEncryptedDirectMessage(
                     trade.getMakerNodeAddress(),
                     trade.getMakerPubKeyRing(),
-                    message,
+                    request,
                     new SendDirectMessageListener() {
                         @Override
                         public void onArrived() {
-                            log.info("{} arrived at arbitrator: offerId={}; uid={}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid());
+                            log.info("{} arrived at arbitrator: offerId={}; uid={}", request.getClass().getSimpleName(), request.getTradeId(), request.getUid());
                             makerAck = true;
                             checkComplete();
                         }
                         @Override
                         public void onFault(String errorMessage) {
-                            log.error("Sending {} failed: uid={}; peer={}; error={}", message.getClass().getSimpleName(), message.getUid(), trade.getMakerNodeAddress(), errorMessage);
-                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+                            log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), request.getUid(), trade.getMakerNodeAddress(), errorMessage);
+                            appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
                             failed();
                         }
                     }
             );
 
             // send request to taker
-            log.info("Send {} with offerId {} and uid {} to taker {}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid(), trade.getTakerNodeAddress());
+            log.info("Send {} with offerId {} and uid {} to taker {}", request.getClass().getSimpleName(), request.getTradeId(), request.getUid(), trade.getTakerNodeAddress());
             processModel.getP2PService().sendEncryptedDirectMessage(
                     trade.getTakerNodeAddress(),
                     trade.getTakerPubKeyRing(),
-                    message,
+                    request,
                     new SendDirectMessageListener() {
                         @Override
                         public void onArrived() {
-                            log.info("{} arrived at peer: offerId={}; uid={}", message.getClass().getSimpleName(), message.getTradeId(), message.getUid());
+                            log.info("{} arrived at peer: offerId={}; uid={}", request.getClass().getSimpleName(), request.getTradeId(), request.getUid());
                             takerAck = true;
                             checkComplete();
                         }
                         @Override
                         public void onFault(String errorMessage) {
-                            log.error("Sending {} failed: uid={}; peer={}; error={}", message.getClass().getSimpleName(), message.getUid(), trade.getTakerNodeAddress(), errorMessage);
-                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+                            log.error("Sending {} failed: uid={}; peer={}; error={}", request.getClass().getSimpleName(), request.getUid(), trade.getTakerNodeAddress(), errorMessage);
+                            appendToErrorMessage("Sending message failed: message=" + request + "\nerrorMessage=" + errorMessage);
                             failed();
                         }
                     }

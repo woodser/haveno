@@ -3,15 +3,15 @@ package bisq.core.trade.protocol;
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DepositRequest;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ArbitratorSendsInitTradeRequestToMakerIfFromTaker;
 import bisq.core.trade.protocol.tasks.ProcessDepositRequest;
-import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
+import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessesReserveTx;
-import bisq.core.trade.protocol.tasks.ArbitratorSendsInitMultisigMessagesIfFundsReserved;
+import bisq.core.trade.protocol.tasks.ArbitratorSendsInitMultisigRequestsIfFundsReserved;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.util.Validator;
@@ -43,27 +43,27 @@ public class ArbitratorProtocol extends DisputeProtocol {
                   ProcessInitTradeRequest.class,
                   ArbitratorProcessesReserveTx.class,
                   ArbitratorSendsInitTradeRequestToMakerIfFromTaker.class,
-                  ArbitratorSendsInitMultisigMessagesIfFundsReserved.class))
+                  ArbitratorSendsInitMultisigRequestsIfFundsReserved.class))
               .executeTasks();
   }
   
   @Override
-  public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-    System.out.println("ArbitratorProtocol.handleMultisigMessage()");
-    Validator.checkTradeId(processModel.getOfferId(), message);
-    processModel.setTradeMessage(message);
+  public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+    System.out.println("ArbitratorProtocol.handleInitMultisigRequest()");
+    Validator.checkTradeId(processModel.getOfferId(), request);
+    processModel.setTradeMessage(request);
     expect(anyPhase(Trade.Phase.INIT)
-        .with(message)
+        .with(request)
         .from(sender))
         .setup(tasks(
-            ProcessInitMultisigMessage.class)
+            ProcessInitMultisigRequest.class)
             .using(new TradeTaskRunner(trade,
                 () -> {
-                  handleTaskRunnerSuccess(sender, message);
+                  handleTaskRunnerSuccess(sender, request);
                 },
                 errorMessage -> {
                     errorMessageHandler.handleErrorMessage(errorMessage);
-                    handleTaskRunnerFault(sender, message, errorMessage);
+                    handleTaskRunnerFault(sender, request, errorMessage);
                 })))
         .executeTasks();
   }

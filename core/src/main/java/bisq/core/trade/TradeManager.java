@@ -39,7 +39,7 @@ import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.trade.handlers.TradeResultHandler;
 import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositResponse;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.InputsForDepositTxRequest;
 import bisq.core.trade.messages.PaymentAccountPayloadRequest;
@@ -241,8 +241,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           //handleTakeOfferRequest(peer, (InputsForDepositTxRequest) networkEnvelope);  // ignore bisq requests
         } else if (networkEnvelope instanceof InitTradeRequest) {
             handleInitTradeRequest((InitTradeRequest) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof InitMultisigMessage) {
-            handleMultisigMessage((InitMultisigMessage) networkEnvelope, peer);
+        } else if (networkEnvelope instanceof InitMultisigRequest) {
+            handleInitMultisigRequest((InitMultisigRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof SignContractRequest) {
             handleSignContractRequest((SignContractRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof SignContractResponse) {
@@ -501,20 +501,20 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
       }
     }
 
-    private void handleMultisigMessage(InitMultisigMessage multisigMessage, NodeAddress peer) {
-      log.info("Received InitMultisigMessage from {} with tradeId {} and uid {}", peer, multisigMessage.getTradeId(), multisigMessage.getUid());
+    private void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress peer) {
+      log.info("Received InitMultisigRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
 
       try {
-          Validator.nonEmptyStringOf(multisigMessage.getTradeId());
+          Validator.nonEmptyStringOf(request.getTradeId());
       } catch (Throwable t) {
-          log.warn("Invalid InitMultisigMessage message " + multisigMessage.toString());
+          log.warn("Invalid InitMultisigRequest " + request.toString());
           return;
       }
 
-      Optional<Trade> tradeOptional = getTradeById(multisigMessage.getTradeId());
-      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + multisigMessage.getTradeId()); // TODO (woodser): error handling
+      Optional<Trade> tradeOptional = getTradeById(request.getTradeId());
+      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
       Trade trade = tradeOptional.get();
-      getTradeProtocol(trade).handleMultisigMessage(multisigMessage, peer, errorMessage -> {
+      getTradeProtocol(trade).handleInitMultisigRequest(request, peer, errorMessage -> {
             if (takeOfferRequestErrorMessageHandler != null) {
                 takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
             }

@@ -22,14 +22,14 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DelayedPayoutTxSignatureRequest;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.DepositTxAndDelayedPayoutTxMessage;
-import bisq.core.trade.messages.InitMultisigMessage;
+import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.PaymentAccountPayloadRequest;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
-import bisq.core.trade.protocol.tasks.ProcessInitMultisigMessage;
+import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
@@ -158,23 +158,23 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
     }
     
     @Override
-    public void handleMultisigMessage(InitMultisigMessage message, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
-      System.out.println("BuyerAsMakerProtocol.handleMultisigMessage()");
-      Validator.checkTradeId(processModel.getOfferId(), message);
-      processModel.setTradeMessage(message); // TODO (woodser): synchronize access since concurrent requests processed
+    public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender, ErrorMessageHandler errorMessageHandler) {
+      System.out.println("BuyerAsMakerProtocol.handleInitMultisigRequest()");
+      Validator.checkTradeId(processModel.getOfferId(), request);
+      processModel.setTradeMessage(request); // TODO (woodser): synchronize access since concurrent requests processed
       expect(anyPhase(Trade.Phase.INIT)
-          .with(message)
+          .with(request)
           .from(sender))
           .setup(tasks(
-                  ProcessInitMultisigMessage.class,
+                  ProcessInitMultisigRequest.class,
                   SendSignContractRequestAfterMultisig.class)
               .using(new TradeTaskRunner(trade,
                   () -> {
-                    handleTaskRunnerSuccess(sender, message);
+                    handleTaskRunnerSuccess(sender, request);
                   },
                   errorMessage -> {
                       errorMessageHandler.handleErrorMessage(errorMessage);
-                      handleTaskRunnerFault(sender, message, errorMessage);
+                      handleTaskRunnerFault(sender, request, errorMessage);
                   })))
           .executeTasks();
     }
