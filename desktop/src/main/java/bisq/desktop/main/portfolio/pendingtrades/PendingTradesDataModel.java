@@ -483,7 +483,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
       byte[] payoutTxSerialized = null;
       String payoutTxHashAsString = null;
       MoneroTxWallet payoutTx = trade.getPayoutTx();
-      MoneroWallet  multisigWallet = xmrWalletService.getOrCreateMultisigWallet(trade.getId());
+      MoneroWallet  multisigWallet = xmrWalletService.getMultisigWallet(trade.getId());
       String updatedMultisigHex = multisigWallet.getMultisigHex();
       if (payoutTx != null) {
 //          payoutTxSerialized = payoutTx.bitcoinSerialize(); // TODO (woodser): no need to pass serialized txs for xmr

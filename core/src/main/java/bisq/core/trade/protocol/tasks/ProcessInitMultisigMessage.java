@@ -91,16 +91,16 @@ public class ProcessInitMultisigMessage extends TradeTask {
             else if (!multisigParticipant.getPreparedMultisigHex().equals(message.getPreparedMultisigHex())) throw new RuntimeException("Message's prepared multisig differs from previous messages, previous: " + multisigParticipant.getPreparedMultisigHex() + ", message: " + message.getPreparedMultisigHex());
             if (multisigParticipant.getMadeMultisigHex() == null) multisigParticipant.setMadeMultisigHex(message.getMadeMultisigHex());
             else if (!multisigParticipant.getMadeMultisigHex().equals(message.getMadeMultisigHex())) throw new RuntimeException("Message's made multisig differs from previous messages");
-
-            // get or create multisig wallet // TODO (woodser): ensure multisig wallet is created for first time
-            multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId());
-
+            
             // prepare multisig if applicable
             boolean updateParticipants = false;
             if (processModel.getPreparedMultisigHex() == null) {
               System.out.println("Preparing multisig wallet!");
+              multisigWallet = processModel.getProvider().getXmrWalletService().createMultisigWallet(trade.getId());
               processModel.setPreparedMultisigHex(multisigWallet.prepareMultisig());
               updateParticipants = true;
+            } else {
+              multisigWallet = processModel.getProvider().getXmrWalletService().getMultisigWallet(trade.getId());
             }
 
             // make multisig if applicable

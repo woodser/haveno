@@ -62,16 +62,6 @@ public class MakerSendsInitTradeRequestIfUnreserved extends TradeTask {
             checkNotNull(request);
             checkTradeId(processModel.getOfferId(), request);
 
-//            // create wallet for multisig
-//            // TODO (woodser): manage in common util, set path, server
-//            MoneroWallet multisigWallet = MoneroWallet.createWallet(new MoneroWalletConfig()
-//                    .setPassword("abctesting123")
-//                    .setNetworkType(MoneroNetworkType.STAGENET));
-//
-//            // prepare multisig
-//            String preparedHex = multisigWallet.prepareMultisig();
-//            System.out.println("Prepared multisig hex: " + preparedHex);
-
             // collect fields to send taker prepared multisig response  // TODO (woodser): this should happen on response from arbitrator
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
             String offerId = processModel.getOffer().getId();

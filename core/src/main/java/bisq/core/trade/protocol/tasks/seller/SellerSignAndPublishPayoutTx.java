@@ -56,7 +56,7 @@ public class SellerSignAndPublishPayoutTx extends TradeTask {
 
             // gather relevant trade info
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-            MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(trade.getId());
+            MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
             String buyerSignedPayoutTxHex = trade.getTradingPeer().getSignedPayoutTxHex();
             Contract contract = trade.getContract();
             Offer offer = checkNotNull(trade.getOffer(), "offer must not be null");

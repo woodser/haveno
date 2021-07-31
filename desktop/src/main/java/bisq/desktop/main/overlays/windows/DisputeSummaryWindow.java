@@ -603,7 +603,7 @@ public class DisputeSummaryWindow extends Overlay<DisputeSummaryWindow> {
           if (!dispute.isMediationDispute()) {
             try {
                 System.out.println(disputeResult);
-                MoneroWallet multisigWallet = walletService.getOrCreateMultisigWallet(dispute.getTradeId());
+                MoneroWallet multisigWallet = walletService.getMultisigWallet(dispute.getTradeId());
                 //dispute.getContract().getArbitratorPubKeyRing();  // TODO: support arbitrator pub key ring in contract?
                 //disputeResult.setArbitratorPubKey(arbitratorAddressEntry.getPubKey());
 

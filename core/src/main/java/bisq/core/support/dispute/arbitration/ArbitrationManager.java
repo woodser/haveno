@@ -240,7 +240,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
         String errorMessage = null;
         boolean success = true;
         boolean requestUpdatedPayoutTx = false;
-        MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+        MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(dispute.getTradeId());
         Contract contract = dispute.getContract();
         try {
             // We need to avoid publishing the tx from both traders as it would create problems with zero confirmation withdrawals
@@ -366,7 +366,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
         cleanupRetryMap(uid);
 
         // update multisig wallet
-        MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+        MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(dispute.getTradeId());
         multisigWallet.importMultisigHex(Arrays.asList(peerPublishedDisputePayoutTxMessage.getUpdatedMultisigHex()));
 
         // parse payout tx
@@ -416,7 +416,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       }
 
       // update arbitrator's multisig wallet with co-signer's multisig hex
-      MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(dispute.getTradeId());
+      MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(dispute.getTradeId());
       try {
         multisigWallet.importMultisigHex(Arrays.asList(request.getUpdatedMultisigHex()));
       } catch (Exception e) {
@@ -473,7 +473,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
     private void onTraderSignedDisputePayoutTx(String tradeId, MoneroTxSet txSet) {
 
       // gather trade info
-      MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(tradeId);
+      MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(tradeId);
       Optional<Dispute> disputeOptional = findOwnDispute(tradeId);
       if (!disputeOptional.isPresent()) {
           log.warn("Trader has no dispute when signing dispute payout tx. This should never happen. TradeId = " + tradeId);
@@ -657,7 +657,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
     private MoneroTxSet traderSignsDisputePayoutTx(String tradeId, String payoutTxHex) {
 
       // gather trade info
-      MoneroWallet multisigWallet = xmrWalletService.getOrCreateMultisigWallet(tradeId);
+      MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(tradeId);
       Optional<Dispute> disputeOptional = findOwnDispute(tradeId);
       if (!disputeOptional.isPresent()) throw new RuntimeException("Trader has no dispute when signing dispute payout tx. This should never happen. TradeId = " + tradeId);
       Dispute dispute = disputeOptional.get();

@@ -90,22 +90,29 @@ public class XmrWalletService {
 
   // TODO (woodser): wallet has single password which is passed here?
   // TODO (woodser): test retaking failed trade.  create new multisig wallet or replace?  cannot reuse
-  public MoneroWallet getOrCreateMultisigWallet(String tradeId) {
-    String path = "xmr_multisig_trade_" + tradeId;
-    MoneroWallet multisigWallet = null;
-    if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
-    else if (MoneroUtils.walletExists(new File(walletsSetup.getWalletConfig().directory(), path).getPath())) { // TODO: use monero-wallet-rpc to determine existence?
-      multisigWallet = walletsSetup.getWalletConfig().openWallet(new MoneroWalletConfig()
-              .setPath(path)
-              .setPassword("abctesting123"));
-    } else {
+  
+  public MoneroWallet createMultisigWallet(String tradeId) {
+      if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
+      String path = "xmr_multisig_trade_" + tradeId;
+      MoneroWallet multisigWallet = null;
       multisigWallet = walletsSetup.getWalletConfig().createWallet(new MoneroWalletConfig()
               .setPath(path)
               .setPassword("abctesting123"));
-    }
-    multisigWallets.put(tradeId, multisigWallet);
-    multisigWallet.startSyncing(5000l);
-    return multisigWallet;
+      multisigWallets.put(tradeId, multisigWallet);
+      multisigWallet.startSyncing(5000l);
+      return multisigWallet;
+  }
+  
+  public MoneroWallet getMultisigWallet(String tradeId) {
+      if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
+      String path = "xmr_multisig_trade_" + tradeId;
+      MoneroWallet multisigWallet = null;
+      multisigWallet = walletsSetup.getWalletConfig().openWallet(new MoneroWalletConfig()
+              .setPath(path)
+              .setPassword("abctesting123"));
+      multisigWallets.put(tradeId, multisigWallet);
+      multisigWallet.startSyncing(5000l);
+      return multisigWallet;
   }
 
   public XmrAddressEntry recoverAddressEntry(String offerId, String address, XmrAddressEntry.Context context) {

@@ -43,7 +43,7 @@ public class SetupDepositTxsListener extends TradeTask {
             runInterceptHook();
 
             // create listener for deposit transactions
-            MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
+            MoneroWallet multisigWallet = processModel.getXmrWalletService().getMultisigWallet(trade.getId());
             depositTxListener = processModel.getXmrWalletService().new HavenoWalletListener(new MoneroWalletListener() { // TODO (woodser): separate into own class file
                 @Override
                 public void onOutputReceived(MoneroOutputWallet output) {

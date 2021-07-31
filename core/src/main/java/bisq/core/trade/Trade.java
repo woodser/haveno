@@ -698,7 +698,7 @@ public abstract class Trade implements Tradable, Model {
     void updateDepositTxFromWallet() {
         if (getMakerDepositTx() != null && getTakerDepositTx() != null) {
             System.out.println(processModel.getProvider().getXmrWalletService());
-            MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(getId());
+            MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getMultisigWallet(getId());
           applyDepositTxs(multisigWallet.getTx(getMakerDepositTx().getHash()), multisigWallet.getTx(getTakerDepositTx().getHash()));
         }
     }
@@ -716,7 +716,7 @@ public abstract class Trade implements Tradable, Model {
     public MoneroTxWallet getTakerDepositTx() {
         String depositTxHash = getProcessModel().getTaker().getDepositTxHash();
         try {
-            if (takerDepositTx == null) takerDepositTx = depositTxHash == null ? null : xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(depositTxHash);
+            if (takerDepositTx == null) takerDepositTx = depositTxHash == null ? null : xmrWalletService.getMultisigWallet(getId()).getTx(depositTxHash);
             return takerDepositTx;
         } catch (MoneroError e) {
             log.error("Wallet is missing taker deposit tx " + depositTxHash);
@@ -728,7 +728,7 @@ public abstract class Trade implements Tradable, Model {
     public MoneroTxWallet getMakerDepositTx() {
         String depositTxHash = getProcessModel().getMaker().getDepositTxHash();
         try {
-            if (makerDepositTx == null) makerDepositTx = depositTxHash == null ? null : xmrWalletService.getOrCreateMultisigWallet(getId()).getTx(depositTxHash);
+            if (makerDepositTx == null) makerDepositTx = depositTxHash == null ? null : xmrWalletService.getMultisigWallet(getId()).getTx(depositTxHash);
             return makerDepositTx;
         } catch (MoneroError e) {
             log.error("Wallet is missing maker deposit tx " + depositTxHash);
@@ -1008,7 +1008,7 @@ public abstract class Trade implements Tradable, Model {
             if (!makerDepositTx.isLocked() && !takerDepositTx.isLocked()) {
                 final long tradeTime = getTakeOfferDate().getTime();
                 long maxHeight = Math.max(makerDepositTx.getHeight(), takerDepositTx.getHeight());
-                MoneroDaemon daemonRpc = new MoneroDaemonRpc("http://localhost:38081", "superuser", "abctesting123"); // TODO (woodser): move to common config
+                MoneroDaemon daemonRpc = xmrWalletService.getDaemon();
                 long blockTime = daemonRpc.getBlockByHeight(maxHeight).getTimestamp();
 
 //            if (depositTx.getConfidence().getDepthInBlocks() > 0) {

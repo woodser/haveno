@@ -53,7 +53,7 @@ public class TakerSendInitMultisigMessages extends TradeTask {
 
             // create wallet for multisig
             // TODO (woodser): assert that wallet does not already exist
-            MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId());
+            MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getMultisigWallet(trade.getId());
 
             // prepare multisig
             String preparedHex = multisigWallet.prepareMultisig();

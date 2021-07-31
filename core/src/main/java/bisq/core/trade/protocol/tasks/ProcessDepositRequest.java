@@ -78,7 +78,7 @@ public class ProcessDepositRequest extends TradeTask {
           boolean isFromTaker = request.getSenderNodeAddress().equals(trade.getTakerNodeAddress());
           boolean isFromBuyer = isFromTaker ? offer.getDirection() == OfferPayload.Direction.SELL : offer.getDirection() == OfferPayload.Direction.BUY;
           BigInteger depositAmount = ParsingUtils.coinToAtomicUnits(isFromBuyer ? offer.getBuyerSecurityDeposit() : offer.getAmount().add(offer.getSellerSecurityDeposit()));
-          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): only get, do not create
+          MoneroWallet multisigWallet = processModel.getProvider().getXmrWalletService().getMultisigWallet(trade.getId()); // TODO (woodser): only get, do not create
           String depositAddress = multisigWallet.getPrimaryAddress();
           BigInteger tradeFee;
           TradingPeer trader = trade.getTradingPeer(request.getSenderNodeAddress());
@@ -110,6 +110,7 @@ public class ProcessDepositRequest extends TradeTask {
               trader.setDepositTxKey(request.getDepositTxKey());
               
               // relay deposit txs when both available
+              // TODO (woodser): add small delay so tx has head start against double spend attempts?
               if (processModel.getMaker().getDepositTxHex() != null && processModel.getTaker().getDepositTxHex() != null) {
                   
                   // relay txs

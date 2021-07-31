@@ -62,7 +62,7 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           trade.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
           
           // apply published transaction which notifies ui
-          MoneroWallet multisigWallet = processModel.getXmrWalletService().getOrCreateMultisigWallet(trade.getId()); // TODO (woodser): always use either getMultisigWallet() or createMultisigWallet()
+          MoneroWallet multisigWallet = processModel.getXmrWalletService().getMultisigWallet(trade.getId());
           MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash())); // TODO (woodser): this will fail if seeing broadcast txs is delayed
           MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
           applyPublishedDepositTxs(makerDepositTx, takerDepositTx);
