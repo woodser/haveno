@@ -335,7 +335,6 @@ class TakeOfferDataModel extends OfferDataModel {
             tradeManager.onTakeOffer(amount.get(),
                     txFeeFromFeeService,
                     getTakerFee(),
-                    tradePrice.getValue(),
                     fundsNeededForTrade,
                     offer,
                     paymentAccount.getId(),

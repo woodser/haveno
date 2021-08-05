@@ -61,19 +61,11 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
           // set payment account payload
           trade.getTradingPeer().setPaymentAccountPayload(paymentAccountPayload);
           
-          // apply published transaction which notifies ui
-          MoneroWallet multisigWallet = processModel.getXmrWalletService().getMultisigWallet(trade.getId());
-          MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash())); // TODO (woodser): this will fail if seeing broadcast txs is delayed
-          MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
-          applyPublishedDepositTxs(makerDepositTx, takerDepositTx);
-
-          // notify trade state subscription when deposit published
+          // subscribe to trade state to notify ui when deposit txs seen in network
           tradeStateSubscription = EasyBind.subscribe(trade.stateProperty(), newValue -> {
-            if (trade.isDepositPublished()) {
-              swapReservedForTradeEntry();
-              UserThread.execute(this::unSubscribe);  // hack to remove tradeStateSubscription at callback
-            }
+            if (trade.isDepositPublished()) applyPublishedDepositTxs();
           });
+          if (trade.isDepositPublished()) applyPublishedDepositTxs(); // deposit txs might be seen before subcription
           
           // persist and complete
           processModel.getTradeManager().requestPersistence();
@@ -83,11 +75,13 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
         }
     }
     
-    private void applyPublishedDepositTxs(MoneroTxWallet makerDepositTx, MoneroTxWallet takerDepositTx) {
+    private void applyPublishedDepositTxs() {
+        MoneroWallet multisigWallet = processModel.getXmrWalletService().getMultisigWallet(trade.getId());
+        MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()));
+        MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
         trade.applyDepositTxs(makerDepositTx, takerDepositTx);
-        trade.setState(Trade.State.MAKER_RECEIVED_DEPOSIT_TX_PUBLISHED_MSG); // TODO (woodser): maker and taker?
         swapReservedForTradeEntry();
-        UserThread.execute(this::unSubscribe); // need delay as it can be called inside the listener handler before listener and tradeStateSubscription are actually set.
+        UserThread.execute(this::unSubscribe); // remove trade state subscription at callback
     }
 
     private void swapReservedForTradeEntry() {

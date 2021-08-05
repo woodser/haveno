@@ -17,16 +17,12 @@
 
 package bisq.core.trade.protocol.tasks;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 
 import bisq.common.app.Version;
 import bisq.common.crypto.Sig;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.payment.payload.PaymentAccountPayload;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.CounterCurrencyTransferStartedMessage;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.TradeListener;
 import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.NodeAddress;

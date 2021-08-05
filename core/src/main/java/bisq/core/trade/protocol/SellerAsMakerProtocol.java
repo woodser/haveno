@@ -36,7 +36,6 @@ import bisq.core.trade.protocol.tasks.ProcessPaymentAccountPayloadRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.trade.protocol.tasks.SendSignContractRequestAfterMultisig;
-import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.tasks.maker.MakerRemovesOpenOffer;
 import bisq.core.trade.protocol.tasks.maker.MakerVerifyTakerFeePayment;
@@ -230,7 +229,7 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
         System.out.println("BuyerAsMakerProtocol.handleDepositResponse()");
         Validator.checkTradeId(processModel.getOfferId(), response);
         processModel.setTradeMessage(response);
-        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+        expect(anyPhase(Trade.Phase.INIT, Trade.Phase.DEPOSIT_PUBLISHED)
             .with(response)
             .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
             .setup(tasks(
@@ -252,13 +251,12 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
         System.out.println("BuyerAsMakerProtocol.handlePaymentAccountPayloadRequest()");
         Validator.checkTradeId(processModel.getOfferId(), request);
         processModel.setTradeMessage(request);
-        expect(anyPhase(Trade.Phase.INIT) // TODO (woodser): update phase to allow subscribers
+        expect(anyPhase(Trade.Phase.INIT, Trade.Phase.DEPOSIT_PUBLISHED)
             .with(request)
             .from(sender)) // TODO (woodser): ensure this asserts sender == response.getSenderNodeAddress()
             .setup(tasks(
                     // TODO (woodser): validate request
-                    ProcessPaymentAccountPayloadRequest.class,
-                    SetupDepositTxsListener.class)
+                    ProcessPaymentAccountPayloadRequest.class)
                 .using(new TradeTaskRunner(trade,
                     () -> {
                         stopTimeout();

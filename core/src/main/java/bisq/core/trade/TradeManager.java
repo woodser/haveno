@@ -656,7 +656,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     public void onTakeOffer(Coin amount,
                             Coin txFee,
                             Coin takerFee,
-                            long tradePrice,
                             Coin fundsNeededForTrade,
                             Offer offer,
                             String paymentAccountId,
@@ -666,7 +665,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                             ErrorMessageHandler errorMessageHandler) {
 
         checkArgument(!wasOfferAlreadyUsedInTrade(offer.getId()));
-
+        
         OfferAvailabilityModel model = getOfferAvailabilityModel(offer, isTakerApiUser, paymentAccountId);
         offer.checkOfferAvailability(model,
                 () -> {
@@ -676,7 +675,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                             trade = new SellerAsTakerTrade(offer,
                                     amount,
                                     takerFee,
-                                    tradePrice,
+                                    model.getTradeRequest().getTradePrice(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
                                     UUID.randomUUID().toString(),
@@ -687,7 +686,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                             trade = new BuyerAsTakerTrade(offer,
                                     amount,
                                     takerFee,
-                                    tradePrice,
+                                    model.getTradeRequest().getTradePrice(),
                                     xmrWalletService,
                                     getNewProcessModel(offer),
                                     UUID.randomUUID().toString(),

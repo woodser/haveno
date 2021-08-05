@@ -82,9 +82,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import monero.common.MoneroError;
 import monero.daemon.MoneroDaemon;
-import monero.daemon.MoneroDaemonRpc;
 import monero.wallet.MoneroWallet;
+import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroTxWallet;
+import monero.wallet.model.MoneroWalletListener;
 
 /**
  * Holds all data which are relevant to the trade, but not those which are only needed in the trade process as shared data between tasks. Those data are
@@ -459,9 +460,10 @@ public abstract class Trade implements Tradable, Model {
     @Getter
     @Setter
     private PubKeyRing takerPubKeyRing;
-    @Nullable
+    transient MoneroWalletListener depositTxListener;
+    transient Boolean makerDepositLocked; // null when unknown, true while locked, false when unlocked
+    transient Boolean takerDepositLocked;
     transient private MoneroTxWallet makerDepositTx;
-    @Nullable
     transient private MoneroTxWallet takerDepositTx;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -706,10 +708,54 @@ public abstract class Trade implements Tradable, Model {
     public void applyDepositTxs(MoneroTxWallet makerDepositTx, MoneroTxWallet takerDepositTx) {
         this.makerDepositTx = makerDepositTx;
         this.takerDepositTx = takerDepositTx;
-        //setupConfirmationListener();  // TODO (woodser): listening disabled here, using SetupDepositTxsListener in buyer and seller
         if (!makerDepositTx.isLocked() && !takerDepositTx.isLocked()) {
           setConfirmedState();  // TODO (woodser): bisq "confirmed" = xmr unlocked after 10 confirmations
         }
+    }
+    
+    public void setupDepositTxsListener() {
+        
+        // ignore if already listening
+        if (depositTxListener != null) {
+            log.warn("Trade {} already listening for deposit txs", getId());
+            return;
+        }
+        
+        // create listener for deposit transactions
+        MoneroWallet multisigWallet = processModel.getXmrWalletService().getMultisigWallet(getId());
+        depositTxListener = processModel.getXmrWalletService().new HavenoWalletListener(new MoneroWalletListener() { // TODO (woodser): separate into own class file
+            @Override
+            public void onOutputReceived(MoneroOutputWallet output) {
+
+                // ignore if no longer listening
+                if (depositTxListener == null) return;
+
+                // TODO (woodser): remove this
+                if (output.getTx().isConfirmed() && (processModel.getMaker().getDepositTxHash().equals(output.getTx().getHash()) || processModel.getTaker().getDepositTxHash().equals(output.getTx().getHash()))) {
+                    System.out.println("Deposit output for tx " + output.getTx().getHash() + " is confirmed at height " + output.getTx().getHeight());
+                }
+
+                // update locked state
+                if (output.getTx().getHash().equals(processModel.getMaker().getDepositTxHash())) makerDepositLocked = output.getTx().isLocked();
+                else if (output.getTx().getHash().equals(processModel.getTaker().getDepositTxHash())) takerDepositLocked = output.getTx().isLocked();
+
+                // deposit txs seen when both locked states seen
+                if (makerDepositLocked != null && takerDepositLocked != null) {
+                    setState(this instanceof MakerTrade ? Trade.State.MAKER_SAW_DEPOSIT_TX_IN_NETWORK : Trade.State.TAKER_SAW_DEPOSIT_TX_IN_NETWORK);
+                }
+
+                // confirm trade and update ui when both deposits unlock
+                if (Boolean.FALSE.equals(makerDepositLocked) && Boolean.FALSE.equals(takerDepositLocked)) {
+                    System.out.println("Multisig deposit txs unlocked!");
+                    applyDepositTxs(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()), multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
+                    multisigWallet.removeListener(depositTxListener); // remove listener when notified
+                    depositTxListener = null; // prevent re-applying trade state in subsequent requests
+                }
+            }
+        });
+
+        // register wallet listener
+        multisigWallet.addListener(depositTxListener);
     }
 
     @Nullable
@@ -852,7 +898,7 @@ public abstract class Trade implements Tradable, Model {
             log.info("Set new state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), state);
         }
         if (state.getPhase().ordinal() < this.state.getPhase().ordinal()) {
-            String message = "We got a state change to a previous phase.\n" +
+            String message = "We got a state change to a previous phase (id=" + getShortId() + ").\n" +
                     "Old state is: " + this.state + ". New state is: " + state;
             log.warn(message);
         }
