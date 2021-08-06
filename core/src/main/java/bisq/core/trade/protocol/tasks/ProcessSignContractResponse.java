@@ -105,7 +105,7 @@ public class ProcessSignContractResponse extends TradeTask {
               });
           }
           
-          // save trade state
+          // persist and complete
           processModel.getTradeManager().requestPersistence();
           complete();
         } catch (Throwable t) {

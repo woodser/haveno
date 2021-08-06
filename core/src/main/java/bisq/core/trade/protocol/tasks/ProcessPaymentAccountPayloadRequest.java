@@ -80,13 +80,7 @@ public class ProcessPaymentAccountPayloadRequest extends TradeTask {
         MoneroTxWallet makerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getMaker().getDepositTxHash()));
         MoneroTxWallet takerDepositTx = checkNotNull(multisigWallet.getTx(processModel.getTaker().getDepositTxHash()));
         trade.applyDepositTxs(makerDepositTx, takerDepositTx);
-        swapReservedForTradeEntry();
         UserThread.execute(this::unSubscribe); // remove trade state subscription at callback
-    }
-
-    private void swapReservedForTradeEntry() {
-        log.info("swapReservedForTradeEntry");
-        processModel.getProvider().getXmrWalletService().swapTradeEntryToAvailableEntry(trade.getId(), XmrAddressEntry.Context.RESERVED_FOR_TRADE);
     }
 
     private void unSubscribe() {
