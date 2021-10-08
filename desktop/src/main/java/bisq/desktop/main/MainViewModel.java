@@ -31,7 +31,6 @@ import bisq.desktop.main.overlays.windows.UpdateRevolutAccountWindow;
 import bisq.desktop.main.overlays.windows.WalletPasswordWindow;
 import bisq.desktop.main.overlays.windows.downloadupdate.DisplayUpdateDownloadWindow;
 import bisq.desktop.main.presentation.AccountPresentation;
-import bisq.desktop.main.presentation.DaoPresentation;
 import bisq.desktop.main.presentation.MarketPricePresentation;
 import bisq.desktop.main.presentation.SettingsPresentation;
 import bisq.desktop.main.shared.PriceFeedComboBoxItem;
@@ -42,7 +41,6 @@ import bisq.core.account.sign.SignedWitnessService;
 import bisq.core.account.witness.AccountAgeWitnessService;
 import bisq.core.alert.PrivateNotificationManager;
 import bisq.core.app.BisqSetup;
-import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.locale.CryptoCurrency;
@@ -54,7 +52,6 @@ import bisq.core.payment.AliPayAccount;
 import bisq.core.payment.AmazonGiftCardAccount;
 import bisq.core.payment.CryptoCurrencyAccount;
 import bisq.core.payment.RevolutAccount;
-import bisq.core.payment.payload.AssetsAccountPayload;
 import bisq.core.presentation.BalancePresentation;
 import bisq.core.presentation.SupportTicketsPresentation;
 import bisq.core.presentation.TradePresentation;
@@ -116,7 +113,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
     private final TradePresentation tradePresentation;
     private final SupportTicketsPresentation supportTicketsPresentation;
     private final MarketPricePresentation marketPricePresentation;
-    private final DaoPresentation daoPresentation;
     private final AccountPresentation accountPresentation;
     private final SettingsPresentation settingsPresentation;
     private final P2PService p2PService;
@@ -131,7 +127,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
     @Getter
     private final PriceFeedService priceFeedService;
     private final Config config;
-    private final LocalBitcoinNode localBitcoinNode;
     private final AccountAgeWitnessService accountAgeWitnessService;
     @Getter
     private final TorNetworkSettingsWindow torNetworkSettingsWindow;
@@ -162,7 +157,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                          TradePresentation tradePresentation,
                          SupportTicketsPresentation supportTicketsPresentation,
                          MarketPricePresentation marketPricePresentation,
-                         DaoPresentation daoPresentation,
                          AccountPresentation accountPresentation,
                          SettingsPresentation settingsPresentation,
                          P2PService p2PService,
@@ -176,7 +170,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                          FeeService feeService,
                          PriceFeedService priceFeedService,
                          Config config,
-                         LocalBitcoinNode localBitcoinNode,
                          AccountAgeWitnessService accountAgeWitnessService,
                          TorNetworkSettingsWindow torNetworkSettingsWindow,
                          CorruptedStorageFileHandler corruptedStorageFileHandler) {
@@ -187,7 +180,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         this.tradePresentation = tradePresentation;
         this.supportTicketsPresentation = supportTicketsPresentation;
         this.marketPricePresentation = marketPricePresentation;
-        this.daoPresentation = daoPresentation;
         this.accountPresentation = accountPresentation;
         this.settingsPresentation = settingsPresentation;
         this.p2PService = p2PService;
@@ -200,7 +192,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         this.tacWindow = tacWindow;
         this.priceFeedService = priceFeedService;
         this.config = config;
-        this.localBitcoinNode = localBitcoinNode;
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.torNetworkSettingsWindow = torNetworkSettingsWindow;
         this.corruptedStorageFileHandler = corruptedStorageFileHandler;
@@ -265,7 +256,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         setupBtcNumPeersWatcher();
 
         marketPricePresentation.setup();
-        daoPresentation.setup();
         accountPresentation.setup();
         settingsPresentation.setup();
 
@@ -335,7 +325,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                 .actionButtonText(Res.get("settings.net.reSyncSPVChainButton"))
                 .onAction(() -> GUIUtil.reSyncSPVChain(preferences))
                 .show());
-        bisqSetup.setVoteResultExceptionHandler(voteResultException -> log.warn(voteResultException.toString()));
 
         bisqSetup.setChainFileLockedExceptionHandler(msg -> new Popup().warning(msg)
                 .useShutDownButton()
@@ -368,21 +357,11 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                         .onClose(privateNotificationManager::removePrivateNotification)
                         .useIUnderstandButton()
                         .show());
-        bisqSetup.setDaoErrorMessageHandler(errorMessage -> new Popup().error(errorMessage).show());
-        bisqSetup.setDaoWarnMessageHandler(warnMessage -> new Popup().warning(warnMessage).show());
         bisqSetup.setDisplaySecurityRecommendationHandler(key ->
                 new Popup().headLine(Res.get("popup.securityRecommendation.headline"))
                         .information(Res.get("popup.securityRecommendation.msg"))
                         .dontShowAgainId(key)
                         .show());
-        bisqSetup.setDisplayLocalhostHandler(key -> {
-            if (!DevEnv.isDevMode()) {
-                Popup popup = new Popup().backgroundInfo(Res.get("popup.bitcoinLocalhostNode.msg"))
-                        .dontShowAgainId(key);
-                popup.setDisplayOrderPriority(5);
-                popupQueue.add(popup);
-            }
-        });
         bisqSetup.setDisplaySignedByArbitratorHandler(key -> accountPresentation.showOneTimeAccountSigningPopup(
                 key, "popup.accountSigning.signedByArbitrator"));
         bisqSetup.setDisplaySignedByPeerHandler(key -> accountPresentation.showOneTimeAccountSigningPopup(
@@ -432,10 +411,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                     .show();
         });
 
-        bisqSetup.setDaoRequiresRestartHandler(() -> new Popup().warning("popup.warn.daoRequiresRestart")
-                .useShutDownButton()
-                .hideCloseButton()
-                .show());
 
         corruptedStorageFileHandler.getFiles().ifPresent(files -> new Popup()
                 .warning(Res.get("popup.warning.incompatibleDB", files.toString(), config.appDataDir))
@@ -447,7 +422,6 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                 .show());
 
         bisqSetup.getBtcSyncProgress().addListener((observable, oldValue, newValue) -> updateBtcSyncProgress());
-        daoPresentation.getBsqSyncProgress().addListener((observable, oldValue, newValue) -> updateBtcSyncProgress());
 
         bisqSetup.setFilterWarningHandler(warning -> new Popup().warning(warning).show());
 
@@ -532,14 +506,9 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                 checkNumberOfBtcPeersTimer = UserThread.runAfter(() -> {
                     // check again numPeers
                     if (walletsSetup.numPeersProperty().get() == 0) {
-                        if (localBitcoinNode.shouldBeUsed())
-                            getWalletServiceErrorMsg().set(
-                                    Res.get("mainView.networkWarning.localhostBitcoinLost",
-                                            Res.getBaseCurrencyName().toLowerCase()));
-                        else
-                            getWalletServiceErrorMsg().set(
-                                    Res.get("mainView.networkWarning.allConnectionsLost",
-                                            Res.getBaseCurrencyName().toLowerCase()));
+                        getWalletServiceErrorMsg().set(
+                                Res.get("mainView.networkWarning.allConnectionsLost",
+                                        Res.getBaseCurrencyName().toLowerCase()));
                     } else {
                         getWalletServiceErrorMsg().set(null);
                     }
@@ -615,11 +584,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
     private void updateBtcSyncProgress() {
         final DoubleProperty btcSyncProgress = bisqSetup.getBtcSyncProgress();
 
-        if (btcSyncProgress.doubleValue() < 1) {
             combinedSyncProgress.set(btcSyncProgress.doubleValue());
-        } else {
-            combinedSyncProgress.set(daoPresentation.getBsqSyncProgress().doubleValue());
-        }
     }
 
     private void setupInvalidOpenOffersHandler() {
@@ -697,7 +662,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
 
     StringProperty getCombinedFooterInfo() {
         final StringProperty combinedInfo = new SimpleStringProperty();
-        combinedInfo.bind(Bindings.concat(this.footerVersionInfo, " ", daoPresentation.getBsqInfo()));
+        combinedInfo.bind(Bindings.concat(this.footerVersionInfo, " "));
         return combinedInfo;
     }
 
@@ -775,14 +740,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         return marketPricePresentation.getPriceFeedComboBoxItems();
     }
 
-    // We keep daoPresentation and accountPresentation support even it is not used atm. But if we add a new feature and
-    // add a badge again it will be needed.
-    @SuppressWarnings({"unused"})
-    public BooleanProperty getShowDaoUpdatesNotification() {
-        return daoPresentation.getShowDaoUpdatesNotification();
-    }
-
-    // We keep daoPresentation and accountPresentation support even it is not used atm. But if we add a new feature and
+    // We keep accountPresentation support even it is not used atm. But if we add a new feature and
     // add a badge again it will be needed.
     @SuppressWarnings("unused")
     public BooleanProperty getShowAccountUpdatesNotification() {

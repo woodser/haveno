@@ -63,20 +63,20 @@ public class CreateOfferDataModelTest {
         when(createOfferService.getRandomOfferId()).thenReturn(UUID.randomUUID().toString());
         when(tradeStats.getObservableTradeStatisticsSet()).thenReturn(FXCollections.observableSet());
 
-        model = new CreateOfferDataModel(createOfferService,
-                null,
-                offerUtil,
-                btcWalletService,
-                null,
-                preferences,
-                user,
-                null,
-                priceFeedService,
-                null,
-                feeService,
-                null,
-                tradeStats,
-                null);
+        model = new CreateOfferDataModel(createOfferService, //createOfferService
+                null,                  //openOfferManager
+                offerUtil,             //offerUtil
+                btcWalletService,      //xmrWalletService
+                //null,                  
+                preferences,           //preferences
+                user,                  //user
+                null,                  //P2PService
+                priceFeedService,      //priceFeedService
+                null,                  //accountAgeWitnessService
+                feeService,            //feeService
+                null,                  //btcFormatter
+                tradeStats,            //tradeStatisticsManager
+                null);                 //navigation
     }
 
     @Test

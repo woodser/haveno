@@ -27,7 +27,6 @@ import bisq.core.btc.nodes.BtcNodes;
 import bisq.core.btc.nodes.BtcNodes.BtcNode;
 import bisq.core.btc.nodes.BtcNodesRepository;
 import bisq.core.btc.nodes.BtcNodesSetupPreferences;
-import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.user.Preferences;
 
 import bisq.network.Socks5MultiDiscovery;
@@ -50,9 +49,6 @@ import org.bitcoinj.core.PeerAddress;
 import org.bitcoinj.core.PeerGroup;
 import org.bitcoinj.core.RejectMessage;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
-import org.bitcoinj.params.MainNetParams;
-import org.bitcoinj.params.RegTestParams;
-import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.Wallet;
@@ -120,7 +116,6 @@ public class WalletsSetup {
     public final BooleanProperty walletsSetupFailed = new SimpleBooleanProperty();
 
     private static final long STARTUP_TIMEOUT = 180;
-    private static final String BSQ_WALLET_FILE_NAME = "haveno_BSQ.wallet";
     private static final String SPV_CHAIN_FILE_NAME = "haveno.spvchain";
 
     private final RegTestHost regTestHost;
@@ -129,7 +124,6 @@ public class WalletsSetup {
     private final Preferences preferences;
     private final Socks5ProxyProvider socks5ProxyProvider;
     private final Config config;
-    private final LocalBitcoinNode localBitcoinNode;
     private final BtcNodes btcNodes;
     private final String xmrWalletFileName;
     private final int numConnectionsForBtc;
@@ -158,7 +152,6 @@ public class WalletsSetup {
                         Preferences preferences,
                         Socks5ProxyProvider socks5ProxyProvider,
                         Config config,
-                        LocalBitcoinNode localBitcoinNode,
                         BtcNodes btcNodes,
                         @Named(Config.USER_AGENT) String userAgent,
                         @Named(Config.WALLET_DIR) File walletDir,
@@ -171,7 +164,6 @@ public class WalletsSetup {
         this.preferences = preferences;
         this.socks5ProxyProvider = socks5ProxyProvider;
         this.config = config;
-        this.localBitcoinNode = localBitcoinNode;
         this.btcNodes = btcNodes;
         this.numConnectionsForBtc = numConnectionsForBtc;
         this.useAllProvidedNodes = useAllProvidedNodes;
@@ -272,7 +264,6 @@ public class WalletsSetup {
         };
         walletConfig.setSocks5Proxy(socks5Proxy);
         walletConfig.setConfig(config);
-        walletConfig.setLocalBitcoinNode(localBitcoinNode);
         walletConfig.setUserAgent(userAgent, Version.VERSION);
         walletConfig.setNumConnectionsForBtc(numConnectionsForBtc);
 
@@ -307,9 +298,6 @@ public class WalletsSetup {
                     return;
                 }
             }
-        } else if (localBitcoinNode.shouldBeUsed()) {
-            walletConfig.setMinBroadcastConnections(1);
-            walletConfig.connectToLocalHost();
         } else {
             try {
                 configPeerNodes(socks5Proxy);
@@ -427,7 +415,6 @@ public class WalletsSetup {
         FileUtil.rollingBackup(walletDir, xmrWalletFileName, 20);
         FileUtil.rollingBackup(walletDir, xmrWalletFileName + ".keys", 20);
         FileUtil.rollingBackup(walletDir, xmrWalletFileName + ".address.txt", 20);
-        FileUtil.rollingBackup(walletDir, BSQ_WALLET_FILE_NAME, 20);
     }
 
     public void clearBackups() {
@@ -496,11 +483,6 @@ public class WalletsSetup {
 
     public MoneroWallet getXmrWallet() {
       return walletConfig.getXmrWallet();
-    }
-
-    @Nullable
-    public Wallet getBsqWallet() {
-        return walletConfig.bsqWallet();
     }
 
     public NetworkParameters getParams() {

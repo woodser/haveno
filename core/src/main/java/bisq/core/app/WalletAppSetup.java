@@ -279,9 +279,7 @@ public class WalletAppSetup {
 
     private String getBtcNetworkAsString() {
         String postFix;
-        if (config.ignoreLocalBtcNode)
-            postFix = " " + Res.get("mainView.footer.localhostBitcoinNode");
-        else if (preferences.getUseTorForBitcoinJ())
+        if (preferences.getUseTorForBitcoinJ())
             postFix = " " + Res.get("mainView.footer.usingTor");
         else
             postFix = "";

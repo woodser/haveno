@@ -17,10 +17,12 @@
 
 package bisq.core.payment.payload;
 
+import bisq.core.payment.TradeLimits;
+
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.locale.Res;
 import bisq.core.locale.TradeCurrency;
-import bisq.core.payment.TradeLimits;
+
 
 import bisq.common.proto.persistable.PersistablePayload;
 
@@ -240,7 +242,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     private final long maxTradePeriod;
 
     // With v0.9.4 we changed context of that field. Before it was the hard coded trade limit. Now it is the default
-    // limit which will be used just in time to adjust the real trade limit based on the DAO param value and risk factor.
+    // limit based on the risk factor.
     // The risk factor is derived from the maxTradeLimit.
     // As that field is used in protobuffer definitions we cannot change it to reflect better the new context. We prefer
     // to keep the convention that PB fields has the same name as the Java class field (as we could rename it in
@@ -305,7 +307,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public Coin getMaxTradeLimitAsCoin(String currencyCode) {
         // Hack for SF as the smallest unit is 1 SF ;-( and price is about 3 BTC!
         if (currencyCode.equals("SF"))
-            return Coin.parseCoin("4");
+    		return Coin.parseCoin("4");
 
         // We use the class field maxTradeLimit only for mapping the risk factor.
         long riskFactor;
@@ -322,9 +324,12 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
             log.error("maxTradeLimit is not matching one of our default values. maxTradeLimit=" + Coin.valueOf(maxTradeLimit).toFriendlyString());
         }
 
-        TradeLimits tradeLimits = TradeLimits.getINSTANCE();
-        checkNotNull(tradeLimits, "tradeLimits must not be null");
+         //TradeLimits tradeLimits = TradeLimits.getINSTANCE();
+          TradeLimits tradeLimits = new TradeLimits();
+//        checkNotNull(tradeLimits, "tradeLimits must not be null");
         long maxTradeLimit = tradeLimits.getMaxTradeLimit().value;
+//        long maxTradeLimit = Coin.parseCoin("1").value;
+
         return Coin.valueOf(tradeLimits.getRoundedRiskBasedTradeLimit(maxTradeLimit, riskFactor));
     }
 

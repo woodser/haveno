@@ -52,28 +52,27 @@ public class OpenOfferManagerTest {
 
         when(p2PService.getPeerManager()).thenReturn(mock(PeerManager.class));
 
+
         final OpenOfferManager manager = new OpenOfferManager(coreContext,
-                null,
-                null,
-                null,
-                p2PService,
-                null,
-                null,
-                null,
-                null,
-                offerBookService,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                null,              //CreateOfferService
+                null,              //KeyRing
+                null,              //User
+                p2PService,        //P2PService
+                null,              //BtcWalletService
+                null,              //XmrWalletService
+                null,              //TradeWalletService
+                offerBookService,  //OfferBookService
+                null,              //ClosedTradableManager
+                null,              //PriceFeedService
+                null,              //Preferences
+                null,              //TradeStatisticsManager
+                null,              //ArbitratorManager
+                null,              //MediatorManager
+                null,              //FilterManager
+                null,              //Broadcaster
                 persistenceManager,
                 signedOfferPersistenceManager);
+
 
         AtomicBoolean startEditOfferSuccessful = new AtomicBoolean(false);
 
@@ -109,10 +108,7 @@ public class OpenOfferManagerTest {
                 null,
                 null,
                 null,
-                null,
                 offerBookService,
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -143,6 +139,7 @@ public class OpenOfferManagerTest {
 
         when(p2PService.getPeerManager()).thenReturn(mock(PeerManager.class));
 
+
         final OpenOfferManager manager = new OpenOfferManager(coreContext,
                 null,
                 null,
@@ -151,10 +148,7 @@ public class OpenOfferManagerTest {
                 null,
                 null,
                 null,
-                null,
                 offerBookService,
-                null,
-                null,
                 null,
                 null,
                 null,
