@@ -22,8 +22,6 @@ import bisq.core.btc.model.XmrAddressEntryList;
 import bisq.core.btc.nodes.BtcNodes;
 import bisq.core.btc.setup.RegTestHost;
 import bisq.core.btc.setup.WalletsSetup;
-import bisq.core.btc.wallet.BsqCoinSelector;
-import bisq.core.btc.wallet.BsqWalletService;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.NonBsqCoinSelector;
 import bisq.core.btc.wallet.TradeWalletService;
@@ -56,15 +54,12 @@ public class BitcoinModule extends AppModule {
 
     @Override
     protected void configure() {
-        // If we have selected BTC_DAO_REGTEST or BTC_DAO_TESTNET we use our master regtest node,
+        // If we have selected or BTC_DAO_TESTNET we use our master regtest node,
         // otherwise the specified host or default (localhost)
         String regTestHost = config.bitcoinRegtestHost;
         if (regTestHost.isEmpty()) {
-            regTestHost = config.baseCurrencyNetwork.isDaoTestNet() ?
-                    "104.248.31.39" :
-                    config.baseCurrencyNetwork.isDaoRegTest() ?
-                            "134.209.242.206" :
-                            Config.DEFAULT_REGTEST_HOST;
+            regTestHost = Config.DEFAULT_REGTEST_HOST;
+	    //throw new RuntimeException("regTest host empty");
         }
 
         RegTestHost.HOST = regTestHost;
@@ -82,7 +77,6 @@ public class BitcoinModule extends AppModule {
         bindConstant().annotatedWith(named(Config.USER_AGENT)).to(config.userAgent);
         bindConstant().annotatedWith(named(Config.NUM_CONNECTIONS_FOR_BTC)).to(config.numConnectionsForBtc);
         bindConstant().annotatedWith(named(Config.USE_ALL_PROVIDED_NODES)).to(config.useAllProvidedNodes);
-        bindConstant().annotatedWith(named(Config.IGNORE_LOCAL_BTC_NODE)).to(config.ignoreLocalBtcNode);
         bindConstant().annotatedWith(named(Config.SOCKS5_DISCOVER_MODE)).to(config.socks5DiscoverMode);
         bind(new TypeLiteral<List<String>>(){}).annotatedWith(named(PROVIDERS)).toInstance(config.providers);
 
@@ -91,9 +85,7 @@ public class BitcoinModule extends AppModule {
         bind(WalletsSetup.class).in(Singleton.class);
         bind(XmrWalletService.class).in(Singleton.class);
         bind(BtcWalletService.class).in(Singleton.class);
-        bind(BsqWalletService.class).in(Singleton.class);
         bind(TradeWalletService.class).in(Singleton.class);
-        bind(BsqCoinSelector.class).in(Singleton.class);
         bind(NonBsqCoinSelector.class).in(Singleton.class);
         bind(BtcNodes.class).in(Singleton.class);
         bind(Balances.class).in(Singleton.class);

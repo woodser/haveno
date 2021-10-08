@@ -24,14 +24,11 @@ import bisq.core.alert.Alert;
 import bisq.core.alert.AlertManager;
 import bisq.core.alert.PrivateNotificationPayload;
 import bisq.core.btc.model.AddressEntry;
-import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.WalletsManager;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.btc.wallet.http.MemPoolSpaceTxBroadcaster;
-import bisq.core.dao.governance.voteresult.VoteResultException;
-import bisq.core.dao.state.unconfirmed.UnconfirmedBsqChangeOutputListService;
 import bisq.core.locale.Res;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.payment.AmazonGiftCardAccount;
@@ -135,12 +132,10 @@ public class BisqSetup {
     private final Preferences preferences;
     private final User user;
     private final AlertManager alertManager;
-    private final UnconfirmedBsqChangeOutputListService unconfirmedBsqChangeOutputListService;
     private final Config config;
     private final AccountAgeWitnessService accountAgeWitnessService;
     private final TorSetup torSetup;
     private final CoinFormatter formatter;
-    private final LocalBitcoinNode localBitcoinNode;
     private final AppStartupState appStartupState;
 
     @Setter
@@ -149,8 +144,8 @@ public class BisqSetup {
     @Setter
     @Nullable
     private Consumer<String> chainFileLockedExceptionHandler,
-            spvFileCorruptedHandler, lockedUpFundsHandler, daoErrorMessageHandler, daoWarnMessageHandler,
-            filterWarningHandler, displaySecurityRecommendationHandler, displayLocalhostHandler,
+            spvFileCorruptedHandler, lockedUpFundsHandler,
+            filterWarningHandler, displaySecurityRecommendationHandler,
             wrongOSArchitectureHandler, displaySignedByArbitratorHandler,
             displaySignedByPeerHandler, displayPeerLimitLiftedHandler, displayPeerSignerHandler,
             rejectedTxErrorMessageHandler;
@@ -171,9 +166,6 @@ public class BisqSetup {
     private BiConsumer<Alert, String> displayUpdateHandler;
     @Setter
     @Nullable
-    private Consumer<VoteResultException> voteResultExceptionHandler;
-    @Setter
-    @Nullable
     private Consumer<PrivateNotificationPayload> displayPrivateNotificationHandler;
     @Setter
     @Nullable
@@ -190,9 +182,6 @@ public class BisqSetup {
     @Setter
     @Nullable
     private Runnable qubesOSInfoHandler;
-    @Setter
-    @Nullable
-    private Runnable daoRequiresRestartHandler;
     @Setter
     @Nullable
     private Consumer<String> downGradePreventionHandler;
@@ -221,12 +210,10 @@ public class BisqSetup {
                      Preferences preferences,
                      User user,
                      AlertManager alertManager,
-                     UnconfirmedBsqChangeOutputListService unconfirmedBsqChangeOutputListService,
                      Config config,
                      AccountAgeWitnessService accountAgeWitnessService,
                      TorSetup torSetup,
                      @Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter formatter,
-                     LocalBitcoinNode localBitcoinNode,
                      AppStartupState appStartupState,
                      Socks5ProxyProvider socks5ProxyProvider) {
         this.domainInitialisation = domainInitialisation;
@@ -243,15 +230,13 @@ public class BisqSetup {
         this.preferences = preferences;
         this.user = user;
         this.alertManager = alertManager;
-        this.unconfirmedBsqChangeOutputListService = unconfirmedBsqChangeOutputListService;
         this.config = config;
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.torSetup = torSetup;
         this.formatter = formatter;
-        this.localBitcoinNode = localBitcoinNode;
         this.appStartupState = appStartupState;
 
-        MemPoolSpaceTxBroadcaster.init(socks5ProxyProvider, preferences, localBitcoinNode);
+        MemPoolSpaceTxBroadcaster.init(socks5ProxyProvider, preferences);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +304,6 @@ public class BisqSetup {
         // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
         // in MainViewModel
         maybeShowSecurityRecommendation();
-        maybeShowLocalhostRunningInfo();
         maybeShowAccountSigningStateInfo();
     }
 
@@ -334,10 +318,6 @@ public class BisqSetup {
             try {
                 walletsSetup.reSyncSPVChain();
 
-                // In case we had an unconfirmed change output we reset the unconfirmedBsqChangeOutputList so that
-                // after a SPV resync we do not have any dangling BSQ utxos in that list which would cause an incorrect
-                // BSQ balance state after the SPV resync.
-                unconfirmedBsqChangeOutputListService.onSpvResync();
             } catch (IOException e) {
                 log.error(e.toString());
                 e.printStackTrace();
@@ -394,7 +374,7 @@ public class BisqSetup {
         // We only init wallet service here if not using Tor for bitcoinj.
         // When using Tor, wallet init must be deferred until Tor is ready.
         // TODO encapsulate below conditional inside getUseTorForBitcoinJ
-        if (!preferences.getUseTorForBitcoinJ() || localBitcoinNode.shouldBeUsed()) {
+        if (!preferences.getUseTorForBitcoinJ()) {
             initWallet();
         }
 
@@ -461,13 +441,9 @@ public class BisqSetup {
 
         domainInitialisation.initDomainServices(rejectedTxErrorMessageHandler,
                 displayPrivateNotificationHandler,
-                daoErrorMessageHandler,
-                daoWarnMessageHandler,
                 filterWarningHandler,
-                voteResultExceptionHandler,
                 revolutAccountsUpdateHandler,
-                amazonGiftCardAccountsUpdateHandler,
-                daoRequiresRestartHandler);
+                amazonGiftCardAccountsUpdateHandler);
 
         if (walletsSetup.downloadPercentageProperty().get() == 1) {
             checkForLockedUpFunds();
@@ -664,10 +640,6 @@ public class BisqSetup {
                     displaySecurityRecommendationHandler != null)
                 displaySecurityRecommendationHandler.accept(key);
         });
-    }
-
-    private void maybeShowLocalhostRunningInfo() {
-        maybeTriggerDisplayHandler("bitcoinLocalhostNode", displayLocalhostHandler, localBitcoinNode.shouldBeUsed());
     }
 
     private void maybeShowAccountSigningStateInfo() {

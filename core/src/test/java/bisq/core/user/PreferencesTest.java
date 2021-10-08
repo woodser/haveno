@@ -17,7 +17,6 @@
 
 package bisq.core.user;
 
-import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.locale.CountryUtil;
 import bisq.core.locale.CryptoCurrency;
 import bisq.core.locale.CurrencyUtil;
@@ -59,10 +58,8 @@ public class PreferencesTest {
 
         persistenceManager = mock(PersistenceManager.class);
         Config config = new Config();
-        LocalBitcoinNode localBitcoinNode = new LocalBitcoinNode(config);
         preferences = new Preferences(
-                persistenceManager, config, null, localBitcoinNode, null, null, Config.DEFAULT_FULL_DAO_NODE,
-                null, null, Config.UNSPECIFIED_PORT);
+                persistenceManager, config, null, null);
     }
 
     @Test

@@ -17,7 +17,6 @@
 
 package bisq.core.btc.setup;
 
-import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.nodes.ProxySocketFactory;
 import bisq.core.btc.wallet.BisqRiskAnalysis;
 
@@ -142,13 +141,11 @@ public class WalletConfig extends AbstractIdleService {
     protected volatile MoneroDaemon vXmrDaemon;
     protected volatile MoneroWalletRpc vXmrWallet;
     protected volatile Wallet vBtcWallet;
-    protected volatile Wallet vBsqWallet;
     protected volatile PeerGroup vPeerGroup;
 
     protected final File directory;
     protected volatile File vXmrWalletFile;
     protected volatile File vBtcWalletFile;
-    protected volatile File vBsqWalletFile;
 
     protected PeerAddress[] peerAddresses;
     protected DownloadProgressTracker downloadListener;
@@ -162,7 +159,6 @@ public class WalletConfig extends AbstractIdleService {
     protected volatile Context context;
 
     protected Config config;
-    protected LocalBitcoinNode localBitcoinNode;
     protected Socks5Proxy socks5Proxy;
     protected int numConnectionsForBtc;
     @Getter
@@ -197,12 +193,6 @@ public class WalletConfig extends AbstractIdleService {
     public WalletConfig setConfig(Config config) {
         checkState(state() == State.NEW, "Cannot call after startup");
         this.config = config;
-        return this;
-    }
-
-    public WalletConfig setLocalBitcoinNode(LocalBitcoinNode localBitcoinNode) {
-        checkState(state() == State.NEW, "Cannot call after startup");
-        this.localBitcoinNode = localBitcoinNode;
         return this;
     }
 
@@ -373,14 +363,9 @@ public class WalletConfig extends AbstractIdleService {
             String btcPrefix = "_BTC";
             vBtcWalletFile = new File(directory, filePrefix + btcPrefix + ".wallet");
             boolean shouldReplayWallet = (vBtcWalletFile.exists() && !chainFileExists) || restoreFromSeed != null;
-            vBtcWallet = createOrLoadWallet(shouldReplayWallet, vBtcWalletFile, false);
+            vBtcWallet = createOrLoadWallet(shouldReplayWallet, vBtcWalletFile);
             vBtcWallet.allowSpendingUnconfirmedTransactions();
             vBtcWallet.setRiskAnalyzer(new BisqRiskAnalysis.Analyzer());
-
-            String bsqPrefix = "_BSQ";
-            vBsqWalletFile = new File(directory, filePrefix + bsqPrefix + ".wallet");
-            vBsqWallet = createOrLoadWallet(shouldReplayWallet, vBsqWalletFile, true);
-            vBsqWallet.setRiskAnalyzer(new BisqRiskAnalysis.Analyzer());
 
             // Initiate Bitcoin network objects (block store, blockchain and peer group)
             vStore = new SPVBlockStore(params, chainFile);
@@ -431,8 +416,6 @@ public class WalletConfig extends AbstractIdleService {
             }
             vChain.addWallet(vBtcWallet);
             vPeerGroup.addWallet(vBtcWallet);
-            vChain.addWallet(vBsqWallet);
-            vPeerGroup.addWallet(vBsqWallet);
             onSetupCompleted();
 
             if (migratedWalletToSegwit.get()) {
@@ -468,23 +451,22 @@ public class WalletConfig extends AbstractIdleService {
     }
 
     private Wallet createOrLoadWallet(boolean shouldReplayWallet,
-                                      File walletFile,
-                                      boolean isBsqWallet) throws Exception {
+                                      File walletFile) throws Exception {
         Wallet wallet;
 
         maybeMoveOldWalletOutOfTheWay(walletFile);
 
         if (walletFile.exists()) {
-            wallet = loadWallet(shouldReplayWallet, walletFile, isBsqWallet);
+            wallet = loadWallet(shouldReplayWallet, walletFile);
         } else {
-            wallet = createWallet(isBsqWallet);
+            wallet = createWallet();
             //wallet.freshReceiveKey();
 
             // Currently the only way we can be sure that an extension is aware of its containing wallet is by
             // deserializing the extension (see WalletExtension#deserializeWalletExtension(Wallet, byte[]))
             // Hence, we first save and then load wallet to ensure any extensions are correctly initialized.
             wallet.saveToFile(walletFile);
-            wallet = loadWallet(false, walletFile, isBsqWallet);
+            wallet = loadWallet(false, walletFile);
         }
 
         this.setupAutoSave(wallet, walletFile);
@@ -496,7 +478,7 @@ public class WalletConfig extends AbstractIdleService {
         wallet.autosaveToFile(walletFile, 5, TimeUnit.SECONDS, null);
     }
 
-    private Wallet loadWallet(boolean shouldReplayWallet, File walletFile, boolean isBsqWallet) throws Exception {
+    private Wallet loadWallet(boolean shouldReplayWallet, File walletFile) throws Exception {
         Wallet wallet;
         try (FileInputStream walletStream = new FileInputStream(walletFile)) {
             WalletExtension[] extArray = new WalletExtension[]{};
@@ -504,32 +486,25 @@ public class WalletConfig extends AbstractIdleService {
             final WalletProtobufSerializer serializer;
             serializer = new WalletProtobufSerializer();
             // Hack to convert bitcoinj 0.14 wallets to bitcoinj 0.15 format
-            serializer.setKeyChainFactory(new BisqKeyChainFactory(isBsqWallet));
+            serializer.setKeyChainFactory(new BisqKeyChainFactory());
             wallet = serializer.readWallet(params, extArray, proto);
             if (shouldReplayWallet)
                 wallet.reset();
-            if (!isBsqWallet) {
-                maybeAddSegwitKeychain(wallet, null);
-            }
+            maybeAddSegwitKeychain(wallet, null);
         }
         return wallet;
     }
 
-    protected Wallet createWallet(boolean isBsqWallet) {
-        Script.ScriptType preferredOutputScriptType = isBsqWallet ? Script.ScriptType.P2PKH : Script.ScriptType.P2WPKH;
-        KeyChainGroupStructure structure = new BisqKeyChainGroupStructure(isBsqWallet);
+    protected Wallet createWallet() {
+        Script.ScriptType preferredOutputScriptType = Script.ScriptType.P2WPKH;
+        KeyChainGroupStructure structure = new BisqKeyChainGroupStructure();
         KeyChainGroup.Builder kcgBuilder = KeyChainGroup.builder(params, structure);
         if (restoreFromSeed != null) {
             kcgBuilder.fromSeed(restoreFromSeed, preferredOutputScriptType);
         } else {
             // new wallet
-            if (!isBsqWallet) {
-                // btc wallet uses a new random seed.
-                kcgBuilder.fromRandom(preferredOutputScriptType);
-            } else {
-                // bsq wallet uses btc wallet's seed created a few milliseconds ago.
-                kcgBuilder.fromSeed(vBtcWallet.getKeyChainSeed(), preferredOutputScriptType);
-            }
+            // btc wallet uses a new random seed.
+            kcgBuilder.fromRandom(preferredOutputScriptType);
         }
         return new Wallet(params, kcgBuilder.build());
     }
@@ -562,9 +537,7 @@ public class WalletConfig extends AbstractIdleService {
 
             ProxySocketFactory proxySocketFactory = new ProxySocketFactory(proxy);
             // We don't use tor mode if we have a local node running
-            BlockingClientManager blockingClientManager = localBitcoinNode.shouldBeUsed() ?
-                    new BlockingClientManager() :
-                    new BlockingClientManager(proxySocketFactory);
+            BlockingClientManager blockingClientManager = new BlockingClientManager(proxySocketFactory);
 
             peerGroup = new PeerGroup(params, vChain, blockingClientManager);
 
@@ -572,8 +545,7 @@ public class WalletConfig extends AbstractIdleService {
             peerGroup.setConnectTimeoutMillis(TOR_VERSION_EXCHANGE_TIMEOUT);
         }
 
-        if (!localBitcoinNode.shouldBeUsed())
-            peerGroup.setUseLocalhostPeerWhenPossible(false);
+        peerGroup.setUseLocalhostPeerWhenPossible(false);
 
         return peerGroup;
     }
@@ -587,12 +559,6 @@ public class WalletConfig extends AbstractIdleService {
             vBtcWallet.saveToFile(vBtcWalletFile);
             vBtcWallet = null;
             log.info("BtcWallet saved to file");
-
-            if (vBsqWallet != null && vBsqWalletFile != null) {
-                vBsqWallet.saveToFile(vBsqWalletFile);
-                vBsqWallet = null;
-                log.info("BsqWallet saved to file");
-            }
 
             vStore.close();
             vStore = null;
@@ -644,11 +610,6 @@ public class WalletConfig extends AbstractIdleService {
         return vXmrWallet;
     }
 
-    public Wallet bsqWallet() {
-        checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
-        return vBsqWallet;
-    }
-
     public PeerGroup peerGroup() {
         checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
         return vPeerGroup;
@@ -681,7 +642,7 @@ public class WalletConfig extends AbstractIdleService {
             }
             DeterministicKeyChain nativeSegwitKeyChain = DeterministicKeyChain.builder().seed(seed)
                     .outputScriptType(Script.ScriptType.P2WPKH)
-                    .accountPath(new BisqKeyChainGroupStructure(false).accountPathFor(Script.ScriptType.P2WPKH)).build();
+                    .accountPath(new BisqKeyChainGroupStructure().accountPathFor(Script.ScriptType.P2WPKH)).build();
             if (aesKey != null) {
                 // If wallet is encrypted, encrypt the new keychain.
                 KeyCrypter keyCrypter = wallet.getKeyCrypter();

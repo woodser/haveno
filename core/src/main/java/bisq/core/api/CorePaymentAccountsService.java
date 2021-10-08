@@ -103,22 +103,13 @@ class CorePaymentAccountsService {
                                                       String currencyCode,
                                                       String address,
                                                       boolean tradeInstant) {
-        String bsqCode = currencyCode.toUpperCase();
-        if (!bsqCode.equals("BSQ"))
-            throw new IllegalArgumentException("api does not currently support " + currencyCode + " accounts");
-
-        // Validate the BSQ address string but ignore the return value.
-        coreWalletsService.getValidBsqLegacyAddress(address);
-
-        var cryptoCurrencyAccount = tradeInstant
+	    var cryptoCurrencyAccount = tradeInstant
                 ? (InstantCryptoCurrencyAccount) PaymentAccountFactory.getPaymentAccount(PaymentMethod.BLOCK_CHAINS_INSTANT)
                 : (CryptoCurrencyAccount) PaymentAccountFactory.getPaymentAccount(PaymentMethod.BLOCK_CHAINS);
         cryptoCurrencyAccount.init();
         cryptoCurrencyAccount.setAccountName(accountName);
         cryptoCurrencyAccount.setAddress(address);
-        Optional<CryptoCurrency> cryptoCurrency = getCryptoCurrency(bsqCode);
-        cryptoCurrency.ifPresent(cryptoCurrencyAccount::setSingleTradeCurrency);
-        user.addPaymentAccount(cryptoCurrencyAccount);
+	    user.addPaymentAccount(cryptoCurrencyAccount);
         accountAgeWitnessService.publishMyAccountAgeWitness(cryptoCurrencyAccount.getPaymentAccountPayload());
         log.info("Saved crypto payment account with id {} and payment method {}.",
                 cryptoCurrencyAccount.getId(),
