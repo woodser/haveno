@@ -231,7 +231,7 @@ public class ClosedTradesView extends ActivatableViewAndModel<VBox, ClosedTrades
         tradeFeeColumn.setComparator(Comparator.comparing(item -> {
             String tradeFee = model.getTradeFee(item, true);
             // We want to separate BTC fees so we use a prefix
-                return "BTC" + tradeFee;
+            return "BTC" + tradeFee;
         }, Comparator.nullsFirst(Comparator.naturalOrder())));
         buyerSecurityDepositColumn.setComparator(nullsFirstComparing(o ->
                 o.getOffer() != null ? o.getOffer().getBuyerSecurityDeposit() : null
@@ -312,7 +312,7 @@ public class ClosedTradesView extends ActivatableViewAndModel<VBox, ClosedTrades
                 columns[ColumnNames.VOLUME.ordinal()] = model.getVolume(item, false);
                 columns[ColumnNames.VOLUME_CURRENCY.ordinal()] = model.getVolumeCurrency(item);
                 columns[ColumnNames.TX_FEE.ordinal()] = model.getTxFee(item);
-                    columns[ColumnNames.TRADE_FEE_BTC.ordinal()] = model.getTradeFee(item, false);
+                columns[ColumnNames.TRADE_FEE_BTC.ordinal()] = model.getTradeFee(item, false);
                 columns[ColumnNames.BUYER_SEC.ordinal()] = model.getBuyerSecurityDeposit(item);
                 columns[ColumnNames.SELLER_SEC.ordinal()] = model.getSellerSecurityDeposit(item);
                 columns[ColumnNames.OFFER_TYPE.ordinal()] = model.getDirectionLabel(item);

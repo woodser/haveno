@@ -286,9 +286,8 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
 
         // if no valid Bitcoin block explorer is set, select the 1st valid Bitcoin block explorer
         ArrayList<BlockChainExplorer> btcExplorers = getBlockChainExplorers();
-        if (getBlockChainExplorer() == null ||  getBlockChainExplorer().name.length() == 0 ){
+        if (getBlockChainExplorer() == null || getBlockChainExplorer().name.length() == 0 ){
             setBlockChainExplorer(btcExplorers.get(0));
-
         }
         tradeCurrenciesAsObservable.addAll(prefPayload.getFiatCurrencies());
         tradeCurrenciesAsObservable.addAll(prefPayload.getCryptoCurrencies());
@@ -815,6 +814,7 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         return Math.max(prefPayload.getWithdrawalTxFeeInVbytes(),
                 feeService.getMinFeePerVByte());
     }
+
 /*
     public String getRpcUser() {
         if (!rpcUserFromOptions.isEmpty()) {
@@ -845,6 +845,7 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         }
     }
 */
+
     public List<String> getDefaultXmrTxProofServices() {
         if (config.useLocalhostForP2P) {
             return XMR_TX_PROOF_SERVICES_CLEAR_NET;

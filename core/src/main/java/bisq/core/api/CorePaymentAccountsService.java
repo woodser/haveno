@@ -109,6 +109,8 @@ class CorePaymentAccountsService {
         cryptoCurrencyAccount.init();
         cryptoCurrencyAccount.setAccountName(accountName);
         cryptoCurrencyAccount.setAddress(address);
+        Optional<CryptoCurrency> cryptoCurrency = getCryptoCurrency(currencyCode.toUpperCase());
+        cryptoCurrency.ifPresent(cryptoCurrencyAccount::setSingleTradeCurrency);
 	    user.addPaymentAccount(cryptoCurrencyAccount);
         accountAgeWitnessService.publishMyAccountAgeWitness(cryptoCurrencyAccount.getPaymentAccountPayload());
         log.info("Saved crypto payment account with id {} and payment method {}.",

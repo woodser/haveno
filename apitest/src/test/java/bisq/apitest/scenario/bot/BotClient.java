@@ -58,7 +58,7 @@ public class BotClient {
     }
 
     /**
-     * Returns current BTC balance information.
+     * Returns current balance information.
      * @return BalancesInfo
      */
     public BalancesInfo getBalance() {

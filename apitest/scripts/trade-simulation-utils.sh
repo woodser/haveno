@@ -477,7 +477,7 @@ executetrade() {
     printdate "First offer found: $OFFER_ID"
 
     # Take Alice's offer.
-    CMD="$CLI_BASE --port=$BOB_PORT takeoffer --offer-id=$OFFER_ID --payment-account=$BOB_ACCT_ID --fee-currency=btc"
+    CMD="$CLI_BASE --port=$BOB_PORT takeoffer --offer-id=$OFFER_ID --payment-account=$BOB_ACCT_ID"
     printdate "BOB CLI: $CMD"
     TRADE=$($CMD)
     commandalert $? "Could not take offer."

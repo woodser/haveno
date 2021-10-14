@@ -149,8 +149,12 @@ class CoreWalletsService {
             throw new IllegalStateException("balance is not yet available");
 
         switch (currencyCode.trim().toUpperCase()) {
+            case "BTC":
+                return new BalancesInfo(getBtcBalances(), XmrBalanceInfo.EMPTY);
+            case "XMR":
+                return new BalancesInfo(BtcBalanceInfo.EMPTY, getXmrBalances());
             default:
-                return new BalancesInfo( getBtcBalances(), getXmrBalances());
+                return new BalancesInfo(getBtcBalances(), getXmrBalances());
         }
     }
     

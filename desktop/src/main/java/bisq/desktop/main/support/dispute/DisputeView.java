@@ -671,16 +671,6 @@ public abstract class DisputeView extends ActivatableView<VBox, Void> {
 
                 // Index we display starts with 1 not with 0
                 int cycleIndex = 0;
-                if (disputeResult != null) {
-                    Date closeDate = disputeResult.getCloseDate();
-		    /*
-                    cycleIndex = blockStartDateByCycleIndex.entrySet().stream()
-                            .filter(e -> e.getValue().after(closeDate))
-                            .findFirst()
-                            .map(Map.Entry::getKey)
-                            .orElse(0);
-	            */
-                }
                 stringBuilder.append("\n").append("Dispute nr.: ").append(index).append("\n");
 
                 if (cycleIndex > 0) {

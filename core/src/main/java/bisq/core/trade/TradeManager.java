@@ -227,7 +227,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     completeHandler.run();
                 },
                 completeHandler);
-        }
+    }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////

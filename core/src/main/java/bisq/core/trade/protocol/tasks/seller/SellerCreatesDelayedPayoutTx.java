@@ -42,8 +42,7 @@ public class SellerCreatesDelayedPayoutTx extends TradeTask {
     protected void run() {
         try {
             runInterceptHook();
-            if (true) throw new RuntimeException("SellerCreatesDelayedPayoutTx not implemented for xmr");
-
+            throw new RuntimeException("SellerCreatesDelayedPayoutTx not implemented for xmr");
         } catch (Throwable t) {
             failed(t);
         }

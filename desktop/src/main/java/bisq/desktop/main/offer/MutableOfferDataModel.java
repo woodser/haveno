@@ -158,7 +158,7 @@ public abstract class MutableOfferDataModel extends OfferDataModel {
                                  PriceFeedService priceFeedService,
                                  AccountAgeWitnessService accountAgeWitnessService,
                                  FeeService feeService,
-				 @Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter btcFormatter,
+                                 @Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter btcFormatter,
                                  TradeStatisticsManager tradeStatisticsManager,
                                  Navigation navigation) {
         super(xmrWalletService, offerUtil);
@@ -172,7 +172,7 @@ public abstract class MutableOfferDataModel extends OfferDataModel {
         this.priceFeedService = priceFeedService;
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.feeService = feeService;
-	this.btcFormatter = btcFormatter;
+        this.btcFormatter = btcFormatter;
         this.navigation = navigation;
         this.tradeStatisticsManager = tradeStatisticsManager;
 
@@ -701,7 +701,6 @@ public abstract class MutableOfferDataModel extends OfferDataModel {
     ReadOnlyObjectProperty<Coin> totalToPayAsCoinProperty() {
         return totalToPayAsCoin;
     }
-
 
     public void setMarketPriceAvailable(boolean marketPriceAvailable) {
         this.marketPriceAvailable = marketPriceAvailable;

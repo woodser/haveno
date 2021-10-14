@@ -334,7 +334,6 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
             String percentage = GUIUtil.getPercentageOfTradeAmount(tradeFeeInBTC, trade.getTradeAmount(),
                     minTradeFee);
             return btcFormatter.formatCoinWithCode(tradeFeeInBTC) + percentage;
-
         } else {
             return "";
         }

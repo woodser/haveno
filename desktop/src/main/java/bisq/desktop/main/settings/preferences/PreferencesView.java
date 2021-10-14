@@ -924,6 +924,7 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
             avoidStandbyMode.setOnAction(null);
         }
     }
+
     private void deactivateAutoConfirmPreferences() {
         preferences.findAutoConfirmSettings("XMR").ifPresent(autoConfirmSettings -> {
             autoConfirmXmrToggle.setOnAction(null);
@@ -934,5 +935,4 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
             filterManager.filterProperty().removeListener(filterChangeListener);
         });
     }
-
 }

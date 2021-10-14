@@ -60,8 +60,8 @@ class CreateOfferDataModel extends MutableOfferDataModel {
                                 P2PService p2PService,
                                 PriceFeedService priceFeedService,
                                 AccountAgeWitnessService accountAgeWitnessService,
-				FeeService feeService,
-				@Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter btcFormatter,
+                                FeeService feeService,
+                                @Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter btcFormatter,
                                 TradeStatisticsManager tradeStatisticsManager,
                                 Navigation navigation) {
         super(createOfferService,
@@ -73,7 +73,7 @@ class CreateOfferDataModel extends MutableOfferDataModel {
                 p2PService,
                 priceFeedService,
                 accountAgeWitnessService,
-		feeService,
+                feeService,
                 btcFormatter,
                 tradeStatisticsManager,
                 navigation);

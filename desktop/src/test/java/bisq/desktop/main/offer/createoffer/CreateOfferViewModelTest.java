@@ -131,20 +131,19 @@ public class CreateOfferViewModelTest {
         dataModel.initWithData(OfferPayload.Direction.BUY, new CryptoCurrency("XMR", "monero"));
         dataModel.activate();
 
-        model = new CreateOfferViewModel(dataModel, //dataModel
-                null,                      //fiatVolumeValidator
-                fiatPriceValidator,        //fiatPriceValidator
-                altcoinValidator,          //altcoinValidator
-                btcValidator,              //btcValidator
-                //null,                      //
-                securityDepositValidator,  //securityDepositValidator
-                priceFeedService,          //priceFeedService
-                null,                      //accountWitnessService
-                null,                      //navigation
-                preferences,               //preferences
-                coinFormatter,             //coinFormatter
-                offerUtil);                //offerUtil
-        model.activate();                 
+        model = new CreateOfferViewModel(dataModel,
+                null,
+                fiatPriceValidator,
+                altcoinValidator,
+                btcValidator,
+                securityDepositValidator,
+                priceFeedService,
+                null,
+                null,
+                preferences,
+                coinFormatter,
+                offerUtil);
+        model.activate();
     }
 
     @Test
@@ -223,7 +222,8 @@ public class CreateOfferViewModelTest {
         assertEquals("0.05", model.amount.get());
         assertEquals("0.05", model.minAmount.get());
     }
-/*
+
+    /*
     @Test
     public void testSyncPriceMarginWithVolumeAndFixedPrice() {
         model.amount.set("0.01");
@@ -232,5 +232,5 @@ public class CreateOfferViewModelTest {
         assertEquals("0.00000078", model.volume.get());
         assertEquals("12684.04500000", model.price.get());
     }
-*/
+    */
 }

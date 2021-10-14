@@ -138,5 +138,4 @@ public class WalletsManager {
             return null;
         }
     }
-
 }

@@ -62,48 +62,7 @@ public class CreateMakerFeeTx extends Task<PlaceOfferModel> {
             Address changeAddress = walletService.getFreshAddressEntry().getAddress();
 
             TradeWalletService tradeWalletService = model.getTradeWalletService();
-
-            /*
-                tradeWalletService.createBtcTradingFeeTx(
-                        fundingAddress,
-                        reservedForTradeAddress,
-                        changeAddress,
-                        model.getReservedFundsForOffer(),
-                        model.isUseSavingsWallet(),
-                        offer.getMakerFee(),
-                        offer.getTxFee(),
-                        true,
-                        new TxBroadcaster.Callback() {
-                            @Override
-                            public void onSuccess(Transaction transaction) {
-                                // we delay one render frame to be sure we don't get called before the method call has
-                                // returned (tradeFeeTx would be null in that case)
-                                UserThread.execute(() -> {
-                                    if (!completed) {
-                                        offer.setOfferFeePaymentTxId(transaction.getTxId().toString());
-                                        model.setTransaction(transaction);
-                                        walletService.swapTradeEntryToAvailableEntry(id, AddressEntry.Context.OFFER_FUNDING);
-
-                                        model.getOffer().setState(Offer.State.OFFER_FEE_RESERVED);
-
-                                        complete();
-                                    } else {
-                                        log.warn("We got the onSuccess callback called after the timeout has been triggered a complete().");
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void onFailure(TxBroadcastException exception) {
-                                if (!completed) {
-                                    failed(exception);
-                                } else {
-                                    log.warn("We got the onFailure callback called after the timeout has been triggered a complete().");
-                                }
-                            }
-                        });
-             
-        */    
+            throw new RuntimeException("CreateMakerFeeTx not used for XMR");
         } catch (Throwable t) {
                 offer.setErrorMessage("An error occurred.\n" +
                         "Error message:\n"

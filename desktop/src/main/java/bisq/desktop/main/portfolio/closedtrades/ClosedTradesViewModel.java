@@ -146,12 +146,11 @@ public class ClosedTradesViewModel extends ActivatableWithDataModel<ClosedTrades
         Tradable tradable = item.getTradable();
         Offer offer = tradable.getOffer();
         if (wasMyOffer(tradable) || tradable instanceof OpenOffer) {
-            CoinFormatter formatter = btcFormatter;
-            return formatter.formatCoin(offer.getMakerFee(), appendCode);
+            return btcFormatter.formatCoin(offer.getMakerFee(), appendCode);
         } else {
             Trade trade = (Trade) tradable;
             String takerFeeTxId = trade.getTakerFeeTxId();
-                return btcFormatter.formatCoin(trade.getTakerFee(), appendCode);
+            return btcFormatter.formatCoin(trade.getTakerFee(), appendCode);
         }
     }
 

@@ -200,9 +200,7 @@ public class OfferUtil {
             userCurrencyCode = CurrencyUtil.getCurrencyByCountryCode(countryCode).getCode();
         }
 
-        return getFeeInUserFiatCurrency(makerFee,
-                userCurrencyCode
-        );
+        return getFeeInUserFiatCurrency(makerFee, userCurrencyCode);
     }
 
     public Map<String, String> getExtraDataMap(PaymentAccount paymentAccount,

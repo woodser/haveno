@@ -59,7 +59,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  */
 @Slf4j
-
 public class P2PSeedNodeSnapshot extends P2PSeedNodeSnapshotBase {
 
     final Map<NodeAddress, Statistics<Set<Integer>>> bucketsPerHost = new ConcurrentHashMap<>();
@@ -86,7 +85,6 @@ public class P2PSeedNodeSnapshot extends P2PSeedNodeSnapshotBase {
         return result;
 
     }
-    
 
     void report() {
 
@@ -100,6 +98,7 @@ public class P2PSeedNodeSnapshot extends P2PSeedNodeSnapshotBase {
         //   - transfer values
         Map<String, Statistics<Set<Integer>>> messagesPerHost = new HashMap<>();
         bucketsPerHost.forEach((host, value) -> messagesPerHost.put(OnionParser.prettyPrint(host), value));
+
         //   - pick reference seed node and its values
         String referenceHost = "overall_number_of_unique_messages";
         Map<String, Set<Object>> referenceValues = new HashMap<>();
@@ -147,6 +146,7 @@ public class P2PSeedNodeSnapshot extends P2PSeedNodeSnapshotBase {
             this.hash = hash;
         }
     }
+
     protected boolean treatMessage(NetworkEnvelope networkEnvelope, Connection connection) {
         checkNotNull(connection.getPeersNodeAddressProperty(),
                 "although the property is nullable, we need it to not be null");
@@ -179,9 +179,8 @@ public class P2PSeedNodeSnapshot extends P2PSeedNodeSnapshotBase {
 
             bucketsPerHost.put(connection.getPeersNodeAddressProperty().getValue(), result);
             return true;
-        } 
+        }
         return false;
     }
-
 }
 

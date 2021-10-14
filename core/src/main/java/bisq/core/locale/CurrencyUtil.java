@@ -135,8 +135,6 @@ public class CurrencyUtil {
     public static List<CryptoCurrency> getMainCryptoCurrencies() {
         final List<CryptoCurrency> result = new ArrayList<>();
         result.add(new CryptoCurrency("XRC", "Bitcoin Rhodium"));
-
-
         result.add(new CryptoCurrency("BEAM", "Beam"));
         result.add(new CryptoCurrency("DASH", "Dash"));
         result.add(new CryptoCurrency("DCR", "Decred"));
