@@ -96,12 +96,23 @@ public class Config {
     public static final String MSG_THROTTLE_PER_10_SEC = "msgThrottlePer10Sec";
     public static final String SEND_MSG_THROTTLE_TRIGGER = "sendMsgThrottleTrigger";
     public static final String SEND_MSG_THROTTLE_SLEEP = "sendMsgThrottleSleep";
+    public static final String IGNORE_LOCAL_BTC_NODE = "ignoreLocalBtcNode";
     public static final String BITCOIN_REGTEST_HOST = "bitcoinRegtestHost";
     public static final String BTC_NODES = "btcNodes";
     public static final String SOCKS5_DISCOVER_MODE = "socks5DiscoverMode";
     public static final String USE_ALL_PROVIDED_NODES = "useAllProvidedNodes";
     public static final String USER_AGENT = "userAgent";
     public static final String NUM_CONNECTIONS_FOR_BTC = "numConnectionsForBtc";
+    public static final String RPC_USER = "rpcUser";
+    public static final String RPC_PASSWORD = "rpcPassword";
+    public static final String RPC_HOST = "rpcHost";
+    public static final String RPC_PORT = "rpcPort";
+    public static final String RPC_BLOCK_NOTIFICATION_PORT = "rpcBlockNotificationPort";
+    public static final String RPC_BLOCK_NOTIFICATION_HOST = "rpcBlockNotificationHost";
+    public static final String DUMP_BLOCKCHAIN_DATA = "dumpBlockchainData";
+    public static final String GENESIS_TX_ID = "genesisTxId";
+    public static final String GENESIS_BLOCK_HEIGHT = "genesisBlockHeight";
+    public static final String GENESIS_TOTAL_SUPPLY = "genesisTotalSupply";
     public static final String DUMP_DELAYED_PAYOUT_TXS = "dumpDelayedPayoutTxs";
     public static final String ALLOW_FAULTY_DELAYED_TXS = "allowFaultyDelayedTxs";
     public static final String API_PASSWORD = "apiPassword";
@@ -147,6 +158,7 @@ public class Config {
     public final List<String> bannedSeedNodes;
     public final BaseCurrencyNetwork baseCurrencyNetwork;
     public final NetworkParameters networkParameters;
+    public final boolean ignoreLocalBtcNode;
     public final String bitcoinRegtestHost;
     public final String referralId;
     public final boolean useDevMode;
@@ -311,6 +323,13 @@ public class Config {
                         .ofType(BaseCurrencyNetwork.class)
                         .withValuesConvertedBy(new EnumValueConverter(BaseCurrencyNetwork.class))
                         .defaultsTo(BaseCurrencyNetwork.XMR_MAINNET);
+
+        ArgumentAcceptingOptionSpec<Boolean> ignoreLocalBtcNodeOpt =
+                parser.accepts(IGNORE_LOCAL_BTC_NODE,
+                        "If set to true a Bitcoin Core node running locally will be ignored")
+                        .withRequiredArg()
+                        .ofType(Boolean.class)
+                        .defaultsTo(false);
 
         ArgumentAcceptingOptionSpec<String> bitcoinRegtestHostOpt =
                 parser.accepts(BITCOIN_REGTEST_HOST, "Bitcoin Core node when using XMR_STAGENET network")
@@ -626,6 +645,7 @@ public class Config {
             this.bannedSeedNodes = options.valuesOf(bannedSeedNodesOpt);
             this.baseCurrencyNetwork = (BaseCurrencyNetwork) options.valueOf(baseCurrencyNetworkOpt);
             this.networkParameters = baseCurrencyNetwork.getParameters();
+            this.ignoreLocalBtcNode = options.valueOf(ignoreLocalBtcNodeOpt);
             this.bitcoinRegtestHost = options.valueOf(bitcoinRegtestHostOpt);
             this.torrcFile = options.has(torrcFileOpt) ? options.valueOf(torrcFileOpt).toFile() : null;
             this.torrcOptions = options.valueOf(torrcOptionsOpt);
