@@ -103,16 +103,6 @@ public class Config {
     public static final String USE_ALL_PROVIDED_NODES = "useAllProvidedNodes";
     public static final String USER_AGENT = "userAgent";
     public static final String NUM_CONNECTIONS_FOR_BTC = "numConnectionsForBtc";
-    public static final String RPC_USER = "rpcUser";
-    public static final String RPC_PASSWORD = "rpcPassword";
-    public static final String RPC_HOST = "rpcHost";
-    public static final String RPC_PORT = "rpcPort";
-    public static final String RPC_BLOCK_NOTIFICATION_PORT = "rpcBlockNotificationPort";
-    public static final String RPC_BLOCK_NOTIFICATION_HOST = "rpcBlockNotificationHost";
-    public static final String DUMP_BLOCKCHAIN_DATA = "dumpBlockchainData";
-    public static final String GENESIS_TX_ID = "genesisTxId";
-    public static final String GENESIS_BLOCK_HEIGHT = "genesisBlockHeight";
-    public static final String GENESIS_TOTAL_SUPPLY = "genesisTotalSupply";
     public static final String DUMP_DELAYED_PAYOUT_TXS = "dumpDelayedPayoutTxs";
     public static final String ALLOW_FAULTY_DELAYED_TXS = "allowFaultyDelayedTxs";
     public static final String API_PASSWORD = "apiPassword";
