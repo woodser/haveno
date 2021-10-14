@@ -29,8 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Getter
 public class TxValidator {
-    private final static double FEE_TOLERANCE = 0.95;     // we expect fees to be at least 95% of target
-    private final static long BLOCK_TOLERANCE = 599999L;  // allow really old offers with weird fee addresses
 
     private final List<String> errorList;
     private final String txId;

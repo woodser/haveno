@@ -34,6 +34,7 @@ import javax.annotation.Nullable;
 @Slf4j
 @Singleton
 public class TradeLimits {
+    private static final Coin MAX_TRADE_LIMIT = Coin.parseCoin("2"); // max trade limit for lowest risk payment method. Others will get derived from that.
     @Nullable
     @Getter
     private static TradeLimits INSTANCE;
@@ -58,7 +59,7 @@ public class TradeLimits {
      * @return the maximum trade limit
      */
     public Coin getMaxTradeLimit() {
-       return Coin.parseCoin("1");
+       return MAX_TRADE_LIMIT;
     }
 
     // We possibly rounded value for the first month gets multiplied by 4 to get the trade limit after the account
