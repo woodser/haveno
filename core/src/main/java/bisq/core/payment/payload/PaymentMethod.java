@@ -39,8 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.jetbrains.annotations.NotNull;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 @EqualsAndHashCode(exclude = {"maxTradePeriod", "maxTradeLimit"})
 @ToString
 @Slf4j
@@ -323,8 +321,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
             log.error("maxTradeLimit is not matching one of our default values. maxTradeLimit=" + Coin.valueOf(maxTradeLimit).toFriendlyString());
         }
 
-        TradeLimits tradeLimits = TradeLimits.getINSTANCE();
-        checkNotNull(tradeLimits, "tradeLimits must not be null");
+        TradeLimits tradeLimits = new TradeLimits();
         long maxTradeLimit = tradeLimits.getMaxTradeLimit().value;
         return Coin.valueOf(tradeLimits.getRoundedRiskBasedTradeLimit(maxTradeLimit, riskFactor));
     }
