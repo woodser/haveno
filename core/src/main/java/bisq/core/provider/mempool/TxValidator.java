@@ -17,17 +17,7 @@
 
 package bisq.core.provider.mempool;
 
-import bisq.common.util.Tuple2;
-
-
-
 import org.bitcoinj.core.Coin;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,16 +26,9 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.jetbrains.annotations.Nullable;
-
-import static bisq.core.util.coin.CoinUtil.maxCoin;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 @Slf4j
 @Getter
 public class TxValidator {
-    private final static double FEE_TOLERANCE = 0.95;     // we expect fees to be at least 95% of target
-    private final static long BLOCK_TOLERANCE = 599999L;  // allow really old offers with weird fee addresses
 
     private final List<String> errorList;
     private final String txId;
@@ -87,6 +70,7 @@ public class TxValidator {
         return errorList.toString().substring(0, Math.min(85, errorList.toString().length()));
     }
 
+    @Override
     public String toString() {
         return errorList.toString();
     }

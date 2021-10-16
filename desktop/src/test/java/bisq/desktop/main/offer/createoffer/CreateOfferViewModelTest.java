@@ -131,19 +131,18 @@ public class CreateOfferViewModelTest {
         dataModel.initWithData(OfferPayload.Direction.BUY, new CryptoCurrency("XMR", "monero"));
         dataModel.activate();
 
-        model = new CreateOfferViewModel(dataModel, //dataModel
-                null,                      //fiatVolumeValidator
-                fiatPriceValidator,        //fiatPriceValidator
-                altcoinValidator,          //altcoinValidator
-                btcValidator,              //btcValidator
-                //null,                      //
-                securityDepositValidator,  //securityDepositValidator
-                priceFeedService,          //priceFeedService
-                null,                      //accountWitnessService
-                null,                      //navigation
-                preferences,               //preferences
-                coinFormatter,             //coinFormatter
-                offerUtil);                //offerUtil
+        model = new CreateOfferViewModel(dataModel,
+                null,
+                fiatPriceValidator,
+                altcoinValidator,
+                btcValidator,
+                securityDepositValidator,
+                priceFeedService,
+                null,
+                null,
+                preferences,
+                coinFormatter,
+                offerUtil);
         model.activate();
     }
 

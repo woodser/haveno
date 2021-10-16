@@ -121,7 +121,6 @@ message CreateOfferRequest {
     double buyer_security_deposit = 8;
     uint64 trigger_price = 9 [jstype = JS_STRING];
     string payment_account_id = 10;
-    reserved 11;
 }
 
 message CreateOfferReply {
@@ -147,18 +146,17 @@ message OfferInfo {
     uint64 min_volume = 9;
     uint64 buyer_security_deposit = 10;
     uint64 trigger_price = 11;
-    reserved 12;
-    string payment_account_id = 13;
-    string payment_method_id = 14;
-    string payment_method_short_name = 15;
-    string base_currency_code = 16;
-    string counter_currency_code = 17;
-    uint64 date = 18;
-    string state = 19;
-    uint64 seller_security_deposit = 20;
-    string offer_fee_payment_tx_id = 21;
-    uint64 tx_fee = 22;
-    uint64 maker_fee = 23;
+    string payment_account_id = 12;
+    string payment_method_id = 13;
+    string payment_method_short_name = 14;
+    string base_currency_code = 15;
+    string counter_currency_code = 16;
+    uint64 date = 17;
+    string state = 18;
+    uint64 seller_security_deposit = 19;
+    string offer_fee_payment_tx_id = 20;
+    uint64 tx_fee = 21;
+    uint64 maker_fee = 22;
 }
 
 message AvailabilityResultWithDescription {
@@ -303,7 +301,6 @@ service Trades {
 message TakeOfferRequest {
     string offer_id = 1;
     string payment_account_id = 2;
-    reserved 3;
 }
 
 message TakeOfferReply {
@@ -561,9 +558,8 @@ message BalancesInfo {
     // Field names are shortened for readability's sake, i.e.,
     // balancesInfo.getBtc().getAvailableBalance() is cleaner than
     // balancesInfo.getBtcBalanceInfo().getAvailableBalance().
-    reserved 1;
-    BtcBalanceInfo btc = 2;
-    XmrBalanceInfo xmr = 3;
+    BtcBalanceInfo btc = 1;
+    XmrBalanceInfo xmr = 2;
 }
 
 message BtcBalanceInfo {

@@ -96,6 +96,7 @@ public class Config {
     public static final String MSG_THROTTLE_PER_10_SEC = "msgThrottlePer10Sec";
     public static final String SEND_MSG_THROTTLE_TRIGGER = "sendMsgThrottleTrigger";
     public static final String SEND_MSG_THROTTLE_SLEEP = "sendMsgThrottleSleep";
+    public static final String IGNORE_LOCAL_BTC_NODE = "ignoreLocalBtcNode";
     public static final String BITCOIN_REGTEST_HOST = "bitcoinRegtestHost";
     public static final String BTC_NODES = "btcNodes";
     public static final String SOCKS5_DISCOVER_MODE = "socks5DiscoverMode";
@@ -147,6 +148,7 @@ public class Config {
     public final List<String> bannedSeedNodes;
     public final BaseCurrencyNetwork baseCurrencyNetwork;
     public final NetworkParameters networkParameters;
+    public final boolean ignoreLocalBtcNode;
     public final String bitcoinRegtestHost;
     public final String referralId;
     public final boolean useDevMode;
@@ -311,6 +313,13 @@ public class Config {
                         .ofType(BaseCurrencyNetwork.class)
                         .withValuesConvertedBy(new EnumValueConverter(BaseCurrencyNetwork.class))
                         .defaultsTo(BaseCurrencyNetwork.XMR_MAINNET);
+
+        ArgumentAcceptingOptionSpec<Boolean> ignoreLocalBtcNodeOpt =
+                parser.accepts(IGNORE_LOCAL_BTC_NODE,
+                        "If set to true a Bitcoin Core node running locally will be ignored")
+                        .withRequiredArg()
+                        .ofType(Boolean.class)
+                        .defaultsTo(false);
 
         ArgumentAcceptingOptionSpec<String> bitcoinRegtestHostOpt =
                 parser.accepts(BITCOIN_REGTEST_HOST, "Bitcoin Core node when using XMR_STAGENET network")
@@ -626,6 +635,7 @@ public class Config {
             this.bannedSeedNodes = options.valuesOf(bannedSeedNodesOpt);
             this.baseCurrencyNetwork = (BaseCurrencyNetwork) options.valueOf(baseCurrencyNetworkOpt);
             this.networkParameters = baseCurrencyNetwork.getParameters();
+            this.ignoreLocalBtcNode = options.valueOf(ignoreLocalBtcNodeOpt);
             this.bitcoinRegtestHost = options.valueOf(bitcoinRegtestHostOpt);
             this.torrcFile = options.has(torrcFileOpt) ? options.valueOf(torrcFileOpt).toFile() : null;
             this.torrcOptions = options.valueOf(torrcOptionsOpt);

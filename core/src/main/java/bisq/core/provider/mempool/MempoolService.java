@@ -77,7 +77,7 @@ public class MempoolService {
     public boolean canRequestBeMade() {
         return outstandingRequests < 5; // limit max simultaneous lookups
     }
-    
+
     public boolean canRequestBeMade(OfferPayload offerPayload) {
         // when validating a new offer, wait 1 block for the tx to propagate
         return canRequestBeMade();

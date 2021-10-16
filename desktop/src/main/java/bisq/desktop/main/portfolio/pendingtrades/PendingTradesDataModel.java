@@ -275,7 +275,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
             Offer offer = trade.getOffer();
             if (isMaker()) {
                 if (offer != null) {
-                        return offer.getMakerFee();
+                    return offer.getMakerFee();
                 } else {
                     log.error("offer is null");
                     return Coin.ZERO;
@@ -295,7 +295,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
             if (isMaker()) {
                 Offer offer = trade.getOffer();
                 if (offer != null) {
-                        return offer.getTxFee();
+                    return offer.getTxFee();
                 } else {
                     log.error("offer is null");
                     return Coin.ZERO;

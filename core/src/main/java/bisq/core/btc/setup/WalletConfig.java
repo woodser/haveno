@@ -17,6 +17,7 @@
 
 package bisq.core.btc.setup;
 
+import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.nodes.ProxySocketFactory;
 import bisq.core.btc.wallet.BisqRiskAnalysis;
 
@@ -159,6 +160,7 @@ public class WalletConfig extends AbstractIdleService {
     protected volatile Context context;
 
     protected Config config;
+    protected LocalBitcoinNode localBitcoinNode;
     protected Socks5Proxy socks5Proxy;
     protected int numConnectionsForBtc;
     @Getter
@@ -193,6 +195,12 @@ public class WalletConfig extends AbstractIdleService {
     public WalletConfig setConfig(Config config) {
         checkState(state() == State.NEW, "Cannot call after startup");
         this.config = config;
+        return this;
+    }
+
+    public WalletConfig setLocalBitcoinNode(LocalBitcoinNode localBitcoinNode) {
+        checkState(state() == State.NEW, "Cannot call after startup");
+        this.localBitcoinNode = localBitcoinNode;
         return this;
     }
 
@@ -537,7 +545,9 @@ public class WalletConfig extends AbstractIdleService {
 
             ProxySocketFactory proxySocketFactory = new ProxySocketFactory(proxy);
             // We don't use tor mode if we have a local node running
-            BlockingClientManager blockingClientManager = new BlockingClientManager(proxySocketFactory);
+            BlockingClientManager blockingClientManager = localBitcoinNode.shouldBeUsed() ?
+                    new BlockingClientManager() :
+                    new BlockingClientManager(proxySocketFactory);
 
             peerGroup = new PeerGroup(params, vChain, blockingClientManager);
 
@@ -545,7 +555,8 @@ public class WalletConfig extends AbstractIdleService {
             peerGroup.setConnectTimeoutMillis(TOR_VERSION_EXCHANGE_TIMEOUT);
         }
 
-        peerGroup.setUseLocalhostPeerWhenPossible(false);
+        if (!localBitcoinNode.shouldBeUsed())
+            peerGroup.setUseLocalhostPeerWhenPossible(false);
 
         return peerGroup;
     }

@@ -18,6 +18,7 @@
 package bisq.core.user;
 
 import bisq.core.btc.nodes.BtcNodes;
+import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.wallet.Restrictions;
 import bisq.core.locale.Country;
 import bisq.core.locale.CountryUtil;
@@ -160,6 +161,7 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
     private final PersistenceManager<PreferencesPayload> persistenceManager;
     private final Config config;
     private final FeeService feeService;
+    private final LocalBitcoinNode localBitcoinNode;
     private final String btcNodesFromOptions;
     @Getter
     private final BooleanProperty useStandbyModeProperty = new SimpleBooleanProperty(prefPayload.isUseStandbyMode());
@@ -173,11 +175,13 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
     public Preferences(PersistenceManager<PreferencesPayload> persistenceManager,
                        Config config,
                        FeeService feeService,
+                       LocalBitcoinNode localBitcoinNode,
                        @Named(Config.BTC_NODES) String btcNodesFromOptions) {
 
         this.persistenceManager = persistenceManager;
         this.config = config;
         this.feeService = feeService;
+        this.localBitcoinNode = localBitcoinNode;
         this.btcNodesFromOptions = btcNodesFromOptions;
 
         useAnimationsProperty.addListener((ov) -> {
@@ -286,9 +290,9 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
 
         // if no valid Bitcoin block explorer is set, select the 1st valid Bitcoin block explorer
         ArrayList<BlockChainExplorer> btcExplorers = getBlockChainExplorers();
-        if (getBlockChainExplorer() == null ||  getBlockChainExplorer().name.length() == 0 ){
+        if (getBlockChainExplorer() == null ||
+                getBlockChainExplorer().name.length() == 0) {
             setBlockChainExplorer(btcExplorers.get(0));
-
         }
         tradeCurrenciesAsObservable.addAll(prefPayload.getFiatCurrencies());
         tradeCurrenciesAsObservable.addAll(prefPayload.getCryptoCurrencies());
@@ -306,6 +310,11 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
             setBitcoinNodes(btcNodesFromOptions);
             setBitcoinNodesOptionOrdinal(BtcNodes.BitcoinNodesOption.CUSTOM.ordinal());
         }
+
+        if (prefPayload.getIgnoreDustThreshold() < Restrictions.getMinNonDustOutput().value) {
+            setIgnoreDustThreshold(600);
+        }
+
         // For users from old versions the 4 flags a false but we want to have it true by default
         // PhoneKeyAndToken is also null so we can use that to enable the flags
         if (prefPayload.getPhoneKeyAndToken() == null) {
@@ -678,32 +687,7 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         prefPayload.setTakeOfferSelectedPaymentAccountId(value);
         requestPersistence();
     }
-/*
-    public void setRpcUser(String value) {
-        // We only persist if we have not set the program argument
-        if (!rpcUserFromOptions.isEmpty()) {
-            prefPayload.setRpcUser(value);
-        }
-        prefPayload.setRpcUser(value);
-        requestPersistence();
-    }
-
-    public void setRpcPw(String value) {
-        // We only persist if we have not set the program argument
-        if (rpcPwFromOptions.isEmpty()) {
-            prefPayload.setRpcPw(value);
-            requestPersistence();
-        }
-    }
-
-    public void setBlockNotifyPort(int value) {
-        // We only persist if we have not set the program argument
-        if (blockNotifyPortFromOptions == Config.UNSPECIFIED_PORT) {
-            prefPayload.setBlockNotifyPort(value);
-            requestPersistence();
-        }
-    }
-*/
+    
     public void setIgnoreDustThreshold(int value) {
         prefPayload.setIgnoreDustThreshold(value);
         requestPersistence();
@@ -775,7 +759,6 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         }
     }
 
-
     public boolean showAgain(String key) {
         return !prefPayload.getDontShowAgainMap().containsKey(key) || !prefPayload.getDontShowAgainMap().get(key);
     }
@@ -786,7 +769,8 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         // parameter is explicitly provided. On testnet there are very few Bitcoin tor
         // nodes and we don't provide tor nodes.
 
-        if ((!Config.baseCurrencyNetwork().isMainnet())
+        if ((!Config.baseCurrencyNetwork().isMainnet()
+                || localBitcoinNode.shouldBeUsed())
                 && !config.useTorForBtcOptionSetExplicitly)
             return false;
         else
@@ -815,36 +799,7 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         return Math.max(prefPayload.getWithdrawalTxFeeInVbytes(),
                 feeService.getMinFeePerVByte());
     }
-/*
-    public String getRpcUser() {
-        if (!rpcUserFromOptions.isEmpty()) {
-            return rpcUserFromOptions;
-        } else {
-            return prefPayload.getRpcUser();
-        }
-    }
 
-    public String getRpcPw() {
-        if (!rpcPwFromOptions.isEmpty()) {
-            return rpcPwFromOptions;
-        } else {
-            return prefPayload.getRpcPw();
-        }
-    }
-
-    public int getBlockNotifyPort() {
-        if (blockNotifyPortFromOptions != Config.UNSPECIFIED_PORT) {
-            try {
-                return blockNotifyPortFromOptions;
-            } catch (Throwable ignore) {
-                return 0;
-            }
-
-        } else {
-            return prefPayload.getBlockNotifyPort();
-        }
-    }
-*/
     public List<String> getDefaultXmrTxProofServices() {
         if (config.useLocalhostForP2P) {
             return XMR_TX_PROOF_SERVICES_CLEAR_NET;

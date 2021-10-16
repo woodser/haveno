@@ -68,9 +68,9 @@ import bisq.daemon.grpc.interceptor.GrpcServiceRateMeteringConfig;
  * method, the DAO setup files are re-installed into the run time's data directories
  * (each test case runs on a refreshed DAO/regtest environment setup).
  * <p>
- * Initial Alice balances & accounts:  10.0 BTC, 1000000.00 , USD PerfectMoney dummy
+ * Initial Alice balances & accounts:  10.0 BTC, USD PerfectMoney dummy
  * <p>
- * Initial Bob balances & accounts:    10.0 BTC, 1500000.00 , USD PerfectMoney dummy
+ * Initial Bob balances & accounts:    10.0 BTC, USD PerfectMoney dummy
  */
 @Slf4j
 public class ApiTestCase {

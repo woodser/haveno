@@ -30,6 +30,11 @@ public class CreateCryptoCurrencyPaymentAcctOptionParser extends AbstractMethodO
     final OptionSpec<String> accountNameOpt = parser.accepts(OPT_ACCOUNT_NAME, "crypto currency account name")
             .withRequiredArg();
 
+    final OptionSpec<String> currencyCodeOpt = parser.accepts(OPT_CURRENCY_CODE, "crypto currency code")
+            .withRequiredArg();
+
+    final OptionSpec<String> addressOpt = parser.accepts(OPT_ADDRESS, "address")
+            .withRequiredArg();
 
     final OptionSpec<Boolean> tradeInstantOpt = parser.accepts(OPT_TRADE_INSTANT, "create trade instant account")
             .withOptionalArg()
@@ -49,11 +54,22 @@ public class CreateCryptoCurrencyPaymentAcctOptionParser extends AbstractMethodO
 
         if (!options.has(accountNameOpt) || options.valueOf(accountNameOpt).isEmpty())
             throw new IllegalArgumentException("no payment account name specified");
+        
+        if (!options.has(currencyCodeOpt) || options.valueOf(currencyCodeOpt).isEmpty())
+            throw new IllegalArgumentException("no currency code specified");
         return this;
     }
 
     public String getAccountName() {
         return options.valueOf(accountNameOpt);
+    }
+
+    public String getCurrencyCode() {
+        return options.valueOf(currencyCodeOpt);
+    }
+
+    public String getAddress() {
+        return options.valueOf(addressOpt);
     }
 
     public boolean getIsTradeInstant() {

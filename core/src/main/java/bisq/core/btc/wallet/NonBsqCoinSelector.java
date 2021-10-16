@@ -55,7 +55,6 @@ public class NonBsqCoinSelector extends BisqDefaultCoinSelector {
             return false;
 
         return true;
-
     }
 
     // Prevent usage of dust attack utxos

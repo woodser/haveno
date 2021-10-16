@@ -41,6 +41,7 @@ import bisq.core.account.sign.SignedWitnessService;
 import bisq.core.account.witness.AccountAgeWitnessService;
 import bisq.core.alert.PrivateNotificationManager;
 import bisq.core.app.BisqSetup;
+import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.locale.CryptoCurrency;
@@ -52,6 +53,7 @@ import bisq.core.payment.AliPayAccount;
 import bisq.core.payment.AmazonGiftCardAccount;
 import bisq.core.payment.CryptoCurrencyAccount;
 import bisq.core.payment.RevolutAccount;
+import bisq.core.payment.payload.AssetsAccountPayload;
 import bisq.core.presentation.BalancePresentation;
 import bisq.core.presentation.SupportTicketsPresentation;
 import bisq.core.presentation.TradePresentation;
@@ -127,6 +129,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
     @Getter
     private final PriceFeedService priceFeedService;
     private final Config config;
+    private final LocalBitcoinNode localBitcoinNode;
     private final AccountAgeWitnessService accountAgeWitnessService;
     @Getter
     private final TorNetworkSettingsWindow torNetworkSettingsWindow;
@@ -170,6 +173,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                          FeeService feeService,
                          PriceFeedService priceFeedService,
                          Config config,
+                         LocalBitcoinNode localBitcoinNode,
                          AccountAgeWitnessService accountAgeWitnessService,
                          TorNetworkSettingsWindow torNetworkSettingsWindow,
                          CorruptedStorageFileHandler corruptedStorageFileHandler) {
@@ -192,6 +196,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         this.tacWindow = tacWindow;
         this.priceFeedService = priceFeedService;
         this.config = config;
+        this.localBitcoinNode = localBitcoinNode;
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.torNetworkSettingsWindow = torNetworkSettingsWindow;
         this.corruptedStorageFileHandler = corruptedStorageFileHandler;
@@ -362,6 +367,14 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                         .information(Res.get("popup.securityRecommendation.msg"))
                         .dontShowAgainId(key)
                         .show());
+        bisqSetup.setDisplayLocalhostHandler(key -> {
+            if (!DevEnv.isDevMode()) {
+                Popup popup = new Popup().backgroundInfo(Res.get("popup.bitcoinLocalhostNode.msg"))
+                        .dontShowAgainId(key);
+                popup.setDisplayOrderPriority(5);
+                popupQueue.add(popup);
+            }
+        });
         bisqSetup.setDisplaySignedByArbitratorHandler(key -> accountPresentation.showOneTimeAccountSigningPopup(
                 key, "popup.accountSigning.signedByArbitrator"));
         bisqSetup.setDisplaySignedByPeerHandler(key -> accountPresentation.showOneTimeAccountSigningPopup(
@@ -506,9 +519,14 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
                 checkNumberOfBtcPeersTimer = UserThread.runAfter(() -> {
                     // check again numPeers
                     if (walletsSetup.numPeersProperty().get() == 0) {
-                        getWalletServiceErrorMsg().set(
-                                Res.get("mainView.networkWarning.allConnectionsLost",
-                                        Res.getBaseCurrencyName().toLowerCase()));
+                        if (localBitcoinNode.shouldBeUsed())
+                            getWalletServiceErrorMsg().set(
+                                    Res.get("mainView.networkWarning.localhostBitcoinLost",
+                                            Res.getBaseCurrencyName().toLowerCase()));
+                        else
+                            getWalletServiceErrorMsg().set(
+                                    Res.get("mainView.networkWarning.allConnectionsLost",
+                                            Res.getBaseCurrencyName().toLowerCase()));
                     } else {
                         getWalletServiceErrorMsg().set(null);
                     }

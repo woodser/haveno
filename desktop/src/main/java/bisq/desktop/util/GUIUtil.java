@@ -1061,7 +1061,6 @@ public class GUIUtil {
         };
     }
 
-
     public static MaterialDesignIcon getIconForSignState(AccountAgeWitnessService.SignState state) {
         if (state.equals(AccountAgeWitnessService.SignState.PEER_INITIAL)) {
             return MaterialDesignIcon.CLOCK;

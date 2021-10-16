@@ -74,7 +74,6 @@ public class TradeDataValidation {
         }
     }
 
-
     public static void validateDonationAddress(@Nullable Dispute dispute, String addressAsString)
             throws AddressException {
 
@@ -82,7 +81,6 @@ public class TradeDataValidation {
             log.debug("address is null at validateDonationAddress. This is expected in case of an not updated trader.");
             return;
         }
-
     }
 
     public static void testIfAnyDisputeTriedReplay(List<Dispute> disputeList,

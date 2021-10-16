@@ -59,6 +59,5 @@ public class AppSetupWithP2PAndDAO extends AppSetupWithP2P {
     @Override
     protected void onBasicServicesInitialized() {
         super.onBasicServicesInitialized();
-
     }
 }

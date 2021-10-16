@@ -23,7 +23,6 @@ import bisq.core.locale.CurrencyUtil;
 import bisq.core.locale.Res;
 import bisq.core.locale.TradeCurrency;
 
-
 import bisq.common.proto.persistable.PersistablePayload;
 
 import org.bitcoinj.core.Coin;
@@ -39,8 +38,6 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 import org.jetbrains.annotations.NotNull;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 @EqualsAndHashCode(exclude = {"maxTradePeriod", "maxTradeLimit"})
 @ToString
@@ -307,7 +304,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public Coin getMaxTradeLimitAsCoin(String currencyCode) {
         // Hack for SF as the smallest unit is 1 SF ;-( and price is about 3 BTC!
         if (currencyCode.equals("SF"))
-    		return Coin.parseCoin("4");
+            return Coin.parseCoin("4");
 
         // We use the class field maxTradeLimit only for mapping the risk factor.
         long riskFactor;
@@ -324,12 +321,8 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
             log.error("maxTradeLimit is not matching one of our default values. maxTradeLimit=" + Coin.valueOf(maxTradeLimit).toFriendlyString());
         }
 
-         //TradeLimits tradeLimits = TradeLimits.getINSTANCE();
-          TradeLimits tradeLimits = new TradeLimits();
-//        checkNotNull(tradeLimits, "tradeLimits must not be null");
+        TradeLimits tradeLimits = new TradeLimits();
         long maxTradeLimit = tradeLimits.getMaxTradeLimit().value;
-//        long maxTradeLimit = Coin.parseCoin("1").value;
-
         return Coin.valueOf(tradeLimits.getRoundedRiskBasedTradeLimit(maxTradeLimit, riskFactor));
     }
 

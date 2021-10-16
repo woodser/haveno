@@ -49,13 +49,10 @@ public class FeeUtil {
                 percentage = Res.get("guiUtil.requiredMinimum")
                         .replace("(", "")
                         .replace(")", "");
-            }
-
-	    else {
+            } else {
                 percentage = GUIUtil.getPercentage(tradeFee, tradeAmount) +
                         " " + Res.get("guiUtil.ofTradeAmount");
             }
-
             return offerUtil.getFeeInUserFiatCurrency(tradeFee)
                     .map(DisplayUtils::formatAverageVolumeWithCode)
                     .map(feeInFiat -> Res.get("feeOptionWindow.btcFeeWithFiatAndPercentage", feeAsBtc, feeInFiat, percentage))

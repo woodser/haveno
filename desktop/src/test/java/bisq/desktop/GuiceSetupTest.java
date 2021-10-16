@@ -97,7 +97,6 @@ public class GuiceSetupTest {
         assertSingleton(TransactionListItemFactory.class);
         assertSingleton(TransactionAwareTradableFactory.class);
         assertSingleton(DisplayedTransactionsFactory.class);
-        //assertSingleton(BondingViewUtils.class);
 
         // core module
 //        assertSingleton(BisqSetup.class); // this is a can of worms

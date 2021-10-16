@@ -144,7 +144,6 @@ class ClosedTradesDataModel extends ActivatableDataModel {
         return Optional.of(VolumeUtil.getVolume(amount, price));
     }
 
-
     public Coin getTotalTxFee() {
         return Coin.valueOf(getList().stream()
                 .map(ClosedTradableListItem::getTradable)
@@ -172,14 +171,17 @@ class ClosedTradesDataModel extends ActivatableDataModel {
             String makerFeeTxId = offer.getOfferFeePaymentTxId();
             if (expectBtcFee) {
                 return offer.getMakerFee().value;
-            } else { return 0; }
-
+            } else {
+                return 0;
+            }
         } else {
             Trade trade = (Trade) tradable;
             String takerFeeTxId = trade.getTakerFeeTxId();
             if (expectBtcFee) {
-                    return trade.getTakerFee().value;
-            } else { return 0; }
+                return trade.getTakerFee().value;
+            } else {
+                return 0;
+            }
         }
     }
 }

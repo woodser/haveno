@@ -24,6 +24,7 @@ import bisq.core.alert.Alert;
 import bisq.core.alert.AlertManager;
 import bisq.core.alert.PrivateNotificationPayload;
 import bisq.core.btc.model.AddressEntry;
+import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.WalletsManager;
@@ -136,6 +137,7 @@ public class BisqSetup {
     private final AccountAgeWitnessService accountAgeWitnessService;
     private final TorSetup torSetup;
     private final CoinFormatter formatter;
+    private final LocalBitcoinNode localBitcoinNode;
     private final AppStartupState appStartupState;
 
     @Setter
@@ -145,7 +147,7 @@ public class BisqSetup {
     @Nullable
     private Consumer<String> chainFileLockedExceptionHandler,
             spvFileCorruptedHandler, lockedUpFundsHandler,
-            filterWarningHandler, displaySecurityRecommendationHandler,
+            filterWarningHandler, displaySecurityRecommendationHandler, displayLocalhostHandler,
             wrongOSArchitectureHandler, displaySignedByArbitratorHandler,
             displaySignedByPeerHandler, displayPeerLimitLiftedHandler, displayPeerSignerHandler,
             rejectedTxErrorMessageHandler;
@@ -214,6 +216,7 @@ public class BisqSetup {
                      AccountAgeWitnessService accountAgeWitnessService,
                      TorSetup torSetup,
                      @Named(FormattingUtils.BTC_FORMATTER_KEY) CoinFormatter formatter,
+                     LocalBitcoinNode localBitcoinNode,
                      AppStartupState appStartupState,
                      Socks5ProxyProvider socks5ProxyProvider) {
         this.domainInitialisation = domainInitialisation;
@@ -234,9 +237,10 @@ public class BisqSetup {
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.torSetup = torSetup;
         this.formatter = formatter;
+        this.localBitcoinNode = localBitcoinNode;
         this.appStartupState = appStartupState;
 
-        MemPoolSpaceTxBroadcaster.init(socks5ProxyProvider, preferences);
+        MemPoolSpaceTxBroadcaster.init(socks5ProxyProvider, preferences, localBitcoinNode);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -304,6 +308,7 @@ public class BisqSetup {
         // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
         // in MainViewModel
         maybeShowSecurityRecommendation();
+        maybeShowLocalhostRunningInfo();
         maybeShowAccountSigningStateInfo();
     }
 
@@ -374,7 +379,7 @@ public class BisqSetup {
         // We only init wallet service here if not using Tor for bitcoinj.
         // When using Tor, wallet init must be deferred until Tor is ready.
         // TODO encapsulate below conditional inside getUseTorForBitcoinJ
-        if (!preferences.getUseTorForBitcoinJ()) {
+        if (!preferences.getUseTorForBitcoinJ() || localBitcoinNode.shouldBeUsed()) {
             initWallet();
         }
 
@@ -640,6 +645,10 @@ public class BisqSetup {
                     displaySecurityRecommendationHandler != null)
                 displaySecurityRecommendationHandler.accept(key);
         });
+    }
+
+    private void maybeShowLocalhostRunningInfo() {
+        maybeTriggerDisplayHandler("bitcoinLocalhostNode", displayLocalhostHandler, localBitcoinNode.shouldBeUsed());
     }
 
     private void maybeShowAccountSigningStateInfo() {
