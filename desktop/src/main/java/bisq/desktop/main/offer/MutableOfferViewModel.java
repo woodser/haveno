@@ -1217,7 +1217,6 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
         }
     }
 
-
     private void updateSpinnerInfo() {
         if (!showPayFundsScreenDisplayed.get() ||
                 errorMessage.get() != null ||
