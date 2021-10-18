@@ -144,7 +144,7 @@ public class CreateOfferViewModelTest {
                 preferences,               //preferences
                 coinFormatter,             //coinFormatter
                 offerUtil);                //offerUtil
-        model.activate();                 
+        model.activate();
     }
 
     @Test
@@ -223,7 +223,7 @@ public class CreateOfferViewModelTest {
         assertEquals("0.05", model.amount.get());
         assertEquals("0.05", model.minAmount.get());
     }
-/*
+
     @Test
     public void testSyncPriceMarginWithVolumeAndFixedPrice() {
         model.amount.set("0.01");
@@ -232,5 +232,4 @@ public class CreateOfferViewModelTest {
         assertEquals("0.00000078", model.volume.get());
         assertEquals("12684.04500000", model.price.get());
     }
-*/
 }

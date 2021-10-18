@@ -1210,8 +1210,13 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
 
     private MonetaryValidator getVolumeValidator() {
         final String code = getTradeCurrency().getCode();
+        if (CurrencyUtil.isCryptoCurrency(code)) {
+            return altcoinValidator;
+        } else {
             return fiatVolumeValidator;
+        }
     }
+
 
     private void updateSpinnerInfo() {
         if (!showPayFundsScreenDisplayed.get() ||
