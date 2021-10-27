@@ -206,7 +206,7 @@ The following functions are requested as additions to [HavenoDaemon.tsx](https:/
 | `havenod.relayXmrTx()` | `string` | Relay a previously created transaction.
 
 ```javascript
-MoneroTx
+XmrTx
 hash: string
 timestamp: timestamp
 transfers: XmrTransfer[]
