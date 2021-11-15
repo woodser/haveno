@@ -71,7 +71,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -144,6 +146,7 @@ public class WalletConfig extends AbstractIdleService {
     protected volatile Wallet vBtcWallet;
     protected volatile PeerGroup vPeerGroup;
 
+    protected final int rpcBindPort;
     protected final File directory;
     protected volatile File vXmrWalletFile;
     protected volatile File vBtcWalletFile;
@@ -172,17 +175,21 @@ public class WalletConfig extends AbstractIdleService {
     /**
      * Creates a new WalletConfig, with a newly created {@link Context}. Files will be stored in the given directory.
      */
-    public WalletConfig(NetworkParameters params, File directory, String filePrefix) {
-        this(new Context(params), directory, filePrefix);
+    public WalletConfig(NetworkParameters params,
+                        File directory,
+                        int rpcBindPort,
+                        String filePrefix) {
+        this(new Context(params), directory, rpcBindPort, filePrefix);
     }
 
     /**
      * Creates a new WalletConfig, with the given {@link Context}. Files will be stored in the given directory.
      */
-    private WalletConfig(Context context, File directory, String filePrefix) {
+    private WalletConfig(Context context, File directory, int rpcBindPort, String filePrefix) {
         this.context = context;
         this.params = checkNotNull(context.getParams());
         this.directory = checkDir(directory);
+        this.rpcBindPort = rpcBindPort;
         this.filePrefix = checkNotNull(filePrefix);
     }
 
@@ -325,7 +332,7 @@ public class WalletConfig extends AbstractIdleService {
       if (!new File(MONERO_WALLET_RPC_PATH).exists()) throw new Error("monero-wallet-rpc executable doesn't exist at path " + MONERO_WALLET_RPC_PATH + "; copy monero-wallet-rpc to the project root or set WalletConfig.java MONERO_WALLET_RPC_PATH for your system");
 
       // start monero-wallet-rpc instance and return connected client
-      return WalletConfig.MONERO_WALLET_RPC_MANAGER.startInstance(Arrays.asList(
+      List<String> cmd = new ArrayList<>(Arrays.asList( // modifiable list
           MONERO_WALLET_RPC_PATH,
           "--" + MONERO_NETWORK_TYPE.toString().toLowerCase(),
           "--daemon-address", MONERO_DAEMON_URI,
@@ -333,6 +340,11 @@ public class WalletConfig extends AbstractIdleService {
           "--rpc-login", MONERO_WALLET_RPC_USERNAME + ":" + MONERO_WALLET_RPC_PASSWORD,
           "--wallet-dir", directory.toString()
       ));
+      if (rpcBindPort != Config.UNSPECIFIED_PORT) {
+          cmd.add("--rpc-bind-port");
+          cmd.add(Integer.toString(rpcBindPort));
+      }
+      return WalletConfig.MONERO_WALLET_RPC_MANAGER.startInstance(cmd);
     }
 
     public void closeWallet(MoneroWallet walletRpc) {
@@ -346,7 +358,7 @@ public class WalletConfig extends AbstractIdleService {
         try {
             File chainFile = new File(directory, filePrefix + ".spvchain");
             boolean chainFileExists = chainFile.exists();
-            
+
             // XMR daemon
             vXmrDaemon = new MoneroDaemonRpc(MONERO_DAEMON_URI, MONERO_DAEMON_USERNAME, MONERO_DAEMON_PASSWORD);
 
@@ -610,12 +622,11 @@ public class WalletConfig extends AbstractIdleService {
         return vBtcWallet;
     }
 
-    
     public MoneroDaemon getXmrDaemon() {
         checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
         return vXmrDaemon;
     }
-    
+
     public MoneroWallet getXmrWallet() {
         checkState(state() == State.STARTING || state() == State.RUNNING, "Cannot call until startup is complete");
         return vXmrWallet;
