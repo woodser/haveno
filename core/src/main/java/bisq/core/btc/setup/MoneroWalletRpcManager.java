@@ -20,8 +20,8 @@ import monero.wallet.MoneroWalletRpc;
 @Slf4j
 public class MoneroWalletRpcManager {
 
-    private static final String RPC_BIND_PORT_ARGUMENT = "--rpc-bind-port";
-    private static int NUM_ALLOWED_ATTEMPTS = 1; // allow this many attempts to bind to an assigned port
+  private static final String RPC_BIND_PORT_ARGUMENT = "--rpc-bind-port";
+  private static int NUM_ALLOWED_ATTEMPTS = 2; // allow this many attempts to bind to an assigned port
   private Integer startPort;
   private final Map<Integer, MoneroWalletRpc> registeredPorts = new HashMap<>();
 
@@ -62,13 +62,13 @@ public class MoneroWalletRpcManager {
       else {
         int numAttempts = 0;
         while (numAttempts < NUM_ALLOWED_ATTEMPTS) {
+          int port = -1;
           try {
             numAttempts++;
-            int port = registerPort();
+            port = registerPort();
             List<String> cmdCopy = new ArrayList<>(cmd); // preserve original cmd
             cmdCopy.add(RPC_BIND_PORT_ARGUMENT);
             cmdCopy.add("" + port);
-            log.info("Running {}", cmdCopy);
             MoneroWalletRpc walletRpc = new MoneroWalletRpc(cmdCopy); // start monero-wallet-rpc process
             registeredPorts.put(port, walletRpc);
             return walletRpc;

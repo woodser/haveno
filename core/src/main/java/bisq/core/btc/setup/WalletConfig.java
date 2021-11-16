@@ -292,10 +292,10 @@ public class WalletConfig extends AbstractIdleService {
         // Meant to be overridden by subclasses
     }
 
-    public MoneroWalletRpc createWallet(MoneroWalletConfig config) {
+    public MoneroWalletRpc createWallet(MoneroWalletConfig config, Integer port) {
 
       // start monero-wallet-rpc instance
-      MoneroWalletRpc walletRpc = startWalletRpcInstance();
+      MoneroWalletRpc walletRpc = startWalletRpcInstance(port);
 
       // create wallet
       try {
@@ -309,10 +309,10 @@ public class WalletConfig extends AbstractIdleService {
       }
     }
 
-    public MoneroWalletRpc openWallet(MoneroWalletConfig config) {
+    public MoneroWalletRpc openWallet(MoneroWalletConfig config, Integer port) {
 
       // start monero-wallet-rpc instance
-      MoneroWalletRpc walletRpc = startWalletRpcInstance();
+      MoneroWalletRpc walletRpc = startWalletRpcInstance(port);
 
       // open wallet
       try {
@@ -326,7 +326,7 @@ public class WalletConfig extends AbstractIdleService {
       }
     }
 
-    private MoneroWalletRpc startWalletRpcInstance() {
+    private MoneroWalletRpc startWalletRpcInstance(Integer port) {
 
       // check if monero-wallet-rpc exists
       if (!new File(MONERO_WALLET_RPC_PATH).exists()) throw new Error("monero-wallet-rpc executable doesn't exist at path " + MONERO_WALLET_RPC_PATH + "; copy monero-wallet-rpc to the project root or set WalletConfig.java MONERO_WALLET_RPC_PATH for your system");
@@ -340,9 +340,9 @@ public class WalletConfig extends AbstractIdleService {
           "--rpc-login", MONERO_WALLET_RPC_USERNAME + ":" + MONERO_WALLET_RPC_PASSWORD,
           "--wallet-dir", directory.toString()
       ));
-      if (rpcBindPort != Config.UNSPECIFIED_PORT) {
+      if (port != null && port > 0) {
           cmd.add("--rpc-bind-port");
-          cmd.add(Integer.toString(rpcBindPort));
+          cmd.add(Integer.toString(port));
       }
       return WalletConfig.MONERO_WALLET_RPC_MANAGER.startInstance(cmd);
     }
@@ -366,9 +366,9 @@ public class WalletConfig extends AbstractIdleService {
             String xmrPrefix = "_XMR";
             vXmrWalletFile = new File(directory, filePrefix + xmrPrefix);
             if (MoneroUtils.walletExists(vXmrWalletFile.getPath())) {
-              vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"));
+              vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
             } else {
-              vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"));
+              vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
             }
             System.out.println("Monero wallet path: " + vXmrWallet.getPath());
             System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
