@@ -24,7 +24,7 @@ import lombok.ToString;
 
 @ToString
 @AllArgsConstructor
-public class MarketPrice implements Payload {
+public class MarketPriceInfo implements Payload {
 
     private final String currencyCode;
     private final double price;
@@ -34,15 +34,15 @@ public class MarketPrice implements Payload {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public bisq.proto.grpc.MarketPrice toProtoMessage() {
-        return bisq.proto.grpc.MarketPrice.newBuilder()
+    public bisq.proto.grpc.MarketPriceInfo toProtoMessage() {
+        return bisq.proto.grpc.MarketPriceInfo.newBuilder()
                 .setPrice(price)
                 .setCurrencyCode(currencyCode)
                 .build();
     }
 
-    public static MarketPrice fromProto(bisq.proto.grpc.MarketPrice proto) {
-        return new MarketPrice(proto.getCurrencyCode(),
+    public static MarketPriceInfo fromProto(bisq.proto.grpc.MarketPriceInfo proto) {
+        return new MarketPriceInfo(proto.getCurrencyCode(),
                 proto.getPrice());
     }
 }

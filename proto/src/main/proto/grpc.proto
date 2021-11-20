@@ -254,10 +254,10 @@ message MarketPricesRequest {
 }
 
 message MarketPricesReply {
-    repeated MarketPrice market_price = 1;
+    repeated MarketPriceInfo market_price = 1;
 }
 
-message MarketPrice {
+message MarketPriceInfo {
     string currency_code = 1;
     double price = 2;
 }

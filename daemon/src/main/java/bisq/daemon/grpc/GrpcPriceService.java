@@ -18,7 +18,7 @@
 package bisq.daemon.grpc;
 
 import bisq.core.api.CoreApi;
-import bisq.core.api.model.MarketPrice;
+import bisq.core.api.model.MarketPriceInfo;
 
 import bisq.proto.grpc.MarketPriceReply;
 import bisq.proto.grpc.MarketPriceRequest;
@@ -81,10 +81,10 @@ class GrpcPriceService extends PriceImplBase {
         }
     }
 
-    private MarketPricesReply mapMarketPricesReply(List<MarketPrice> marketPrices) {
+    private MarketPricesReply mapMarketPricesReply(List<MarketPriceInfo> marketPrices) {
         MarketPricesReply.Builder builder = MarketPricesReply.newBuilder();
         marketPrices.stream()
-                .map(MarketPrice::toProtoMessage)
+                .map(MarketPriceInfo::toProtoMessage)
                 .forEach(builder::addMarketPrice);
         return builder.build();
     }

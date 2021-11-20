@@ -17,7 +17,7 @@
 
 package bisq.core.api;
 
-import bisq.core.api.model.MarketPrice;
+import bisq.core.api.model.MarketPriceInfo;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.provider.price.PriceFeedService;
 
@@ -56,11 +56,11 @@ class CorePriceService {
     /**
      * @return Price per 1 XMR in all supported currencies (fiat & crypto)
      */
-    public List<MarketPrice> getMarketPrices() throws ExecutionException, InterruptedException, TimeoutException {
+    public List<MarketPriceInfo> getMarketPrices() throws ExecutionException, InterruptedException, TimeoutException {
         return priceFeedService.requestAllPrices().values().stream()
                 .map(marketPrice -> {
                     double mappedPrice = mapPriceFeedServicePrice(marketPrice.getPrice(), marketPrice.getCurrencyCode());
-                    return new MarketPrice(marketPrice.getCurrencyCode(), mappedPrice);
+                    return new MarketPriceInfo(marketPrice.getCurrencyCode(), mappedPrice);
                 })
                 .collect(Collectors.toList());
     }
@@ -71,7 +71,6 @@ class CorePriceService {
      * but 1 DOGE = X XMR
      * Here we convert all to:
      * 1 XMR = X (FIAT or CRYPTO)
-     *
      */
     private double mapPriceFeedServicePrice(double price, String currencyCode) {
         if (CurrencyUtil.isFiatCurrency(currencyCode)) {
