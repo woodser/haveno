@@ -72,7 +72,6 @@ public class PriceProvider extends HttpClientProvider {
         // TODO (woodser): currently using bisq price feed, switch?
         List<?> list = (ArrayList<?>) map.get("data");
         double btcPerXmr = findBtcPerXmr(list);
-
         for (Object obj : list) {
             try {
                 LinkedTreeMap<?, ?> treeMap = (LinkedTreeMap<?, ?>) obj;
@@ -103,7 +102,7 @@ public class PriceProvider extends HttpClientProvider {
     /**
      * @return price of 1 XMR in BTC
      */
-    private double findBtcPerXmr(List<?> list) {
+    private static double findBtcPerXmr(List<?> list) {
         for (Object obj : list) {
             LinkedTreeMap<?, ?> treeMap = (LinkedTreeMap<?, ?>) obj;
             String currencyCode = (String) treeMap.get("currencyCode");

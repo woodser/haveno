@@ -19,7 +19,7 @@ package bisq.core.api;
 
 import bisq.core.api.model.AddressBalanceInfo;
 import bisq.core.api.model.BalancesInfo;
-import bisq.core.api.model.MarketPrice;
+import bisq.core.api.model.MarketPriceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
 import bisq.core.monetary.Price;
 import bisq.core.offer.Offer;
@@ -232,7 +232,7 @@ public class CoreApi {
         return corePriceService.getMarketPrice(currencyCode);
     }
 
-    public List<MarketPrice> getMarketPrices() throws ExecutionException, InterruptedException, TimeoutException {
+    public List<MarketPriceInfo> getMarketPrices() throws ExecutionException, InterruptedException, TimeoutException {
         return corePriceService.getMarketPrices();
     }
 
