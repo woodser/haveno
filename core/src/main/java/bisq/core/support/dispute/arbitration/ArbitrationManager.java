@@ -618,12 +618,16 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
 
       // TODO (woodser): include arbitration fee
       //System.out.println("Creating feeEstimateTx!");
-      MoneroTxWallet feeEstimateTx = multisigWallet.createTx(new MoneroTxConfig()
-              .setAccountIndex(0)
-              .addDestination(buyerPayoutAddress, buyerPayoutAmount.multiply(BigInteger.valueOf(4)).divide(BigInteger.valueOf(5))) // reduce payment amount to compute fee of similar tx
-              .addDestination(sellerPayoutAddress, sellerPayoutAmount.multiply(BigInteger.valueOf(4)).divide(BigInteger.valueOf(5)))
-              .setRelay(false)
-      );
+
+      MoneroTxConfig mConfig = new MoneroTxConfig().setAccountIndex(0).setRelay(false);
+      // payout amount must be greater than 0 to add destination   
+      if (buyerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+          mConfig = mConfig.addDestination(buyerPayoutAddress, buyerPayoutAmount.multiply(BigInteger.valueOf(4)).divide(BigInteger.valueOf(5))); // reduce payment amount to compute fee of similar tx
+      }
+      if (sellerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+          mConfig = mConfig.addDestination(sellerPayoutAddress, sellerPayoutAmount.multiply(BigInteger.valueOf(4)).divide(BigInteger.valueOf(5)));
+      }
+      MoneroTxWallet feeEstimateTx = multisigWallet.createTx(mConfig);
 
       System.out.println("Created fee estimate tx!");
       System.out.println(feeEstimateTx);
@@ -632,16 +636,32 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       // attempt to create payout tx by increasing estimated fee until successful
       MoneroTxWallet payoutTx = null;
       int numAttempts = 0;
+      int feeDivisor = 0;
+      // adjust fee divisor based on number of payout destinations   
+      if (buyerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+          feeDivisor += 1;
+      }
+      if (sellerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+         feeDivisor += 1;
+      }
+
       while (payoutTx == null && numAttempts < 50) {
         BigInteger feeEstimate = feeEstimateTx.getFee().add(feeEstimateTx.getFee().multiply(BigInteger.valueOf(numAttempts)).divide(BigInteger.valueOf(10))); // add 1/10 of fee until tx is successful
+
+        mConfig = new MoneroTxConfig().setAccountIndex(0).setRelay(false);
+        if (buyerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+            mConfig = mConfig.addDestination(buyerPayoutAddress, buyerPayoutAmount.subtract(feeEstimate.divide(BigInteger.valueOf(feeDivisor)))); // split fee subtracted from each payout amount
+        }
+        if (sellerPayoutAmount.compareTo(BigInteger.ZERO) == 1) {
+            mConfig = mConfig.addDestination(sellerPayoutAddress, sellerPayoutAmount.subtract(feeEstimate.divide(BigInteger.valueOf(feeDivisor))));
+        }
+
         try {
           numAttempts++;
-          payoutTx = multisigWallet.createTx(new MoneroTxConfig()
-                  .setAccountIndex(0)
-                  .addDestination(buyerPayoutAddress, buyerPayoutAmount.subtract(feeEstimate.divide(BigInteger.valueOf(2)))) // split fee subtracted from each payout amount
-                  .addDestination(sellerPayoutAddress, sellerPayoutAmount.subtract(feeEstimate.divide(BigInteger.valueOf(2))))
-                  .setRelay(false));
+          payoutTx = multisigWallet.createTx(mConfig);
         } catch (MoneroError e) {
+            System.out.println(e.toString());
+            System.out.println(e.getStackTrace());
           // exception expected // TODO: better way of estimating fee?
         }
       }
@@ -677,43 +697,53 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       MoneroTxWallet arbitratorSignedPayoutTx = parsedTxSet.getTxs().get(0);
       System.out.println("Parsed arbitrator-signed payout tx:\n" + arbitratorSignedPayoutTx);
 
-      // verify payout tx has exactly 2 destinations
-      if (arbitratorSignedPayoutTx.getOutgoingTransfer() == null || arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations() == null || arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().size() != 2) throw new RuntimeException("Buyer-signed payout tx does not have exactly two destinations");
-
-      // get buyer and seller destinations (order not preserved)
-      boolean buyerFirst = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(0).getAddress().equals(contract.getBuyerPayoutAddressString());
-      MoneroDestination buyerPayoutDestination = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(buyerFirst ? 0 : 1);
-      MoneroDestination sellerPayoutDestination = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(buyerFirst ? 1 : 0);
-
-      // verify payout addresses
-      if (!buyerPayoutDestination.getAddress().equals(contract.getBuyerPayoutAddressString())) throw new RuntimeException("Buyer payout address does not match contract");
-      if (!sellerPayoutDestination.getAddress().equals(contract.getSellerPayoutAddressString())) throw new RuntimeException("Seller payout address does not match contract");
-
+      // verify payout tx has destinations  
+      if (arbitratorSignedPayoutTx.getOutgoingTransfer() == null || arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations() == null) throw new RuntimeException("Buyer-signed payout tx does not have any destinations");
+    
       // verify change address is multisig's primary address
       if (!arbitratorSignedPayoutTx.getChangeAddress().equals(multisigWallet.getPrimaryAddress())) throw new RuntimeException("Change address is not multisig wallet's primary address");
 
-      // verify sum of outputs = destination amounts + change amount
-      if (!arbitratorSignedPayoutTx.getOutputSum().equals(buyerPayoutDestination.getAmount().add(sellerPayoutDestination.getAmount()).add(arbitratorSignedPayoutTx.getChangeAmount()))) throw new RuntimeException("Sum of outputs != destination amounts + change amount");
+      if (arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().size() == 2) {
+        // get buyer and seller destinations (order not preserved)
+        boolean buyerFirst = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(0).getAddress().equals(contract.getBuyerPayoutAddressString());
+        MoneroDestination buyerPayoutDestination = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(buyerFirst ? 0 : 1);
+        MoneroDestination sellerPayoutDestination = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(buyerFirst ? 1 : 0);
 
-      // verify buyer destination amount is payout amount - 1/2 tx costs
-      BigInteger txCost = arbitratorSignedPayoutTx.getFee().add(arbitratorSignedPayoutTx.getChangeAmount());
-      BigInteger expectedBuyerPayout = buyerPayoutAmount.subtract(txCost.divide(BigInteger.valueOf(2)));
+        // verify payout addresses
+        if (!buyerPayoutDestination.getAddress().equals(contract.getBuyerPayoutAddressString())) throw new RuntimeException("Buyer payout address does not match contract");
+        if (!sellerPayoutDestination.getAddress().equals(contract.getSellerPayoutAddressString())) throw new RuntimeException("Seller payout address does not match contract");
 
-      System.out.println("Dispute buyer payout amount: " + buyerPayoutAmount);
-      System.out.println("Tx cost: " + txCost);
-      System.out.println("Buyer destination payout amount: " + buyerPayoutDestination.getAmount());
+        // verify sum of outputs = destination amounts + change amount
+        if (!arbitratorSignedPayoutTx.getOutputSum().equals(buyerPayoutDestination.getAmount().add(sellerPayoutDestination.getAmount()).add(arbitratorSignedPayoutTx.getChangeAmount()))) throw new RuntimeException("Sum of outputs != destination amounts + change amount");
 
+        // verify buyer destination amount is payout amount - 1/2 tx costs
+        BigInteger txCost = arbitratorSignedPayoutTx.getFee().add(arbitratorSignedPayoutTx.getChangeAmount());
+        BigInteger expectedBuyerPayout = buyerPayoutAmount.subtract(txCost.divide(BigInteger.valueOf(2)));
 
-      // payout amount is dispute payout amount - 1/2 tx cost - deposit tx fee
+        System.out.println("Dispute buyer payout amount: " + buyerPayoutAmount);
+        System.out.println("Tx cost: " + txCost);
+        System.out.println("Buyer destination payout amount: " + buyerPayoutDestination.getAmount());
 
-      // TODO (woodser): VERIFY PAYOUT TX AMOUNTS WHICH CONSIDERS FEE IF LONG TRADE, EXACT AMOUNT IF SHORT TRADE
+        // payout amount is dispute payout amount - 1/2 tx cost - deposit tx fee
 
+        // TODO (woodser): VERIFY PAYOUT TX AMOUNTS WHICH CONSIDERS FEE IF LONG TRADE, EXACT AMOUNT IF SHORT TRADE
 
-  //    if (!buyerPayoutDestination.getAmount().equals(expectedBuyerPayout)) throw new RuntimeException("Buyer destination amount is not payout amount - 1/2 tx costs, " + buyerPayoutDestination.getAmount() + " vs " + expectedBuyerPayout);
+        //    if (!buyerPayoutDestination.getAmount().equals(expectedBuyerPayout)) throw new RuntimeException("Buyer destination amount is not payout amount - 1/2 tx costs, " + buyerPayoutDestination.getAmount() + " vs " + expectedBuyerPayout);
 
-      // verify seller destination amount is payout amount - 1/2 tx costs
-  //    BigInteger expectedSellerPayout = sellerPayoutAmount.subtract(txCost.divide(BigInteger.valueOf(2)));
-  //    if (!sellerPayoutDestination.getAmount().equals(expectedSellerPayout)) throw new RuntimeException("Seller destination amount is not payout amount - 1/2 tx costs, " + sellerPayoutDestination.getAmount() + " vs " + expectedSellerPayout);
+        // verify seller destination amount is payout amount - 1/2 tx costs
+        //    BigInteger expectedSellerPayout = sellerPayoutAmount.subtract(txCost.divide(BigInteger.valueOf(2)));
+        //    if (!sellerPayoutDestination.getAmount().equals(expectedSellerPayout)) throw new RuntimeException("Seller destination amount is not payout amount - 1/2 tx costs, " + sellerPayoutDestination.getAmount() + " vs " + expectedSellerPayout);
+      }
+      else { //1 destination
+        // get payout destination (buyer or seller)
+        MoneroDestination payoutDestination = arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().get(0);
+
+        // verify payout addresses
+        if (! (payoutDestination.getAddress().equals(contract.getBuyerPayoutAddressString()) || payoutDestination.getAddress().equals(contract.getSellerPayoutAddressString())) ) throw new RuntimeException("Buyer payout address does not match contract");
+
+        // verify sum of outputs = destination amounts + change amount
+        if (!arbitratorSignedPayoutTx.getOutputSum().equals(payoutDestination.getAmount().add(arbitratorSignedPayoutTx.getChangeAmount()))) throw new RuntimeException("Sum of outputs != destination amounts + change amount");
+      }
 
       // TODO (woodser): verify fee is reasonable (e.g. within 2x of fee estimate tx)
 
