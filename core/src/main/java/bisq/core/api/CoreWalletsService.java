@@ -22,21 +22,23 @@ import bisq.core.api.model.BalancesInfo;
 import bisq.core.api.model.BtcBalanceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
 import bisq.core.api.model.XmrBalanceInfo;
+import bisq.core.api.model.XmrDestination;
+import bisq.core.api.model.XmrIncomingTransfer;
+import bisq.core.api.model.XmrOutgoingTransfer;
+import bisq.core.api.model.XmrTx;
 import bisq.core.app.AppStartupState;
 import bisq.core.btc.Balances;
 import bisq.core.btc.exceptions.AddressEntryException;
 import bisq.core.btc.exceptions.InsufficientFundsException;
-import bisq.core.btc.exceptions.TransactionVerificationException;
-import bisq.core.btc.exceptions.WalletException;
 import bisq.core.btc.model.AddressEntry;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
-import bisq.core.btc.wallet.TxBroadcaster;
 import bisq.core.btc.wallet.WalletsManager;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.user.Preferences;
 import bisq.core.util.FormattingUtils;
+import bisq.core.util.ParsingUtils;
 import bisq.core.util.coin.CoinFormatter;
 
 import bisq.common.Timer;
@@ -47,11 +49,9 @@ import bisq.common.util.Utilities;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.InsufficientMoneyException;
-import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
-import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 
 import javax.inject.Inject;
@@ -69,11 +69,12 @@ import com.google.common.util.concurrent.MoreExecutors;
 
 import org.bouncycastle.crypto.params.KeyParameter;
 
+import java.math.BigInteger;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -84,6 +85,15 @@ import static bisq.core.btc.wallet.Restrictions.getMinNonDustOutput;
 import static bisq.core.util.ParsingUtils.parseToCoin;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.SECONDS;
+
+
+
+import monero.wallet.model.MoneroDestination;
+import monero.wallet.model.MoneroIncomingTransfer;
+import monero.wallet.model.MoneroOutgoingTransfer;
+import monero.wallet.model.MoneroTransfer;
+import monero.wallet.model.MoneroTxConfig;
+import monero.wallet.model.MoneroTxWallet;
 
 @Singleton
 @Slf4j
@@ -157,9 +167,13 @@ class CoreWalletsService {
                 return new BalancesInfo(getBtcBalances(), getXmrBalances());
         }
     }
-    
+
     String getNewDepositSubaddress() {
         return xmrWalletService.getWallet().createSubaddress(0).getAddress();
+    }
+
+    List<MoneroTxWallet> getXmrTxs(){
+       return xmrWalletService.getWallet().getTxs();
     }
 
     long getAddressBalance(String addressString) {
@@ -215,6 +229,26 @@ class CoreWalletsService {
                 .collect(Collectors.toList());
     }
 
+    void createXmrTx(List<MoneroDestination> destinations, FutureCallback<MoneroTxWallet> callback) {
+        verifyWalletsAreAvailable();
+        verifyEncryptedWalletIsUnlocked();
+
+        try {
+            MoneroTxWallet tx = xmrWalletService.createTx(destinations, callback);
+        } catch (AddressEntryException ex) {
+            log.error("", ex);
+            throw new IllegalStateException("cannot send xmr from any addresses in wallet", ex);
+        } catch (InsufficientMoneyException ex) {
+            log.error("", ex);
+            throw new IllegalStateException("cannot send xmr due to insufficient funds", ex);
+        }
+    }
+
+    String relayXmrTx(String metadata) {
+        verifyWalletsAreAvailable();
+        verifyEncryptedWalletIsUnlocked();
+        return xmrWalletService.getWallet().relayTx(metadata);
+    }
 
     void sendBtc(String address,
                  String amount,
@@ -530,15 +564,15 @@ class CoreWalletsService {
         var availableBalance = balances.getAvailableBalance().get();
         if (availableBalance == null)
             throw new IllegalStateException("available balance is not yet available");
-        
+
         var lockedBalance = balances.getLockedBalance().get();
         if (lockedBalance == null)
             throw new IllegalStateException("locked balance is not yet available");
-        
+
         var reservedOfferBalance = balances.getReservedOfferBalance().get();
         if (reservedOfferBalance == null)
             throw new IllegalStateException("reserved offer balance is not yet available");
-        
+
         var reservedTradeBalance = balances.getReservedTradeBalance().get();
         if (reservedTradeBalance == null)
             throw new IllegalStateException("reserved trade balance is not yet available");

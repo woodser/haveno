@@ -453,6 +453,12 @@ service Wallets {
     }
     rpc GetNewDepositSubaddress (GetNewDepositSubaddressRequest) returns (GetNewDepositSubaddressReply) {
     }
+    rpc GetXmrTxs (GetXmrTxsRequest) returns (GetXmrTxsReply) {
+    }
+    rpc CreateXmrTx (CreateXmrTxRequest) returns (CreateXmrTxReply) {
+    }
+    rpc relayXmrTx (RelayXmrTxRequest) returns (RelayXmrTxReply) {
+    }
     rpc GetAddressBalance (GetAddressBalanceRequest) returns (GetAddressBalanceReply) {
     }
     rpc SendBtc (SendBtcRequest) returns (SendBtcReply) {
@@ -490,6 +496,29 @@ message GetNewDepositSubaddressRequest {
 
 message GetNewDepositSubaddressReply {
      string subaddress = 1;
+}
+
+message GetXmrTxsRequest {
+}
+
+message GetXmrTxsReply {
+    repeated XmrTx txs = 1;
+}
+
+message CreateXmrTxRequest {
+    repeated XmrDestination destinations = 1;
+}
+
+message CreateXmrTxReply {
+    XmrTx tx = 1;
+}
+
+message RelayXmrTxRequest {
+    string metadata = 1;
+}
+
+message RelayXmrTxReply {
+    string hash = 1;
 }
 
 message GetAddressBalanceRequest {
@@ -598,6 +627,31 @@ message XmrBalanceInfo {
     uint64 locked_balance = 3 [jstype = JS_STRING];
     uint64 reserved_offer_balance = 4 [jstype = JS_STRING];
     uint64 reserved_trade_balance = 5 [jstype = JS_STRING];
+}
+
+message XmrDestination {
+    string address = 1;
+    string amount = 2;
+}
+
+message XmrIncomingTransfer {
+    int32 subaddressIndex = 1;
+    string address = 2;
+    uint64 numSuggestedConfirmations = 3;
+}
+
+message XmrOutgoingTransfer {
+    repeated int32 subaddressIndices = 1;
+    repeated string addresses = 2;
+    repeated XmrDestination destinations = 3;
+}
+
+message XmrTx {
+    string hash= 1 ;
+    uint64 timestamp = 2;
+    repeated XmrIncomingTransfer incomingTransfers = 3;
+    XmrOutgoingTransfer outgoingTransfer = 4;
+    string metadata = 5;
 }
 
 message AddressBalanceInfo {
