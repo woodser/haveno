@@ -22,10 +22,6 @@ import bisq.core.api.model.BalancesInfo;
 import bisq.core.api.model.BtcBalanceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
 import bisq.core.api.model.XmrBalanceInfo;
-import bisq.core.api.model.XmrDestination;
-import bisq.core.api.model.XmrIncomingTransfer;
-import bisq.core.api.model.XmrOutgoingTransfer;
-import bisq.core.api.model.XmrTx;
 import bisq.core.app.AppStartupState;
 import bisq.core.btc.Balances;
 import bisq.core.btc.exceptions.AddressEntryException;
@@ -38,7 +34,6 @@ import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.user.Preferences;
 import bisq.core.util.FormattingUtils;
-import bisq.core.util.ParsingUtils;
 import bisq.core.util.coin.CoinFormatter;
 
 import bisq.common.Timer;
@@ -69,8 +64,6 @@ import com.google.common.util.concurrent.MoreExecutors;
 
 import org.bouncycastle.crypto.params.KeyParameter;
 
-import java.math.BigInteger;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -89,10 +82,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 
 import monero.wallet.model.MoneroDestination;
-import monero.wallet.model.MoneroIncomingTransfer;
-import monero.wallet.model.MoneroOutgoingTransfer;
-import monero.wallet.model.MoneroTransfer;
-import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxWallet;
 
 @Singleton
@@ -173,7 +162,29 @@ class CoreWalletsService {
     }
 
     List<MoneroTxWallet> getXmrTxs(){
-       return xmrWalletService.getWallet().getTxs();
+        return xmrWalletService.getWallet().getTxs();
+    }
+
+    MoneroTxWallet createXmrTx(List<MoneroDestination> destinations) {
+        verifyWalletsAreAvailable();
+        verifyEncryptedWalletIsUnlocked();
+        try {
+            return xmrWalletService.createTx(destinations);
+        } catch (Exception ex) {
+            log.error("", ex);
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    String relayXmrTx(String metadata) {
+        verifyWalletsAreAvailable();
+        verifyEncryptedWalletIsUnlocked();
+        try {
+            return xmrWalletService.getWallet().relayTx(metadata);
+        } catch (Exception ex) {
+            log.error("", ex);
+            throw new IllegalStateException(ex);
+        }
     }
 
     long getAddressBalance(String addressString) {
@@ -227,27 +238,6 @@ class CoreWalletsService {
                         getNumConfirmationsForMostRecentTransaction(address),
                         btcWalletService.isAddressUnused(getAddressEntry(address).getAddress())))
                 .collect(Collectors.toList());
-    }
-
-    void createXmrTx(List<MoneroDestination> destinations, FutureCallback<MoneroTxWallet> callback) {
-        verifyWalletsAreAvailable();
-        verifyEncryptedWalletIsUnlocked();
-
-        try {
-            MoneroTxWallet tx = xmrWalletService.createTx(destinations, callback);
-        } catch (AddressEntryException ex) {
-            log.error("", ex);
-            throw new IllegalStateException("cannot send xmr from any addresses in wallet", ex);
-        } catch (InsufficientMoneyException ex) {
-            log.error("", ex);
-            throw new IllegalStateException("cannot send xmr due to insufficient funds", ex);
-        }
-    }
-
-    String relayXmrTx(String metadata) {
-        verifyWalletsAreAvailable();
-        verifyEncryptedWalletIsUnlocked();
-        return xmrWalletService.getWallet().relayTx(metadata);
     }
 
     void sendBtc(String address,

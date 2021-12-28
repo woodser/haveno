@@ -505,6 +505,38 @@ message GetXmrTxsReply {
     repeated XmrTx txs = 1;
 }
 
+message XmrTx {
+    string hash = 1;
+    string fee = 2;
+    bool is_confirmed = 3;
+    bool is_locked = 4;
+    uint64 height = 5;
+    uint64 timestamp = 6;
+    repeated XmrIncomingTransfer incoming_transfers = 7;
+    XmrOutgoingTransfer outgoing_transfer = 8;
+    string metadata = 9;
+}
+
+message XmrDestination {
+    string address = 1;
+    string amount = 2;
+}
+
+message XmrIncomingTransfer {
+    string amount = 1;
+    int32 account_index = 2;
+    int32 subaddress_index = 3;
+    string address = 4;
+    uint64 num_suggested_confirmations = 5;
+}
+
+message XmrOutgoingTransfer {
+    string amount = 1;
+    int32 account_index = 2;
+    repeated int32 subaddress_indices = 3;
+    repeated XmrDestination destinations = 4;
+}
+
 message CreateXmrTxRequest {
     repeated XmrDestination destinations = 1;
 }
@@ -627,31 +659,6 @@ message XmrBalanceInfo {
     uint64 locked_balance = 3 [jstype = JS_STRING];
     uint64 reserved_offer_balance = 4 [jstype = JS_STRING];
     uint64 reserved_trade_balance = 5 [jstype = JS_STRING];
-}
-
-message XmrDestination {
-    string address = 1;
-    string amount = 2;
-}
-
-message XmrIncomingTransfer {
-    int32 subaddressIndex = 1;
-    string address = 2;
-    uint64 numSuggestedConfirmations = 3;
-}
-
-message XmrOutgoingTransfer {
-    repeated int32 subaddressIndices = 1;
-    repeated string addresses = 2;
-    repeated XmrDestination destinations = 3;
-}
-
-message XmrTx {
-    string hash= 1 ;
-    uint64 timestamp = 2;
-    repeated XmrIncomingTransfer incomingTransfers = 3;
-    XmrOutgoingTransfer outgoingTransfer = 4;
-    string metadata = 5;
 }
 
 message AddressBalanceInfo {

@@ -1,46 +1,42 @@
 package bisq.core.api.model;
 
-import bisq.common.Payload;
-import bisq.common.proto.ProtoUtil;
-
-import com.google.common.annotations.VisibleForTesting;
-import bisq.core.api.model.XmrIncomingTransfer;
-import bisq.core.api.model.XmrIncomingTransfer;
-
-import java.math.BigInteger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import lombok.Getter;
-import lombok.Setter;
-
-import javax.annotation.Nullable;
 import static bisq.core.api.model.XmrIncomingTransfer.toXmrIncomingTransfer;
 import static bisq.core.api.model.XmrOutgoingTransfer.toXmrOutgoingTransfer;
 
-
-
-import monero.wallet.model.MoneroIncomingTransfer;
+import bisq.common.Payload;
+import bisq.common.proto.ProtoUtil;
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import lombok.Getter;
 import monero.wallet.model.MoneroTxWallet;
 
 @Getter
 public class XmrTx implements Payload {
 
     private final String hash;
+    private final BigInteger fee;
+    private final boolean isConfirmed;
+    private final boolean isLocked;
     @Nullable
-    @Setter
-    private final long timestamp;
+    private final Long height;
+    @Nullable
+    private final Long timestamp;
     @Nullable
     private final List<XmrIncomingTransfer> incomingTransfers;
     @Nullable
     private final XmrOutgoingTransfer outgoingTransfer;
+    @Nullable
     private final String metadata;
 
     public XmrTx(XmrTxBuilder builder) {
         this.hash = builder.hash;
+        this.fee = builder.fee;
+        this.isConfirmed = builder.isConfirmed;
+        this.isLocked = builder.isLocked;
+        this.height = builder.height;
         this.timestamp = builder.timestamp;
         this.incomingTransfers = builder.incomingTransfers;
         this.outgoingTransfer = builder.outgoingTransfer;
@@ -48,27 +44,25 @@ public class XmrTx implements Payload {
     }
 
     public static XmrTx toXmrTx(MoneroTxWallet tx){
-        long timestamp = tx.getBlock() == null ? 0 : tx.getBlock().getTimestamp();
-        List<XmrIncomingTransfer> incomingTransfers = tx.getIncomingTransfers() == null ? new ArrayList<>() :
+        Long timestamp = tx.getBlock() == null ? null : tx.getBlock().getTimestamp();
+        List<XmrIncomingTransfer> incomingTransfers = tx.getIncomingTransfers() == null ? null :
                 tx.getIncomingTransfers().stream()
                 .map(s -> toXmrIncomingTransfer(s))
                 .collect(Collectors.toList());
-        XmrOutgoingTransfer.XmrOutgoingTransferBuilder b = new XmrOutgoingTransfer.XmrOutgoingTransferBuilder();
-        b.withSubaddressIndices(new ArrayList<>());
-        b.withDestinations(new ArrayList<>());
-        b.withAddresses(new ArrayList<>());
-        XmrOutgoingTransfer outgoingTransfer = tx.getOutgoingTransfer() == null ?
-                new XmrOutgoingTransfer(b) : toXmrOutgoingTransfer(tx.getOutgoingTransfer());
+        XmrOutgoingTransfer outgoingTransfer = tx.getOutgoingTransfer() == null ? null :
+                toXmrOutgoingTransfer(tx.getOutgoingTransfer());
         XmrTxBuilder builder = new XmrTxBuilder()
                 .withHash(tx.getHash())
-                .withMetadata(tx.getMetadata());
-                Optional.ofNullable(timestamp).ifPresent(e ->builder.withTimestamp(timestamp));
-                Optional.ofNullable(outgoingTransfer).ifPresent(e ->builder.withOutgoingTransfer(outgoingTransfer));
-                Optional.ofNullable(incomingTransfers).ifPresent(e ->builder.withIncomingTransfers(incomingTransfers));
+                .withFee(tx.getFee())
+                .withIsConfirmed(tx.isConfirmed())
+                .withIsLocked(tx.isLocked());
+        Optional.ofNullable(tx.getHeight()).ifPresent(e ->builder.withHeight(tx.getHeight()));
+        Optional.ofNullable(timestamp).ifPresent(e ->builder.withTimestamp(timestamp));
+        Optional.ofNullable(outgoingTransfer).ifPresent(e ->builder.withOutgoingTransfer(outgoingTransfer));
+        Optional.ofNullable(incomingTransfers).ifPresent(e ->builder.withIncomingTransfers(incomingTransfers));
+        Optional.ofNullable(tx.getMetadata()).ifPresent(e ->builder.withMetadata(tx.getMetadata()));
         return builder.build();
     }
-
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // PROTO BUFFER
@@ -77,17 +71,25 @@ public class XmrTx implements Payload {
     @Override
     public bisq.proto.grpc.XmrTx toProtoMessage() {
         bisq.proto.grpc.XmrTx.Builder builder = bisq.proto.grpc.XmrTx.newBuilder()
-                .setHash(hash);
-                Optional.ofNullable(metadata).ifPresent(e -> builder.setMetadata(metadata));
-                Optional.ofNullable(timestamp).ifPresent(e -> builder.setTimestamp(timestamp));
-                Optional.ofNullable(outgoingTransfer).ifPresent(e -> builder.setOutgoingTransfer(outgoingTransfer.toProtoMessage()));
-                Optional.ofNullable(incomingTransfers).ifPresent(e -> builder.addAllIncomingTransfers(ProtoUtil.collectionToProto(incomingTransfers, bisq.proto.grpc.XmrIncomingTransfer.class)));
+                .setHash(hash)
+                .setFee(fee.toString())
+                .setIsConfirmed(isConfirmed)
+                .setIsLocked(isLocked);
+        Optional.ofNullable(height).ifPresent(e -> builder.setHeight(height));
+        Optional.ofNullable(timestamp).ifPresent(e -> builder.setTimestamp(timestamp));
+        Optional.ofNullable(outgoingTransfer).ifPresent(e -> builder.setOutgoingTransfer(outgoingTransfer.toProtoMessage()));
+        Optional.ofNullable(incomingTransfers).ifPresent(e -> builder.addAllIncomingTransfers(ProtoUtil.collectionToProto(incomingTransfers, bisq.proto.grpc.XmrIncomingTransfer.class)));
+        Optional.ofNullable(metadata).ifPresent(e -> builder.setMetadata(metadata));
         return builder.build();
     }
 
     public static XmrTx fromProto(bisq.proto.grpc.XmrTx proto) {
         return new XmrTxBuilder()
                 .withHash(proto.getHash())
+                .withFee(new BigInteger(proto.getFee()))
+                .withIsConfirmed(proto.getIsConfirmed())
+                .withIsLocked(proto.getIsLocked())
+                .withHeight(proto.getHeight())
                 .withTimestamp(proto.getTimestamp())
                 .withIncomingTransfers(
                     proto.getIncomingTransfersList().stream()
@@ -100,7 +102,11 @@ public class XmrTx implements Payload {
 
     public static class XmrTxBuilder {
         private String hash;
-        private long timestamp;
+        private BigInteger fee;
+        private boolean isConfirmed;
+        private boolean isLocked;
+        private Long height;
+        private Long timestamp;
         private List<XmrIncomingTransfer> incomingTransfers;
         private XmrOutgoingTransfer outgoingTransfer;
         private String metadata;
@@ -110,7 +116,27 @@ public class XmrTx implements Payload {
             return this;
         }
 
-        public XmrTxBuilder withTimestamp(long timestamp) {
+        public XmrTxBuilder withFee(BigInteger fee) {
+            this.fee = fee;
+            return this;
+        }
+
+        public XmrTxBuilder withIsConfirmed(boolean isConfirmed) {
+            this.isConfirmed = isConfirmed;
+            return this;
+        }
+
+        public XmrTxBuilder withIsLocked(boolean isLocked) {
+            this.isLocked = isLocked;
+            return this;
+        }
+
+        public XmrTxBuilder withHeight(Long height) {
+            this.height = height;
+            return this;
+        }
+
+        public XmrTxBuilder withTimestamp(Long timestamp) {
             this.timestamp = timestamp;
             return this;
         }
@@ -132,14 +158,19 @@ public class XmrTx implements Payload {
 
         public XmrTx build() { return new XmrTx(this); }
     }
-/*
+
     @Override
     public String toString() {
-        return "BtcBalanceInfo{" +
-                "unlockedBalance=" + hash +
-                ", lockedBalance=" + timestamp +
-                ", reservedOfferBalance=" + transfers +
-                ", reservedTradeBalance=" + metadata +
+        return "XmrTx{" +
+                "hash=" + hash +
+                ", fee=" + timestamp +
+                ", isConfirmed=" + isConfirmed +
+                ", isLocked=" + isLocked +
+                ", height=" + height +
+                ", timestamp=" + timestamp +
+                ", incomingTransfers=" + incomingTransfers +
+                ", outgoingTransfer=" + outgoingTransfer +
+                ", metadata=" + metadata +
                 '}';
-    }*/
+    }
 }

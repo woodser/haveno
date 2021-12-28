@@ -20,9 +20,6 @@ package bisq.daemon.grpc;
 import bisq.core.api.CoreApi;
 import bisq.core.api.model.AddressBalanceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
-import bisq.core.api.model.XmrTx;
-import bisq.core.btc.exceptions.TxBroadcastException;
-import bisq.core.btc.wallet.TxBroadcaster;
 
 import bisq.proto.grpc.GetAddressBalanceReply;
 import bisq.proto.grpc.GetAddressBalanceRequest;
@@ -56,7 +53,6 @@ import bisq.proto.grpc.UnlockWalletReply;
 import bisq.proto.grpc.UnlockWalletRequest;
 import bisq.proto.grpc.UnsetTxFeeRatePreferenceReply;
 import bisq.proto.grpc.UnsetTxFeeRatePreferenceRequest;
-import bisq.proto.grpc.XmrDestination;
 
 import io.grpc.ServerInterceptor;
 import io.grpc.stub.StreamObserver;
@@ -89,7 +85,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import bisq.daemon.grpc.interceptor.CallRateMeteringInterceptor;
 import bisq.daemon.grpc.interceptor.GrpcCallRateMeter;
-import monero.daemon.model.MoneroTx;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroTxWallet;
 
@@ -104,7 +99,6 @@ class GrpcWalletsService extends WalletsImplBase {
         this.coreApi = coreApi;
         this.exceptionHandler = exceptionHandler;
     }
-
 
     @Override
     public void getBalances(GetBalancesRequest req, StreamObserver<GetBalancesReply> responseObserver) {
@@ -140,10 +134,46 @@ class GrpcWalletsService extends WalletsImplBase {
         try {
             List<MoneroTxWallet> xmrTxs = coreApi.getXmrTxs();
             var reply = GetXmrTxsReply.newBuilder()
-                    .addAllTxs(
-                            xmrTxs.stream()
-                                    .map(s -> toXmrTx(s).toProtoMessage())
-                                    .collect(Collectors.toList()))
+                    .addAllTxs(xmrTxs.stream()
+                            .map(s -> toXmrTx(s).toProtoMessage())
+                            .collect(Collectors.toList()))
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void createXmrTx(CreateXmrTxRequest req,
+                            StreamObserver<CreateXmrTxReply> responseObserver) {
+        try {
+            MoneroTxWallet tx = coreApi.createXmrTx(
+                    req.getDestinationsList()
+                    .stream()
+                    .map(s -> new MoneroDestination(s.getAddress(), new BigInteger(s.getAmount())))
+                    .collect(Collectors.toList()));
+            log.info("Successfully created XMR tx: hash {}, metadata {}",
+                    tx.getHash(),
+                    tx.getMetadata());
+            var reply = CreateXmrTxReply.newBuilder()
+                    .setTx(toXmrTx(tx).toProtoMessage())
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void relayXmrTx(RelayXmrTxRequest req,
+                            StreamObserver<RelayXmrTxReply> responseObserver) {
+        try {
+            String txHash = coreApi.relayXmrTx(req.getMetadata());
+            var reply = RelayXmrTxReply.newBuilder()
+                    .setHash(txHash)
                     .build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
@@ -179,59 +209,6 @@ class GrpcWalletsService extends WalletsImplBase {
                     .build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void relayXmrTx(RelayXmrTxRequest req,
-                            StreamObserver<RelayXmrTxReply> responseObserver) {
-        try {
-            String tx_hash = coreApi.relayXmrTx(req.getMetadata());
-            var reply = RelayXmrTxReply.newBuilder()
-                    .setHash(tx_hash)
-                    .build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void createXmrTx(CreateXmrTxRequest req,
-                            StreamObserver<CreateXmrTxReply> responseObserver) {
-        try {
-            coreApi.createXmrTx(
-                        req.getDestinationsList().
-                            stream()
-                            .map(s -> new MoneroDestination(s.getAddress(), new BigInteger(s.getAmount())))
-                            .collect(Collectors.toList()),
-                    new FutureCallback<>() {
-                        @Override
-                        public void onSuccess(MoneroTxWallet tx) {
-                            if (tx != null) {
-                                log.info("Successfully created XMR tx: hash {}, metadata {}",
-                                        tx.getHash(),
-                                        tx.getMetadata());
-
-                                var reply = CreateXmrTxReply.newBuilder()
-                                        .setTx(toXmrTx(tx).toProtoMessage())
-                                        .build();
-                                responseObserver.onNext(reply);
-                                responseObserver.onCompleted();
-                            } else {
-                                throw new IllegalStateException("xmr transaction is null");
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(@NotNull Throwable t) {
-                            log.error("", t);
-                            throw new IllegalStateException(t);
-                        }
-                    });
         } catch (Throwable cause) {
             exceptionHandler.handleException(log, cause, responseObserver);
         }

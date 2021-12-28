@@ -1,40 +1,34 @@
 package bisq.core.api.model;
 
 import bisq.common.Payload;
-import bisq.common.proto.ProtoUtil;
-
-import bisq.proto.grpc.XmrIncomingTransferOrBuilder;
-
-import com.google.common.annotations.VisibleForTesting;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
+import java.math.BigInteger;
 import lombok.Getter;
-
-
-
 import monero.wallet.model.MoneroIncomingTransfer;
-import monero.wallet.model.MoneroOutgoingTransfer;
 
 @Getter
 public class XmrIncomingTransfer implements Payload {
+    
+    private final BigInteger amount;
+    private final Integer accountIndex;
     private final Integer subaddressIndex;
     private final String address;
     private final Long numSuggestedConfirmations;
 
-
     public XmrIncomingTransfer(XmrIncomingTransferBuilder builder) {
+        this.amount = builder.amount;
+        this.accountIndex = builder.accountIndex;
         this.subaddressIndex = builder.subaddressIndex;
         this.address = builder.address;
         this.numSuggestedConfirmations = builder.numSuggestedConfirmations;
     }
 
-    public static XmrIncomingTransfer toXmrIncomingTransfer(MoneroIncomingTransfer tx) {
+    public static XmrIncomingTransfer toXmrIncomingTransfer(MoneroIncomingTransfer transfer) {
         return new XmrIncomingTransferBuilder()
-                .withSubaddressIndex(tx.getSubaddressIndex())
-                .withAddress(tx.getAddress())
-                .withNumSuggestedConfirmations(tx.getNumSuggestedConfirmations())
+                .withAmount(transfer.getAmount())
+                .withAccountIndex(transfer.getAccountIndex())
+                .withSubaddressIndex(transfer.getSubaddressIndex())
+                .withAddress(transfer.getAddress())
+                .withNumSuggestedConfirmations(transfer.getNumSuggestedConfirmations())
                 .build();
     }
 
@@ -45,6 +39,8 @@ public class XmrIncomingTransfer implements Payload {
     @Override
     public bisq.proto.grpc.XmrIncomingTransfer toProtoMessage() {
         return bisq.proto.grpc.XmrIncomingTransfer.newBuilder()
+                .setAmount(amount.toString())
+                .setAccountIndex(accountIndex)
                 .setSubaddressIndex(subaddressIndex)
                 .setAddress(address)
                 .setNumSuggestedConfirmations(numSuggestedConfirmations)
@@ -53,6 +49,8 @@ public class XmrIncomingTransfer implements Payload {
 
     public static XmrIncomingTransfer fromProto(bisq.proto.grpc.XmrIncomingTransfer proto) {
         return new XmrIncomingTransferBuilder()
+                .withAmount(new BigInteger(proto.getAmount()))
+                .withAccountIndex(proto.getAccountIndex())
                 .withSubaddressIndex(proto.getSubaddressIndex())
                 .withAddress(proto.getAddress())
                 .withNumSuggestedConfirmations(proto.getNumSuggestedConfirmations())
@@ -60,9 +58,21 @@ public class XmrIncomingTransfer implements Payload {
     }
 
     public static class XmrIncomingTransferBuilder {
+        private BigInteger amount;
+        private Integer accountIndex;
         private Integer subaddressIndex;
         private String address;
         private Long numSuggestedConfirmations;
+        
+        public XmrIncomingTransferBuilder withAmount(BigInteger amount) {
+            this.amount = amount;
+            return this;
+        }
+
+        public XmrIncomingTransferBuilder withAccountIndex(Integer accountIndex) {
+            this.accountIndex = accountIndex;
+            return this;
+        }
 
         public XmrIncomingTransferBuilder withSubaddressIndex(Integer subaddressIndex) {
             this.subaddressIndex = subaddressIndex;
@@ -82,13 +92,14 @@ public class XmrIncomingTransfer implements Payload {
         public XmrIncomingTransfer build() {
             return new XmrIncomingTransfer(this);
         }
-
     }
 
     @Override
     public String toString() {
         return "XmrIncomingTransfer{" +
-                "subaddressIndex=" + subaddressIndex +
+                "amount=" + amount +
+                ", accountIndex=" + accountIndex +
+                ", subaddressIndex=" + subaddressIndex +
                 ", address=" + address +
                 ", numSuggestedConfirmations=" + numSuggestedConfirmations +
                 '}';

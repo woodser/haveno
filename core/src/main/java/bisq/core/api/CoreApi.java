@@ -21,9 +21,6 @@ import bisq.core.api.model.AddressBalanceInfo;
 import bisq.core.api.model.BalancesInfo;
 import bisq.core.api.model.MarketPriceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
-import bisq.core.api.model.XmrTx;
-import bisq.core.api.model.XmrDestination;
-import bisq.core.btc.exceptions.AddressEntryException;
 import bisq.core.monetary.Price;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
@@ -40,7 +37,6 @@ import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
 
 import javax.inject.Inject;
@@ -304,7 +300,17 @@ public class CoreApi {
         return walletsService.getNewDepositSubaddress();
     }
 
-    public List<MoneroTxWallet> getXmrTxs() { return walletsService.getXmrTxs(); }
+    public List<MoneroTxWallet> getXmrTxs() {
+        return walletsService.getXmrTxs();
+    }
+
+    public MoneroTxWallet createXmrTx(List<MoneroDestination> destinations) {
+        return walletsService.createXmrTx(destinations);
+    }
+
+    public String relayXmrTx(String metadata) {
+        return walletsService.relayXmrTx(metadata);
+    }
 
     public long getAddressBalance(String addressString) {
         return walletsService.getAddressBalance(addressString);
@@ -317,16 +323,6 @@ public class CoreApi {
     public List<AddressBalanceInfo> getFundingAddresses() {
         return walletsService.getFundingAddresses();
     }
-
-
-    public void createXmrTx(List<MoneroDestination> destinations,
-                            FutureCallback<MoneroTxWallet> callback) {
-        walletsService.createXmrTx(destinations, callback);
-    }
-
-    public String relayXmrTx(String metadata) {
-        return walletsService.relayXmrTx(metadata);}
-
 
     public void sendBtc(String address,
                         String amount,

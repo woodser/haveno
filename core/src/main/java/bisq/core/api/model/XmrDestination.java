@@ -1,24 +1,13 @@
 package bisq.core.api.model;
 
 import bisq.common.Payload;
-
-import com.google.common.annotations.VisibleForTesting;
-
 import java.math.BigInteger;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
 import lombok.Getter;
-
-
-
 import monero.wallet.model.MoneroDestination;
-import monero.wallet.model.MoneroOutgoingTransfer;
 
 @Getter
 public class XmrDestination implements Payload {
-    // all balances are in atomic units
+
     private final String address;
     private final BigInteger amount;
 
@@ -68,7 +57,6 @@ public class XmrDestination implements Payload {
         }
 
         public XmrDestination build() { return new XmrDestination(this); }
-
     }
 
     @Override
