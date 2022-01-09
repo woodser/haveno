@@ -36,6 +36,8 @@ import bisq.common.config.Config;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 
+import bisq.proto.grpc.NotificationMessage;
+
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 
@@ -52,6 +54,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -77,6 +80,7 @@ public class CoreApi {
     private final CoreTradesService coreTradesService;
     private final CoreWalletsService walletsService;
     private final TradeStatisticsManager tradeStatisticsManager;
+    private final CoreNotificationService notificationService;
 
     @Inject
     public CoreApi(Config config,
@@ -87,7 +91,8 @@ public class CoreApi {
                    CorePriceService corePriceService,
                    CoreTradesService coreTradesService,
                    CoreWalletsService walletsService,
-                   TradeStatisticsManager tradeStatisticsManager) {
+                   TradeStatisticsManager tradeStatisticsManager,
+                   CoreNotificationService notificationService) {
         this.config = config;
         this.coreDisputeAgentsService = coreDisputeAgentsService;
         this.coreHelpService = coreHelpService;
@@ -97,6 +102,7 @@ public class CoreApi {
         this.corePriceService = corePriceService;
         this.walletsService = walletsService;
         this.tradeStatisticsManager = tradeStatisticsManager;
+        this.notificationService = notificationService;
     }
 
     @SuppressWarnings("SameReturnValue")
@@ -377,4 +383,37 @@ public class CoreApi {
     public int getNumConfirmationsForMostRecentTransaction(String addressString) {
         return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Notifications
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Listener for {@link NotificationMessage}s.
+     */
+    public interface NotificationListener {
+
+        void onMessage(@NonNull NotificationMessage message);
+    }
+
+    /**
+     * Add a {@link NotificationListener}, which will be invoked upon
+     * {@link #sendNotification(NotificationMessage)}.
+     *
+     * @param listener {@link NotificationListener} to add. Must not be {@code null}
+     */
+    public void addNotificationListener(NotificationListener listener) {
+        notificationService.addListener(listener);
+    }
+
+    /**
+     * Sends the {@code notification} to all
+     * {@link #addNotificationListener(NotificationListener) registered listeners}.
+     *
+     * @param notification {@link NotificationMessage} to send. Must not be {@code null}
+     */
+    public void sendNotification(NotificationMessage notification) {
+        notificationService.sendNotification(notification);
+    }
+
 }

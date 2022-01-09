@@ -683,3 +683,31 @@ message GetVersionRequest {
 message GetVersionReply {
     string version = 1;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Notifications
+///////////////////////////////////////////////////////////////////////////////////////////
+
+service Notifications {
+    rpc RegisterNotificationListener (RegisterNotificationListenerRequest) returns (stream NotificationMessage) {
+    }
+    // Only used for testing
+    rpc SendNotification (SendNotificationRequest) returns (SendNotificationReply) {
+    }
+}
+
+message RegisterNotificationListenerRequest {
+}
+
+message NotificationMessage {
+    string message = 1;
+    string title = 2;
+    // TODO: what else should be included in the notification? Symbol? Timestamp? Source?
+}
+
+message SendNotificationRequest {
+    NotificationMessage notification = 1;
+}
+
+message SendNotificationReply {
+}
