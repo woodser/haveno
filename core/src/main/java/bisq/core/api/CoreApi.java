@@ -118,6 +118,21 @@ public class CoreApi {
         coreDisputeAgentsService.registerDisputeAgent(disputeAgentType, registrationKey);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Notifications
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public interface NotificationListener {
+        void onMessage(@NonNull NotificationMessage message);
+    }
+
+    public void addNotificationListener(NotificationListener listener) {
+        notificationService.addListener(listener);
+    }
+
+    public void sendNotification(NotificationMessage notification) {
+        notificationService.sendNotification(notification);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Help
@@ -383,37 +398,4 @@ public class CoreApi {
     public int getNumConfirmationsForMostRecentTransaction(String addressString) {
         return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // Notifications
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Listener for {@link NotificationMessage}s.
-     */
-    public interface NotificationListener {
-
-        void onMessage(@NonNull NotificationMessage message);
-    }
-
-    /**
-     * Add a {@link NotificationListener}, which will be invoked upon
-     * {@link #sendNotification(NotificationMessage)}.
-     *
-     * @param listener {@link NotificationListener} to add. Must not be {@code null}
-     */
-    public void addNotificationListener(NotificationListener listener) {
-        notificationService.addListener(listener);
-    }
-
-    /**
-     * Sends the {@code notification} to all
-     * {@link #addNotificationListener(NotificationListener) registered listeners}.
-     *
-     * @param notification {@link NotificationMessage} to send. Must not be {@code null}
-     */
-    public void sendNotification(NotificationMessage notification) {
-        notificationService.sendNotification(notification);
-    }
-
 }

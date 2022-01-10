@@ -15,10 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Singleton
 @Slf4j
-class CoreNotificationService {
+public class CoreNotificationService {
 
     private final Object lock = new Object();
-
     private final List<NotificationListener> listeners = new LinkedList<>();
 
     public void addListener(@NonNull NotificationListener listener) {
