@@ -30,6 +30,7 @@ import bisq.core.btc.nodes.BtcNodesSetupPreferences;
 import bisq.core.btc.nodes.LocalBitcoinNode;
 import bisq.core.user.Preferences;
 
+import bisq.core.xmr.connection.MoneroConnectionsManager;
 import bisq.network.Socks5MultiDiscovery;
 import bisq.network.Socks5ProxyProvider;
 
@@ -127,6 +128,7 @@ public class WalletsSetup {
     private final Config config;
     private final LocalBitcoinNode localBitcoinNode;
     private final BtcNodes btcNodes;
+    private final MoneroConnectionsManager moneroConnectionsManager;
     private final String xmrWalletFileName;
     private final int numConnectionsForBtc;
     private final String userAgent;
@@ -156,6 +158,7 @@ public class WalletsSetup {
                         Config config,
                         LocalBitcoinNode localBitcoinNode,
                         BtcNodes btcNodes,
+                        MoneroConnectionsManager moneroConnectionsManager,
                         @Named(Config.USER_AGENT) String userAgent,
                         @Named(Config.WALLET_DIR) File walletDir,
                         @Named(Config.WALLET_RPC_BIND_PORT) int walletRpcBindPort,
@@ -170,6 +173,7 @@ public class WalletsSetup {
         this.config = config;
         this.localBitcoinNode = localBitcoinNode;
         this.btcNodes = btcNodes;
+        this.moneroConnectionsManager = moneroConnectionsManager;
         this.numConnectionsForBtc = numConnectionsForBtc;
         this.useAllProvidedNodes = useAllProvidedNodes;
         this.userAgent = userAgent;
@@ -206,7 +210,7 @@ public class WalletsSetup {
         final Socks5Proxy socks5Proxy = preferences.getUseTorForBitcoinJ() ? socks5ProxyProvider.getSocks5Proxy() : null;
         log.info("Socks5Proxy for bitcoinj: socks5Proxy=" + socks5Proxy);
 
-        walletConfig = new WalletConfig(params, walletDir, walletRpcBindPort, "haveno") {
+        walletConfig = new WalletConfig(params, walletDir, walletRpcBindPort, moneroConnectionsManager, "haveno") {
             @Override
             protected void onSetupCompleted() {
                 //We are here in the btcj thread Thread[ STARTING,5,main]

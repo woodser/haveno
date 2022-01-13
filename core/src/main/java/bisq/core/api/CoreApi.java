@@ -21,6 +21,7 @@ import bisq.core.api.model.AddressBalanceInfo;
 import bisq.core.api.model.BalancesInfo;
 import bisq.core.api.model.MarketPriceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
+import bisq.core.api.model.UriConnection;
 import bisq.core.monetary.Price;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
@@ -81,6 +82,7 @@ public class CoreApi {
     private final CoreWalletsService walletsService;
     private final TradeStatisticsManager tradeStatisticsManager;
     private final CoreNotificationService notificationService;
+    private final CoreMoneroConnectionsService coreMoneroConnectionsService;
 
     @Inject
     public CoreApi(Config config,
@@ -92,7 +94,8 @@ public class CoreApi {
                    CoreTradesService coreTradesService,
                    CoreWalletsService walletsService,
                    TradeStatisticsManager tradeStatisticsManager,
-                   CoreNotificationService notificationService) {
+                   CoreNotificationService notificationService,
+                   CoreMoneroConnectionsService coreMoneroConnectionsService) {
         this.config = config;
         this.coreDisputeAgentsService = coreDisputeAgentsService;
         this.coreHelpService = coreHelpService;
@@ -103,6 +106,7 @@ public class CoreApi {
         this.walletsService = walletsService;
         this.tradeStatisticsManager = tradeStatisticsManager;
         this.notificationService = notificationService;
+        this.coreMoneroConnectionsService = coreMoneroConnectionsService;
     }
 
     @SuppressWarnings("SameReturnValue")
@@ -397,5 +401,61 @@ public class CoreApi {
 
     public int getNumConfirmationsForMostRecentTransaction(String addressString) {
         return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Monero Connections
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public void addMoneroConnection(UriConnection connection) {
+        coreMoneroConnectionsService.addConnection(connection);
+    }
+
+    public void removeMoneroConnection(String connectionUri) {
+        coreMoneroConnectionsService.removeConnection(connectionUri);
+    }
+
+    public void removeMoneroConnection(UriConnection connection) {
+        coreMoneroConnectionsService.removeConnection(connection);
+    }
+
+    public UriConnection getMoneroConnection() {
+        return coreMoneroConnectionsService.getConnection();
+    }
+
+    public List<UriConnection> getMoneroConnections() {
+        return coreMoneroConnectionsService.getConnections();
+    }
+
+    public void setMoneroConnection(String connectionUri) {
+        coreMoneroConnectionsService.setConnection(connectionUri);
+    }
+
+    public void setMoneroConnection(UriConnection connection) {
+        coreMoneroConnectionsService.setConnection(connection);
+    }
+
+    public UriConnection checkMoneroConnection() {
+        return coreMoneroConnectionsService.checkConnection();
+    }
+
+    public List<UriConnection> checkMoneroConnections() {
+        return coreMoneroConnectionsService.checkConnections();
+    }
+
+    public void startCheckingMoneroConnection(Long refreshPeriod) {
+        coreMoneroConnectionsService.startCheckingConnection(refreshPeriod);
+    }
+
+    public void stopCheckingMoneroConnection() {
+        coreMoneroConnectionsService.stopCheckingConnection();
+    }
+
+    public UriConnection getBestAvailableMoneroConnection() {
+        return coreMoneroConnectionsService.getBestAvailableConnection();
+    }
+
+    public void setMoneroConnectionAutoSwitch(boolean autoSwitch) {
+        coreMoneroConnectionsService.setAutoSwitch(autoSwitch);
     }
 }

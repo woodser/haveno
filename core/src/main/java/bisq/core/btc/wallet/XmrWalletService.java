@@ -54,8 +54,6 @@ public class XmrWalletService {
   private Map<String, MoneroWallet> multisigWallets;
 
   @Getter
-  private MoneroDaemon daemon;
-  @Getter
   private MoneroWallet wallet;
 
   @Inject
@@ -67,7 +65,6 @@ public class XmrWalletService {
     this.multisigWallets = new HashMap<String, MoneroWallet>();
 
     walletsSetup.addSetupCompletedHandler(() -> {
-        daemon = walletsSetup.getXmrDaemon();
         wallet = walletsSetup.getXmrWallet();
         wallet.addListener(new MoneroWalletListener() {
             @Override
@@ -84,9 +81,14 @@ public class XmrWalletService {
     });
   }
 
+  public MoneroDaemon getDaemon() {
+      return walletsSetup.getXmrDaemon();
+  }
+
+
   // TODO (woodser): wallet has single password which is passed here?
   // TODO (woodser): test retaking failed trade.  create new multisig wallet or replace?  cannot reuse
-  
+
   public synchronized MoneroWallet createMultisigWallet(String tradeId) {
       if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
       String path = "xmr_multisig_trade_" + tradeId;
@@ -99,7 +101,7 @@ public class XmrWalletService {
       multisigWallet.startSyncing(5000l);
       return multisigWallet;
   }
-  
+
   public synchronized MoneroWallet getMultisigWallet(String tradeId) {
       if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
       String path = "xmr_multisig_trade_" + tradeId;
@@ -112,7 +114,7 @@ public class XmrWalletService {
       multisigWallet.startSyncing(5000l); // TODO (woodser): use sync period from config. apps stall if too many multisig wallets and too short sync period
       return multisigWallet;
   }
-  
+
   public synchronized boolean deleteMultisigWallet(String tradeId) {
       String walletName = "xmr_multisig_trade_" + tradeId;
       if (!walletsSetup.getWalletConfig().walletExists(walletName)) return false;
@@ -406,7 +408,7 @@ public class XmrWalletService {
 
   /**
    * Wraps a MoneroWalletListener to notify the Haveno application.
-   * 
+   *
    * TODO (woodser): this is no longer necessary since not syncing to thread?
    */
   public class HavenoWalletListener extends MoneroWalletListener {

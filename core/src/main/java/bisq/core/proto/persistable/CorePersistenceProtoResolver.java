@@ -34,6 +34,7 @@ import bisq.core.trade.statistics.TradeStatistics2Store;
 import bisq.core.trade.statistics.TradeStatistics3Store;
 import bisq.core.user.PreferencesPayload;
 import bisq.core.user.UserPayload;
+import bisq.core.xmr.connection.persistence.model.EncryptedConnectionList;
 
 import bisq.network.p2p.mailbox.IgnoredMailboxMap;
 import bisq.network.p2p.mailbox.MailboxMessageList;
@@ -84,7 +85,9 @@ public class CorePersistenceProtoResolver extends CoreProtoResolver implements P
                 case ADDRESS_ENTRY_LIST:
                     return AddressEntryList.fromProto(proto.getAddressEntryList());
                 case XMR_ADDRESS_ENTRY_LIST:
-                  return XmrAddressEntryList.fromProto(proto.getXmrAddressEntryList());
+                    return XmrAddressEntryList.fromProto(proto.getXmrAddressEntryList());
+                case ENCRYPTED_CONNECTION_LIST:
+                    return EncryptedConnectionList.fromProto(proto.getEncryptedConnectionList());
                 case TRADABLE_LIST:
                     return TradableList.fromProto(proto.getTradableList(), this, xmrWalletService.get());
                 case ARBITRATION_DISPUTE_LIST:
