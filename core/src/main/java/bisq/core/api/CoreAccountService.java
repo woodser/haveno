@@ -17,8 +17,6 @@
 
 package bisq.core.api;
 
-import bisq.core.btc.wallet.WalletsManager;
-
 import bisq.common.config.Config;
 import bisq.common.crypto.IncorrectPasswordException;
 import bisq.common.crypto.KeyRing;
@@ -26,17 +24,16 @@ import bisq.common.crypto.KeyStorage;
 import bisq.common.file.FileUtil;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.util.ZipUtil;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
-
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -51,14 +48,27 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 @Slf4j
 public class CoreAccountService {
-
+    
     private final Config config;
     private final KeyStorage keyStorage;
     private final KeyRing keyRing;
-
+    
+    @Getter
+    private String password;
+    private List<AccountServiceListener> listeners = new ArrayList<AccountServiceListener>();
     private Runnable accountOpenedHandler;
     private Consumer<Runnable> accountDeletedHandler;
     private Consumer<Runnable> accountRestoredHandler;
+    
+    /**
+     * Account listener default class.
+     */
+    public class AccountServiceListener {
+        public void onAccountOpened() {}
+        public void onAccountRestored() {}
+        public void onAccountDeleted() {}
+        public void onPasswordChanged(String oldPassword, String newPassword) {}
+    }
 
     @Inject
     public CoreAccountService(Config config, KeyStorage keyStorage, KeyRing keyRing) {
@@ -66,7 +76,51 @@ public class CoreAccountService {
         this.keyStorage = keyStorage;
         this.keyRing = keyRing;
     }
-
+    
+    public void addListener(AccountServiceListener listener) {
+        listeners.add(listener);
+    }
+    
+    public boolean removeListener(AccountServiceListener listener) {
+        return listeners.remove(listener);
+    }
+    
+    public boolean accountExists() {
+        return keyStorage.allKeyFilesExist(); // public and private key pair indicate the existence of the account
+    }
+    
+    public boolean isAccountOpen() {
+        return keyRing.isUnlocked() && accountExists();
+    }
+    
+    public void createAccount(String password) {
+        if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
+        keyRing.generateKeys(password);
+        keyStorage.saveKeyRing(keyRing, password);
+        setPassword(password); // TODO: update wallet passwords
+        if (accountOpenedHandler != null) accountOpenedHandler.run();
+    }
+    
+    public void openAccount(String password) throws IncorrectPasswordException {
+        if (!accountExists()) throw new IllegalStateException("Cannot open account if account does not exist");
+        try {
+            if (keyRing.unlockKeys(password, false)) {
+                if (accountOpenedHandler != null) accountOpenedHandler.run();
+            }
+        } catch (IncorrectPasswordException ex) {
+            log.warn(ex.getMessage());
+        }
+    }
+    
+    private void setPassword(String newPassword) {
+        String oldPassword = this.password; // TODO: need default password?
+        this.password = newPassword;
+        for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, newPassword);
+    }
+    
+    
+    // TODO: remove these
+    
     public void setAccountDeletedHandler(Consumer<Runnable> handler) {
         accountDeletedHandler = handler;
     }
@@ -82,15 +136,9 @@ public class CoreAccountService {
     public void clearAccountOpenHandlers() {
         accountOpenedHandler = null;
     }
-
-    /**
-     * Indicates if the Haveno account is created.
-     * @return True if account exists.
-     */
-    public boolean accountExists() {
-        // The public and private key pair indicate the existence of the account.
-        return keyStorage.allKeyFilesExist();
-    }
+    
+    
+    
 
     /**
      * Backup the account to a zip file. Throw error if !accountExists().
@@ -134,6 +182,7 @@ public class CoreAccountService {
         }
 
         // Encrypt the keyring with the new password.
+        this.password = password;
         keyStorage.saveKeyRing(keyRing, password);
         // TODO: Override the wallet password
         //walletsService.setWalletPassword(password, null);
@@ -150,27 +199,6 @@ public class CoreAccountService {
 
         // Closed account means the keys are locked.
         keyRing.lockKeys();
-    }
-
-    /**
-     * Create and open a new Haveno account. Throw error if accountExists().
-     * @param password The password for the account.
-     * @throws Exception
-     */
-    public void createAccount(String password) {
-        if (accountExists()) {
-            throw new IllegalStateException("Cannot create account if the account already exists");
-        }
-
-        // A new account has a set of keys, password protected.
-        keyRing.generateKeys(password);
-        keyStorage.saveKeyRing(keyRing, password);
-
-        // TODO: Set the wallet password
-        //walletsService.setWalletPassword(password, null);
-
-        if (accountOpenedHandler != null)
-            accountOpenedHandler.run();
     }
 
     /**
@@ -194,27 +222,8 @@ public class CoreAccountService {
      * Open existing account. Throw error if `!accountExists()
      * @param password The password for the account.
      */
-    public void openAccount(String password) throws IncorrectPasswordException {
-        if (!accountExists()) {
-            throw new IllegalStateException("Cannot open account if account does not exist");
-        }
 
-        try {
-            if (keyRing.unlockKeys(password, false))
-                if (accountOpenedHandler != null)
-                    accountOpenedHandler.run();
-        } catch (IncorrectPasswordException ex) {
-            log.warn(ex.getMessage());
-        }
-    }
 
-    /**
-     * Indicates if the Haveno account is open and authenticated with the correct password.
-     * @return True if account is open.
-     */
-    public boolean isAccountOpen() {
-        return keyRing.isUnlocked() && accountExists();
-    }
 
     /**
      * Restore the account from a zip file. Throw error if accountExists().

@@ -8,6 +8,8 @@ import bisq.common.proto.persistable.PersistedDataHost;
 import bisq.core.api.CoreAccountService;
 import bisq.core.api.model.EncryptedConnection;
 import bisq.core.crypto.ScryptUtil;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.Message;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.HashMap;
@@ -22,8 +24,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import javax.inject.Inject;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
 import lombok.NonNull;
 import monero.common.MoneroRpcConnection;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
@@ -70,7 +70,11 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         this.accountService = accountService;
         this.persistenceManager = persistenceManager;
         this.persistenceManager.initialize(this, "EncryptedConnectionList", PersistenceManager.Source.PRIVATE);
-        this.accountService.addPasswordChangeListener(this::onPasswordChange);
+        this.accountService.addListener(this.accountService.new AccountServiceListener() {
+            @Override
+            public void onPasswordChanged(String oldPassword, String newPassword) { onPasswordChange(oldPassword, newPassword); }
+            
+        });
     }
 
     private EncryptedConnectionList(byte[] salt,
