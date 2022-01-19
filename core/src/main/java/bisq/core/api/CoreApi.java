@@ -34,6 +34,7 @@ import bisq.core.trade.statistics.TradeStatisticsManager;
 
 import bisq.common.app.Version;
 import bisq.common.config.Config;
+import bisq.common.crypto.IncorrectPasswordException;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 
@@ -46,6 +47,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.google.common.util.concurrent.FutureCallback;
+
+import java.io.InputStream;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,6 +76,7 @@ public class CoreApi {
 
     @Getter
     private final Config config;
+    private final CoreAccountService coreAccountService;
     private final CoreDisputeAgentsService coreDisputeAgentsService;
     private final CoreHelpService coreHelpService;
     private final CoreOffersService coreOffersService;
@@ -86,6 +90,7 @@ public class CoreApi {
 
     @Inject
     public CoreApi(Config config,
+                   CoreAccountService coreAccountService,
                    CoreDisputeAgentsService coreDisputeAgentsService,
                    CoreHelpService coreHelpService,
                    CoreOffersService coreOffersService,
@@ -97,6 +102,7 @@ public class CoreApi {
                    CoreNotificationService notificationService,
                    CoreMoneroConnectionsService coreMoneroConnectionsService) {
         this.config = config;
+        this.coreAccountService = coreAccountService;
         this.coreDisputeAgentsService = coreDisputeAgentsService;
         this.coreHelpService = coreHelpService;
         this.coreOffersService = coreOffersService;
@@ -112,6 +118,50 @@ public class CoreApi {
     @SuppressWarnings("SameReturnValue")
     public String getVersion() {
         return Version.VERSION;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Account Service
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public boolean accountExists() {
+        return coreAccountService.accountExists();
+    }
+
+    public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {
+        coreAccountService.backupAccount(bufferSize, consume, error);
+    }
+
+    public void changePassword(String password) {
+        coreAccountService.changePassword(password);
+    }
+
+    public void closeAccount() {
+        coreAccountService.closeAccount();
+    }
+
+    public void createAccount(String password) {
+        coreAccountService.createAccount(password);
+    }
+
+    public void deleteAccount(Runnable onShutdown) {
+        coreAccountService.deleteAccount(onShutdown);
+    }
+
+    public void openAccount(String password) {
+        try {
+            coreAccountService.openAccount(password);
+        } catch (IncorrectPasswordException ipe) {
+            log.warn(ipe.getMessage());
+        }
+    }
+
+    public boolean isAccountOpen() {
+        return coreAccountService.isAccountOpen();
+    }
+
+    public void restoreAccount(InputStream zipStream, int bufferSize, Runnable onShutdown) throws Exception {
+        coreAccountService.restoreAccount(zipStream, bufferSize, onShutdown);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

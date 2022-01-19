@@ -31,6 +31,7 @@ import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
 
 import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.PubKeyRingProvider;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -46,7 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 public class TraderChatManager extends SupportManager {
     private final TradeManager tradeManager;
-    private final PubKeyRing pubKeyRing;
+    private final PubKeyRingProvider pubKeyRing;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +58,7 @@ public class TraderChatManager extends SupportManager {
     public TraderChatManager(P2PService p2PService,
                              WalletsSetup walletsSetup,
                              TradeManager tradeManager,
-                             PubKeyRing pubKeyRing) {
+                             PubKeyRingProvider pubKeyRing) {
         super(p2PService, walletsSetup);
         this.tradeManager = tradeManager;
         this.pubKeyRing = pubKeyRing;
@@ -82,7 +83,7 @@ public class TraderChatManager extends SupportManager {
     public NodeAddress getPeerNodeAddress(ChatMessage message) {
         return tradeManager.getTradeById(message.getTradeId()).map(trade -> {
             if (trade.getContract() != null) {
-                return trade.getContract().getPeersNodeAddress(pubKeyRing);
+                return trade.getContract().getPeersNodeAddress(pubKeyRing.get());
             } else {
                 return null;
             }
@@ -93,7 +94,7 @@ public class TraderChatManager extends SupportManager {
     public PubKeyRing getPeerPubKeyRing(ChatMessage message) {
         return tradeManager.getTradeById(message.getTradeId()).map(trade -> {
             if (trade.getContract() != null) {
-                return trade.getContract().getPeersPubKeyRing(pubKeyRing);
+                return trade.getContract().getPeersPubKeyRing(pubKeyRing.get());
             } else {
                 return null;
             }

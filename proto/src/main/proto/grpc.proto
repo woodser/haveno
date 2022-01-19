@@ -24,6 +24,95 @@ option java_package = "bisq.proto.grpc";
 option java_multiple_files = true;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
+// Account
+///////////////////////////////////////////////////////////////////////////////////////////
+
+service Account {
+    rpc AccountExists(AccountExistsRequest) returns (AccountExistsReply) {
+    }
+    rpc BackupAccount(BackupAccountRequest) returns (stream BackupAccountReply) {
+    }
+    rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordReply) {
+    }
+    rpc CloseAccount(CloseAccountRequest) returns (CloseAccountReply) {
+    }
+    rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply) {
+    }
+    rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountReply) {
+    }
+    rpc IsAccountOpen (IsAccountOpenRequest) returns (IsAccountOpenReply) {
+    }
+    rpc OpenAccount(OpenAccountRequest) returns (OpenAccountReply) {
+    }
+    rpc RestoreAccount(RestoreAccountRequest) returns (RestoreAccountReply) {
+    }
+}
+
+message AccountExistsRequest {
+}
+
+message AccountExistsReply {
+    bool account_exists = 1;
+}
+
+message BackupAccountRequest {
+}
+
+message BackupAccountReply {
+    bytes zip_bytes = 1;
+}
+
+message ChangePasswordRequest {
+    string password = 1;
+}
+
+message ChangePasswordReply {
+}
+
+message CreateAccountRequest {
+    string password = 1;
+}
+
+message CreateAccountReply {
+}
+
+message CloseAccountRequest {
+}
+
+message CloseAccountReply {
+}
+
+message DeleteAccountRequest {
+}
+
+message DeleteAccountReply {
+}
+
+message IsAccountOpenRequest {
+}
+
+message IsAccountOpenReply {
+    bool is_account_open = 1;
+}
+
+message OpenAccountRequest {
+    string password = 1;
+}
+
+message OpenAccountReply {
+}
+
+message RestoreAccountRequest {
+    bytes zip_bytes = 1;
+    uint64 offset = 2;
+    uint64 total_length = 3;
+    bool has_more = 4;
+}
+
+message RestoreAccountReply {
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
 // DisputeAgents
 ///////////////////////////////////////////////////////////////////////////////////////////
 

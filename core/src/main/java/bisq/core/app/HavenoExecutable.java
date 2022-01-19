@@ -17,6 +17,7 @@
 
 package bisq.core.app;
 
+import bisq.core.api.CoreAccountService;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.XmrWalletService;
@@ -35,6 +36,7 @@ import bisq.common.app.AppModule;
 import bisq.common.config.HavenoHelpFormatter;
 import bisq.common.config.Config;
 import bisq.common.config.ConfigException;
+import bisq.common.crypto.IncorrectPasswordException;
 import bisq.common.handlers.ResultHandler;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.proto.persistable.PersistedDataHost;
@@ -64,11 +66,12 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     private final String appName;
     private final String version;
 
+    protected CoreAccountService accountService;
     protected Injector injector;
     protected AppModule module;
     protected Config config;
     private boolean isShutdownInProgress;
-    private boolean hasDowngraded;
+    private boolean isReadOnly;
 
     public HavenoExecutable(String fullName, String scriptName, String appName, String version) {
         this.fullName = fullName;
@@ -136,15 +139,58 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         setupGuice();
         setupAvoidStandbyMode();
 
-        hasDowngraded = HavenoSetup.hasDowngraded();
-        if (hasDowngraded) {
-            // If user tried to downgrade we do not read the persisted data to avoid data corruption
-            // We call startApplication to enable UI to show popup. We prevent in HavenoSetup to go further
-            // in the process and require a shut down.
-            startApplication();
-        } else {
+        // If user tried to downgrade we do not read the persisted data to avoid data corruption
+        // We call startApplication to enable UI to show popup. We prevent in HavenoSetup to go further
+        // in the process and require a shut down.
+        isReadOnly = HavenoSetup.hasDowngraded();
+
+        // Account service should be available before attempting to login.
+        accountService = injector.getInstance(CoreAccountService.class);
+
+        // Application needs to restart on delete and restore of account.
+        accountService.setAccountDeletedHandler(this::shutDownNoPersist);
+        accountService.setAccountRestoredHandler(this::shutDownNoPersist);
+
+        // Attempt to login, subclasses should implement interactive login and or rpc login.
+        if (!isReadOnly && loginAccount()) {
             readAllPersisted(this::startApplication);
+        } else {
+            log.warn("Running application in readonly mode");
+            startApplication();
         }
+    }
+
+    /**
+     * Do not persist when shutting down after account restore and restarts since
+     * that causes the current persistables to overwrite the restored or deleted state.
+     */
+    protected void shutDownNoPersist(Runnable onShutdown) {
+        this.isReadOnly = true;
+        gracefulShutDown(() -> {
+            log.info("Shutdown without persisting");
+            if (onShutdown != null) onShutdown.run();
+        });
+    }
+
+    /**
+     * Attempt to login. TODO: supply a password in config or args
+     * @return true if account is opened successfully.
+     */
+    protected boolean loginAccount() {
+        boolean accountOpened = false;
+        if (accountService.accountExists()) {
+            log.info("Previously persisted Haveno account detected, attempting to open");
+            try {
+                accountService.openAccount(null);
+                accountOpened = accountService.isAccountOpen();
+            } catch (IncorrectPasswordException ipe) {
+                log.info("Account password protected, password required");
+            }
+        } else if (!config.passwordRequired) {
+            // Create an account with no password.
+            accountService.createAccount(null);
+        }
+        return accountOpened;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -248,16 +294,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
                     injector.getInstance(P2PService.class).shutDown(() -> {
                         log.info("P2PService shutdown completed");
                         module.close(injector);
-                        if (!hasDowngraded) {
-                            // If user tried to downgrade we do not write the persistable data to avoid data corruption
-                            PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
-                                log.info("Graceful shutdown completed. Exiting now.");
-                                resultHandler.handleResult();
-                                UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
-                            });
-                        } else {
-                            UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
-                        }
+                        completeShutdown(resultHandler);
                     });
                 });
                 walletsSetup.shutDown();
@@ -267,31 +304,27 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             // Wait max 20 sec.
             UserThread.runAfter(() -> {
                 log.warn("Graceful shut down not completed in 20 sec. We trigger our timeout handler.");
-                if (!hasDowngraded) {
-                    // If user tried to downgrade we do not write the persistable data to avoid data corruption
-                    PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
-                        log.info("Graceful shutdown resulted in a timeout. Exiting now.");
-                        resultHandler.handleResult();
-                        UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
-                    });
-                } else {
-                    UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
-                }
+                completeShutdown(resultHandler);
 
             }, 20);
         } catch (Throwable t) {
             log.error("App shutdown failed with exception {}", t.toString());
             t.printStackTrace();
-            if (!hasDowngraded) {
-                // If user tried to downgrade we do not write the persistable data to avoid data corruption
-                PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
-                    log.info("Graceful shutdown resulted in an error. Exiting now.");
-                    resultHandler.handleResult();
-                    UserThread.runAfter(() -> System.exit(EXIT_FAILURE), 1);
-                });
-            } else {
+            completeShutdown(resultHandler);
+        }
+    }
+
+    private void completeShutdown(ResultHandler resultHandler) {
+        if (!isReadOnly) {
+            // If user tried to downgrade we do not write the persistable data to avoid data corruption
+            PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
+                log.info("Graceful shutdown flushed persistence. Exiting now.");
+                resultHandler.handleResult();
                 UserThread.runAfter(() -> System.exit(EXIT_FAILURE), 1);
-            }
+            });
+        } else {
+            resultHandler.handleResult();
+            UserThread.runAfter(() -> System.exit(EXIT_FAILURE), 1);
         }
     }
 
@@ -307,4 +340,5 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         if (doShutDown)
             gracefulShutDown(() -> log.info("gracefulShutDown complete"));
     }
+
 }
