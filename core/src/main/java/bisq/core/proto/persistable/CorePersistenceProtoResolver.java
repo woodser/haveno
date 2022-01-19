@@ -20,6 +20,7 @@ package bisq.core.proto.persistable;
 import bisq.core.account.sign.SignedWitnessStore;
 import bisq.core.account.witness.AccountAgeWitnessStore;
 import bisq.core.btc.model.AddressEntryList;
+import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.model.XmrAddressEntryList;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.XmrWalletService;
@@ -34,8 +35,6 @@ import bisq.core.trade.statistics.TradeStatistics2Store;
 import bisq.core.trade.statistics.TradeStatistics3Store;
 import bisq.core.user.PreferencesPayload;
 import bisq.core.user.UserPayload;
-import bisq.core.xmr.connection.persistence.model.EncryptedConnectionList;
-
 import bisq.network.p2p.mailbox.IgnoredMailboxMap;
 import bisq.network.p2p.mailbox.MailboxMessageList;
 import bisq.network.p2p.peers.peerexchange.PeerList;

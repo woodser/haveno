@@ -18,6 +18,7 @@
 package bisq.core.setup;
 
 import bisq.core.btc.model.AddressEntryList;
+import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.model.XmrAddressEntryList;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.support.dispute.arbitration.ArbitrationDisputeListService;
@@ -28,8 +29,6 @@ import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.user.Preferences;
 import bisq.core.user.User;
-import bisq.core.xmr.connection.persistence.model.EncryptedConnectionList;
-
 import bisq.network.p2p.mailbox.IgnoredMailboxService;
 import bisq.network.p2p.mailbox.MailboxMessageService;
 import bisq.network.p2p.peers.PeerManager;
@@ -55,6 +54,7 @@ public class CorePersistedDataHost {
         persistedDataHosts.add(injector.getInstance(User.class));
         persistedDataHosts.add(injector.getInstance(AddressEntryList.class));
         persistedDataHosts.add(injector.getInstance(XmrAddressEntryList.class));
+        persistedDataHosts.add(injector.getInstance(EncryptedConnectionList.class));
         persistedDataHosts.add(injector.getInstance(OpenOfferManager.class));
         persistedDataHosts.add(injector.getInstance(TradeManager.class));
         persistedDataHosts.add(injector.getInstance(ClosedTradableManager.class));
@@ -67,7 +67,6 @@ public class CorePersistedDataHost {
         persistedDataHosts.add(injector.getInstance(MailboxMessageService.class));
         persistedDataHosts.add(injector.getInstance(IgnoredMailboxService.class));
         persistedDataHosts.add(injector.getInstance(RemovedPayloadsService.class));
-        persistedDataHosts.add(injector.getInstance(EncryptedConnectionList.class));
 
         return persistedDataHosts;
     }

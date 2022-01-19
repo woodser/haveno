@@ -1,10 +1,8 @@
 package bisq.core.xmr.connection;
 
-import bisq.core.xmr.connection.persistence.model.EncryptedConnectionList;
-
 import bisq.common.app.AppModule;
 import bisq.common.config.Config;
-
+import bisq.core.btc.model.EncryptedConnectionList;
 import com.google.inject.Singleton;
 
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +16,7 @@ public class MoneroConnectionModule extends AppModule {
 
     @Override
     protected final void configure() {
-        bind(MoneroConnectionsManager.class);
         bind(EncryptedConnectionList.class).in(Singleton.class);
+        bind(MoneroConnectionsManager.class).in(Singleton.class);
     }
 }

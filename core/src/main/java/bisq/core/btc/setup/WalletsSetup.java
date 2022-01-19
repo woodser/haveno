@@ -128,6 +128,7 @@ public class WalletsSetup {
     private final Config config;
     private final LocalBitcoinNode localBitcoinNode;
     private final BtcNodes btcNodes;
+    @Getter
     private final MoneroConnectionsManager moneroConnectionsManager;
     private final String xmrWalletFileName;
     private final int numConnectionsForBtc;
@@ -205,6 +206,9 @@ public class WalletsSetup {
                 exceptionHandler.handleException(new TimeoutException("Wallet did not initialize in " +
                         STARTUP_TIMEOUT + " seconds.")), STARTUP_TIMEOUT);
 
+        // initialize Monero connection manager
+        moneroConnectionsManager.initialize();
+        
         backupWallets();
 
         final Socks5Proxy socks5Proxy = preferences.getUseTorForBitcoinJ() ? socks5ProxyProvider.getSocks5Proxy() : null;
@@ -224,9 +228,7 @@ public class WalletsSetup {
                     peerGroup.setAddPeersFromAddressMessage(false);
 
                 UserThread.runPeriodically(() -> {
-                    peers.set(getPeerConnections());
-                    numPeers.set(peers.get().size());
-                    chainHeight.set(vXmrDaemon.getHeight());
+                    updateDaemonInfo();
                 }, DAEMON_POLL_INTERVAL_SECONDS);
 
                 // Need to be Threading.SAME_THREAD executor otherwise BitcoinJ will skip that listener
@@ -244,9 +246,7 @@ public class WalletsSetup {
 
                 // Map to user thread
                 UserThread.execute(() -> {
-                    peers.set(getPeerConnections());
-                    numPeers.set(peers.get().size());
-                    chainHeight.set(vXmrDaemon.getHeight());
+                    updateDaemonInfo();
                     addressEntryList.onWalletReady(walletConfig.btcWallet());
                     xmrAddressEntryList.onWalletReady(walletConfig.getXmrWallet());
                     timeoutTimer.stop();
@@ -256,8 +256,19 @@ public class WalletsSetup {
                 // onSetupCompleted in walletAppKit is not the called on the last invocations, so we add a bit of delay
                 UserThread.runAfter(resultHandler::handleResult, 100, TimeUnit.MILLISECONDS);
             }
+            
+            private void updateDaemonInfo() {
+                try {
+                    if (vXmrDaemon == null) throw new RuntimeException("No daemon connection");
+                    peers.set(getOnlinePeers());
+                    numPeers.set(peers.get().size());
+                    chainHeight.set(vXmrDaemon.getHeight());
+                } catch (Exception e) {
+                    log.warn("Could not update daemon info: " + e.getMessage());
+                }
+            }
 
-            private List<MoneroPeer> getPeerConnections() {
+            private List<MoneroPeer> getOnlinePeers() {
                 return vXmrDaemon.getPeers().stream()
                         .filter(peer -> peer.isOnline())
                         .collect(Collectors.toList());

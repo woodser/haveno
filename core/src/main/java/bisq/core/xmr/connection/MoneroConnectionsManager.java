@@ -1,6 +1,6 @@
 package bisq.core.xmr.connection;
 
-import bisq.core.xmr.connection.persistence.model.EncryptedConnectionList;
+import bisq.core.btc.model.EncryptedConnectionList;
 import java.util.Arrays;
 import java.util.List;
 import javax.inject.Inject;
@@ -32,11 +32,9 @@ public final class MoneroConnectionsManager {
                                     EncryptedConnectionList connectionList) {
         this.connectionManager = connectionManager;
         this.connectionList = connectionList;
-        // TODO: Move this initialization out of the constructor, as the connectionList has not read the persisted file yet
-        initialize();
     }
 
-    private void initialize() {
+    public void initialize() {
         synchronized (lock) {
 
             // load connections
@@ -53,17 +51,15 @@ public final class MoneroConnectionsManager {
                 connectionManager.setConnection(DEFAULT_CONNECTIONS.get(0).getUri()); // default to localhost
             });
 
-            // register connection change listener
-            connectionManager.addListener(this::onConnectionChanged);
-
             // restore configuration
             connectionManager.setAutoSwitch(connectionList.getAutoSwitch());
             long refreshPeriod = connectionList.getRefreshPeriod();
             if (refreshPeriod > 0) connectionManager.startCheckingConnection(refreshPeriod);
             else if (refreshPeriod == 0) connectionManager.startCheckingConnection(DEFAULT_REFRESH_PERIOD);
+            else checkConnection();
 
-            // check connection
-            checkConnection();
+            // register connection change listener
+            connectionManager.addListener(this::onConnectionChanged);
         }
     }
 
@@ -76,6 +72,12 @@ public final class MoneroConnectionsManager {
                 connectionList.addConnection(currentConnection);
                 connectionList.setCurrentConnectionUri(currentConnection.getUri());
             }
+        }
+    }
+    
+    public void addConnectionListener(MoneroConnectionManagerListener listener) {
+        synchronized (lock) {
+            connectionManager.addListener(listener);
         }
     }
 
@@ -96,12 +98,6 @@ public final class MoneroConnectionsManager {
     public MoneroRpcConnection getConnection() {
         synchronized (lock) {
             return connectionManager.getConnection();
-        }
-    }
-
-    public void addConnectionListener(MoneroConnectionManagerListener listener) {
-        synchronized (lock) {
-            connectionManager.addListener(listener);
         }
     }
 

@@ -337,9 +337,8 @@ public class WalletConfig extends AbstractIdleService {
       // check if monero-wallet-rpc exists
       if (!new File(MONERO_WALLET_RPC_PATH).exists()) throw new Error("monero-wallet-rpc executable doesn't exist at path " + MONERO_WALLET_RPC_PATH + "; copy monero-wallet-rpc to the project root or set WalletConfig.java MONERO_WALLET_RPC_PATH for your system");
 
-        MoneroRpcConnection connection = vXmrDaemon.getRpcConnection();
-        // TODO: (woodser) handle daemon change
-        // MoneroWalletRpc.setDaemonConnection() does not support daemon with authentication
+      // get app's current daemon connection
+      MoneroRpcConnection connection = moneroConnectionsManager.getConnection();
 
       // start monero-wallet-rpc instance and return connected client
       List<String> cmd = new ArrayList<>(Arrays.asList( // modifiable list
@@ -381,9 +380,11 @@ public class WalletConfig extends AbstractIdleService {
             File chainFile = new File(directory, filePrefix + ".spvchain");
             boolean chainFileExists = chainFile.exists();
 
-            // XMR daemon
+            // set XMR daemon and listen for updates
             vXmrDaemon = new MoneroDaemonRpc(moneroConnectionsManager.getConnection());
-            moneroConnectionsManager.addConnectionListener(newConnection -> vXmrDaemon = new MoneroDaemonRpc(newConnection));
+            moneroConnectionsManager.addConnectionListener(newConnection -> {
+                vXmrDaemon = newConnection == null ? null : new MoneroDaemonRpc(newConnection);
+            });
 
             // XMR wallet
             String xmrPrefix = "_XMR";

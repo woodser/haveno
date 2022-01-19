@@ -1,4 +1,4 @@
-package bisq.core.xmr.connection.persistence.model;
+package bisq.core.btc.model;
 
 import bisq.common.crypto.CryptoException;
 import bisq.common.crypto.Encryption;

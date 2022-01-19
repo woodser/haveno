@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
-
+import monero.common.MoneroRpcConnection;
 import monero.daemon.MoneroDaemon;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroDestination;
@@ -78,14 +78,17 @@ public class XmrWalletService {
               notifyBalanceListeners();
             }
         });
+        
+        walletsSetup.getMoneroConnectionsManager().addConnectionListener(newConnection -> {
+            updateDaemonConnections(newConnection);
+        });
     });
   }
 
   public MoneroDaemon getDaemon() {
       return walletsSetup.getXmrDaemon();
   }
-
-
+  
   // TODO (woodser): wallet has single password which is passed here?
   // TODO (woodser): test retaking failed trade.  create new multisig wallet or replace?  cannot reuse
 
@@ -404,6 +407,12 @@ public class XmrWalletService {
           }
       });
     }
+  }
+  
+  private void updateDaemonConnections(MoneroRpcConnection connection) {
+      log.info("Setting wallet daemon connections: " + (connection == null ? null : connection.getUri()));
+      walletsSetup.getXmrWallet().setDaemonConnection(connection);
+      for (MoneroWallet multisigWallet : multisigWallets.values()) multisigWallet.setDaemonConnection(connection);
   }
 
   /**
