@@ -69,7 +69,7 @@ public class CoreAccountService {
         public void onAccountDeleted() {}
         public void onPasswordChanged(String oldPassword, String newPassword) {}
     }
-
+    
     @Inject
     public CoreAccountService(Config config, KeyStorage keyStorage, KeyRing keyRing) {
         this.config = config;
@@ -97,7 +97,7 @@ public class CoreAccountService {
         if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
         keyRing.generateKeys(password);
         keyStorage.saveKeyRing(keyRing, password);
-        setPassword(password); // TODO: update wallet passwords
+        setPassword(password);
         if (accountOpenedHandler != null) accountOpenedHandler.run();
     }
     
@@ -112,9 +112,66 @@ public class CoreAccountService {
         }
     }
     
+    public void closeAccount() {
+        if (!isAccountOpen()) throw new IllegalStateException("Cannot close unopened account");
+        keyRing.lockKeys(); // closed account means the keys are locked
+    }
+    
+    public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {
+        if (!accountExists()) throw new IllegalStateException("Cannot backup non existing account");
+
+        // flush all known persistence objects to disk
+        PersistenceManager.flushAllDataToDiskAtBackup(() -> {
+            try {
+                File dataDir = new File(config.appDataDir.getPath());
+                PipedInputStream in = new PipedInputStream(bufferSize); // pipe the serialized account object to stream which will be read by the consumer
+                PipedOutputStream out = new PipedOutputStream(in);
+                log.info("Zipping directory " + dataDir);
+                new Thread(() -> {
+                    try {
+                        ZipUtil.zipDirToStream(dataDir, out, bufferSize);
+                    } catch (Exception ex) {
+                        error.accept(ex);
+                    }
+                }).start();
+                consume.accept(in);
+            } catch (java.io.IOException err) {
+                error.accept(err);
+            }
+        });
+    }
+    
+    // TODO: flush persistence objects to disk?
+    public void deleteAccount(Runnable onShutdown) {
+        try {
+            keyRing.lockKeys();
+            File dataDir = new File(config.appDataDir.getPath());
+            FileUtil.deleteDirectory(dataDir, null, false);
+            if (accountDeletedHandler != null) accountDeletedHandler.accept(onShutdown);
+        } catch (Exception err) {
+            throw new RuntimeException(err);
+        }
+    }
+    
+    public void restoreAccount(InputStream inputStream, int bufferSize, Runnable onShutdown) throws Exception {
+        if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
+        File dataDir = new File(config.appDataDir.getPath());
+        ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
+        if (accountRestoredHandler != null) accountRestoredHandler.accept(onShutdown);
+    }
+    
+    public void changePassword(String password) {
+        if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
+        keyStorage.saveKeyRing(keyRing, password);
+        setPassword(password);
+    }
+    
+    // ------------------------------- HELPERS --------------------------------
+    
     private void setPassword(String newPassword) {
         String oldPassword = this.password; // TODO: need default password?
         this.password = newPassword;
+        // TODO: update wallet passwords
         for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, newPassword);
     }
     
@@ -136,109 +193,4 @@ public class CoreAccountService {
     public void clearAccountOpenHandlers() {
         accountOpenedHandler = null;
     }
-    
-    
-    
-
-    /**
-     * Backup the account to a zip file. Throw error if !accountExists().
-     * @return InputStream with the zip of the account.
-     */
-    public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {
-        if (!accountExists()) {
-            throw new IllegalStateException("Cannot backup non existing account");
-        }
-
-        // Flush all known persistence objects to disk.
-        PersistenceManager.flushAllDataToDiskAtBackup(() -> {
-            // Pipe the serialized account object to stream which will be read by the consumer.
-            try {
-                File dataDir = new File(config.appDataDir.getPath());
-                PipedInputStream in = new PipedInputStream(bufferSize);
-                PipedOutputStream out = new PipedOutputStream(in);
-                log.info("Zipping directory " + dataDir);
-                new Thread(() -> {
-                    try {
-                        ZipUtil.zipDirToStream(dataDir, out, bufferSize);
-                    } catch (Exception ex) {
-                        error.accept(ex);
-                    }
-                }).start();
-
-                consume.accept(in);
-            } catch (java.io.IOException ex) {
-                error.accept(ex);
-            }
-        });
-    }
-
-    /**
-     * Change the Haveno account password. Throw error if !isAccountOpen().
-     * @param password
-     */
-    public void changePassword(String password) {
-        if (!isAccountOpen()) {
-            throw new IllegalStateException("Cannot change password on unopened account");
-        }
-
-        // Encrypt the keyring with the new password.
-        this.password = password;
-        keyStorage.saveKeyRing(keyRing, password);
-        // TODO: Override the wallet password
-        //walletsService.setWalletPassword(password, null);
-    }
-
-    /**
-     * Close the currently open account. Throw error if !isAccountOpen().
-     * @throws Exception
-     */
-    public void closeAccount() {
-        if (!isAccountOpen()) {
-            throw new IllegalStateException("Cannot close unopened account");
-        }
-
-        // Closed account means the keys are locked.
-        keyRing.lockKeys();
-    }
-
-    /**
-     * Permanently delete the Haveno account.
-     */
-    public void deleteAccount(Runnable onShutdown) {
-        try {
-            keyRing.lockKeys();
-            File dataDir = new File(config.appDataDir.getPath());
-            FileUtil.deleteDirectory(dataDir, null, false);
-            if (accountDeletedHandler != null) {
-                log.info("Calling deleteAccount handler");
-                accountDeletedHandler.accept(onShutdown);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    /**
-     * Open existing account. Throw error if `!accountExists()
-     * @param password The password for the account.
-     */
-
-
-
-    /**
-     * Restore the account from a zip file. Throw error if accountExists().
-     * @param inputStream
-     * @throws Exception
-     */
-    public void restoreAccount(InputStream inputStream, int bufferSize, Runnable onShutdown) throws Exception {
-        if (accountExists()) {
-            throw new IllegalStateException("Cannot restore account if there is an existing account");
-        }
-
-        File dataDir = new File(config.appDataDir.getPath());
-        ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
-        if (accountRestoredHandler != null)
-            accountRestoredHandler.accept(onShutdown);
-    }
-
 }
