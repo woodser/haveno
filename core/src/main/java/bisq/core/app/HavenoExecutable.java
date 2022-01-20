@@ -324,7 +324,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
                 log.info("Graceful shutdown flushed persistence. Exiting now.");
                 resultHandler.handleResult();
-                UserThread.runAfter(() -> System.exit(EXIT_FAILURE), 1);
+                UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
             });
         } else {
             resultHandler.handleResult();

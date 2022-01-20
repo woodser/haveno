@@ -113,6 +113,14 @@ public class CoreAccountService {
         }
     }
     
+    public void changePassword(String password) {
+        if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
+        keyStorage.saveKeyRing(keyRing, password);
+        String oldPassword = this.password;
+        setPassword(password);
+        for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, password);
+    }
+    
     public void closeAccount() {
         if (!isAccountOpen()) throw new IllegalStateException("Cannot close unopened account");
         keyRing.lockKeys(); // closed account means the keys are locked
@@ -142,6 +150,13 @@ public class CoreAccountService {
         });
     }
     
+    public void restoreAccount(InputStream inputStream, int bufferSize, Runnable onShutdown) throws Exception {
+        if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
+        File dataDir = new File(config.appDataDir.getPath());
+        ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
+        for (AccountServiceListener listener : listeners) listener.onAccountRestored();
+    }
+    
     // TODO: flush persistence objects to disk?
     public void deleteAccount(Runnable onShutdown) {
         try {
@@ -152,21 +167,6 @@ public class CoreAccountService {
         } catch (Exception err) {
             throw new RuntimeException(err);
         }
-    }
-    
-    public void restoreAccount(InputStream inputStream, int bufferSize, Runnable onShutdown) throws Exception {
-        if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
-        File dataDir = new File(config.appDataDir.getPath());
-        ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
-        for (AccountServiceListener listener : listeners) listener.onAccountRestored();
-    }
-    
-    public void changePassword(String password) {
-        if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
-        keyStorage.saveKeyRing(keyRing, password);
-        String oldPassword = this.password;
-        setPassword(password);
-        for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, password);
     }
     
     // ------------------------------- HELPERS --------------------------------
