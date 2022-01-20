@@ -1,13 +1,14 @@
 package bisq.core.btc.wallet;
 
 import bisq.common.UserThread;
+import bisq.core.api.CoreAccountService;
 import bisq.core.btc.exceptions.AddressEntryException;
 import bisq.core.btc.listeners.XmrBalanceListener;
 import bisq.core.btc.model.XmrAddressEntry;
 import bisq.core.btc.model.XmrAddressEntryList;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.util.ParsingUtils;
-
+import bisq.core.xmr.connection.MoneroConnectionsManager;
 import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.InsufficientMoneyException;
@@ -57,7 +58,9 @@ public class XmrWalletService {
   private MoneroWallet wallet;
 
   @Inject
-  XmrWalletService(WalletsSetup walletsSetup,
+  XmrWalletService(CoreAccountService accountService,
+                   MoneroConnectionsManager connectionManager,
+                   WalletsSetup walletsSetup,
                    XmrAddressEntryList addressEntryList) {
     this.walletsSetup = walletsSetup;
 
@@ -65,22 +68,34 @@ public class XmrWalletService {
     this.multisigWallets = new HashMap<String, MoneroWallet>();
 
     walletsSetup.addSetupCompletedHandler(() -> {
-        wallet = walletsSetup.getXmrWallet();
-        wallet.addListener(new MoneroWalletListener() {
+        wallet = walletsSetup.getXmrWallet(); // TODO: move xmr wallet to this class, completely remove from WalletsSetup, WalletConfig
+        
+//        wallet.addListener(new MoneroWalletListener() {
+//            @Override
+//            public void onSyncProgress(long height, long startHeight, long endHeight, double percentDone, String message) { }
+//
+//            @Override
+//            public void onNewBlock(long height) { }
+//
+//            @Override
+//            public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
+//              notifyBalanceListeners();
+//            }
+//        });
+        
+        accountService.addListener(accountService.new AccountServiceListener() {
             @Override
-            public void onSyncProgress(long height, long startHeight, long endHeight, double percentDone, String message) { }
-
+            public void onAccountCreated() {
+                System.out.println("XmrWalletService.accountService.onAccountCreated()");
+            }
             @Override
-            public void onNewBlock(long height) { }
-
-            @Override
-            public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
-              notifyBalanceListeners();
+            public void onAccountOpened() {
+                System.out.println("XmrWalletService.accountService.onAccountOpened()");
             }
         });
         
-        walletsSetup.getMoneroConnectionsManager().addConnectionListener(newConnection -> {
-            updateDaemonConnections(newConnection);
+        connectionManager.addListener(newConnection -> {
+            setWalletDaemonConnections(newConnection);
         });
     });
   }
@@ -409,7 +424,7 @@ public class XmrWalletService {
     }
   }
   
-  private void updateDaemonConnections(MoneroRpcConnection connection) {
+  private void setWalletDaemonConnections(MoneroRpcConnection connection) {
       log.info("Setting wallet daemon connections: " + (connection == null ? null : connection.getUri()));
       walletsSetup.getXmrWallet().setDaemonConnection(connection);
       for (MoneroWallet multisigWallet : multisigWallets.values()) multisigWallet.setDaemonConnection(connection);

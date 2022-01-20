@@ -70,10 +70,13 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         this.accountService = accountService;
         this.persistenceManager = persistenceManager;
         this.persistenceManager.initialize(this, "EncryptedConnectionList", PersistenceManager.Source.PRIVATE);
+        
+        // TODO: move this to MoneorConnectionsManager which uses setPassword
         this.accountService.addListener(this.accountService.new AccountServiceListener() {
             @Override
-            public void onPasswordChanged(String oldPassword, String newPassword) { onPasswordChange(oldPassword, newPassword); }
-            
+            public void onPasswordChanged(String oldPassword, String newPassword) {
+                onPasswordChange(oldPassword, newPassword);
+            }
         });
     }
 

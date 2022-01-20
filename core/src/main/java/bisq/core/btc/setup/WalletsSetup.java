@@ -207,7 +207,7 @@ public class WalletsSetup {
                         STARTUP_TIMEOUT + " seconds.")), STARTUP_TIMEOUT);
 
         // initialize Monero connection manager
-        moneroConnectionsManager.initialize();
+        //moneroConnectionsManager.initialize();
         
         backupWallets();
 
@@ -259,7 +259,7 @@ public class WalletsSetup {
             
             private void updateDaemonInfo() {
                 try {
-                    if (vXmrDaemon == null) throw new RuntimeException("No daemon connection");
+                    if (vXmrDaemon == null) throw new RuntimeException("No daemon connection"); // TODO: this is expected until initial connection set
                     peers.set(getOnlinePeers());
                     numPeers.set(peers.get().size());
                     chainHeight.set(vXmrDaemon.getHeight());

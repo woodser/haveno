@@ -380,30 +380,30 @@ public class WalletConfig extends AbstractIdleService {
             File chainFile = new File(directory, filePrefix + ".spvchain");
             boolean chainFileExists = chainFile.exists();
 
-            // set XMR daemon and listen for updates
-            vXmrDaemon = new MoneroDaemonRpc(moneroConnectionsManager.getConnection());
-            moneroConnectionsManager.addConnectionListener(newConnection -> {
-                vXmrDaemon = newConnection == null ? null : new MoneroDaemonRpc(newConnection);
-            });
-
-            // XMR wallet
-            String xmrPrefix = "_XMR";
-            vXmrWalletFile = new File(directory, filePrefix + xmrPrefix);
-            if (MoneroUtils.walletExists(vXmrWalletFile.getPath())) {
-              vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
-            } else {
-              vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
-            }
-            System.out.println("Monero wallet path: " + vXmrWallet.getPath());
-            System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
-            System.out.println("Monero wallet uri: " + vXmrWallet.getRpcConnection().getUri());
-//            vXmrWallet.rescanSpent();
-//            vXmrWallet.rescanBlockchain();
-            vXmrWallet.sync(); // blocking
-            downloadListener.doneDownload();
-            vXmrWallet.save();
-            System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance(0));
-            System.out.println("Loaded wallet unlocked balance: " + vXmrWallet.getUnlockedBalance(0));
+//            // set XMR daemon and listen for updates
+//            vXmrDaemon = new MoneroDaemonRpc(moneroConnectionsManager.getConnection());
+//            moneroConnectionsManager.addListener(newConnection -> {
+//                vXmrDaemon = newConnection == null ? null : new MoneroDaemonRpc(newConnection);
+//            });
+//
+//            // XMR wallet
+//            String xmrPrefix = "_XMR";
+//            vXmrWalletFile = new File(directory, filePrefix + xmrPrefix);
+//            if (MoneroUtils.walletExists(vXmrWalletFile.getPath())) {
+//              vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
+//            } else {
+//              vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
+//            }
+//            System.out.println("Monero wallet path: " + vXmrWallet.getPath());
+//            System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
+//            System.out.println("Monero wallet uri: " + vXmrWallet.getRpcConnection().getUri());
+////            vXmrWallet.rescanSpent();
+////            vXmrWallet.rescanBlockchain();
+//            vXmrWallet.sync(); // blocking
+//            downloadListener.doneDownload();
+//            vXmrWallet.save();
+//            System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance(0));
+//            System.out.println("Loaded wallet unlocked balance: " + vXmrWallet.getUnlockedBalance(0));
 
             String btcPrefix = "_BTC";
             vBtcWalletFile = new File(directory, filePrefix + btcPrefix + ".wallet");

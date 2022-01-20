@@ -1,5 +1,6 @@
 package bisq.core.xmr.connection;
 
+import bisq.core.api.CoreAccountService;
 import bisq.core.btc.model.EncryptedConnectionList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,10 +29,35 @@ public final class MoneroConnectionsManager {
     private final EncryptedConnectionList connectionList;
 
     @Inject
-    public MoneroConnectionsManager(MoneroConnectionManager connectionManager,
+    public MoneroConnectionsManager(CoreAccountService accountService,
+                                    MoneroConnectionManager connectionManager,
                                     EncryptedConnectionList connectionList) {
         this.connectionManager = connectionManager;
         this.connectionList = connectionList;
+        
+        // listen for account updates
+        accountService.addListener(accountService.new AccountServiceListener() {
+            @Override
+            public void onAccountCreated() {
+                System.out.println("MoneroConnectionsManager.accountservice.onAccountCreated()");
+                initialize();
+                // TODO: handle
+            }
+            
+            @Override
+            public void onAccountOpened() {
+                System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+                initialize();
+                // TODO: handle
+            }
+            
+            @Override
+            public void onPasswordChanged(String oldPassword, String newPassword) {
+                System.out.println("MoneroConnectionsManager.accountservice.onPasswordChanged(" + oldPassword + ", " + newPassword + ")");
+                // TODO: handle
+                // TODO: EncryptionConnectionList.setPassword(newPassword) instead of it listening to account service directly?
+            }
+        });
     }
 
     public void initialize() {
@@ -63,19 +89,7 @@ public final class MoneroConnectionsManager {
         }
     }
 
-    private void onConnectionChanged(MoneroRpcConnection currentConnection) {
-        synchronized (lock) {
-            if (currentConnection == null) {
-                connectionList.setCurrentConnectionUri(null);
-            } else {
-                connectionList.removeConnection(currentConnection.getUri());
-                connectionList.addConnection(currentConnection);
-                connectionList.setCurrentConnectionUri(currentConnection.getUri());
-            }
-        }
-    }
-    
-    public void addConnectionListener(MoneroConnectionManagerListener listener) {
+    public void addListener(MoneroConnectionManagerListener listener) {
         synchronized (lock) {
             connectionManager.addListener(listener);
         }
@@ -157,6 +171,20 @@ public final class MoneroConnectionsManager {
         synchronized (lock) {
             connectionManager.setAutoSwitch(autoSwitch);
             connectionList.setAutoSwitch(autoSwitch);
+        }
+    }
+    
+    // ------------------------------- HELPERS --------------------------------
+    
+    private void onConnectionChanged(MoneroRpcConnection currentConnection) {
+        synchronized (lock) {
+            if (currentConnection == null) {
+                connectionList.setCurrentConnectionUri(null);
+            } else {
+                connectionList.removeConnection(currentConnection.getUri());
+                connectionList.addConnection(currentConnection);
+                connectionList.setCurrentConnectionUri(currentConnection.getUri());
+            }
         }
     }
 }

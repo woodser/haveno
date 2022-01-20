@@ -64,6 +64,7 @@ public class CoreAccountService {
      * Account listener default class.
      */
     public class AccountServiceListener {
+        public void onAccountCreated() {}
         public void onAccountOpened() {}
         public void onAccountRestored() {}
         public void onAccountDeleted() {}
