@@ -39,7 +39,6 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.TradeDataValidation;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.closed.ClosedTradableManager;
-
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
@@ -256,9 +255,14 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
             if (walletsSetup.isDownloadComplete())
                 tryApplyMessages();
         });
-
+        
         walletsSetup.numPeersProperty().addListener((observable, oldValue, newValue) -> {
             if (walletsSetup.hasSufficientPeersForBroadcast())
+                tryApplyMessages();
+        });
+
+        xmrWalletService.getConnectionManager().numPeersProperty().addListener((observable, oldValue, newValue) -> {
+            if (xmrWalletService.getConnectionManager().hasSufficientPeersForBroadcast())
                 tryApplyMessages();
         });
 

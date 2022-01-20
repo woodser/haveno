@@ -38,7 +38,7 @@ import bisq.core.user.Preferences;
 import bisq.core.util.FormattingUtils;
 import bisq.core.util.validation.RegexValidator;
 import bisq.core.util.validation.RegexValidatorFactory;
-
+import bisq.core.xmr.connection.MoneroConnectionsManager;
 import bisq.network.p2p.P2PService;
 import bisq.network.p2p.network.Statistic;
 
@@ -119,6 +119,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     private final ClockWatcher clockWatcher;
     private final WalletsSetup walletsSetup;
     private final P2PService p2PService;
+    private final MoneroConnectionsManager connectionManager;
 
     private final ObservableList<P2pNetworkListItem> p2pNetworkListItems = FXCollections.observableArrayList();
     private final SortedList<P2pNetworkListItem> p2pSortedList = new SortedList<>(p2pNetworkListItems);
@@ -139,6 +140,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     @Inject
     public NetworkSettingsView(WalletsSetup walletsSetup,
                                P2PService p2PService,
+                               MoneroConnectionsManager connectionManager,
                                Preferences preferences,
                                BtcNodes btcNodes,
                                FilterManager filterManager,
@@ -148,6 +150,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         super();
         this.walletsSetup = walletsSetup;
         this.p2PService = p2PService;
+        this.connectionManager = connectionManager;
         this.preferences = preferences;
         this.btcNodes = btcNodes;
         this.filterManager = filterManager;
@@ -291,10 +294,10 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
 
         reSyncSPVChainButton.setOnAction(event -> GUIUtil.reSyncSPVChain(preferences));
 
-        moneroPeersSubscription = EasyBind.subscribe(walletsSetup.peerConnectionsProperty(),
+        moneroPeersSubscription = EasyBind.subscribe(connectionManager.peerConnectionsProperty(),
                 this::updateMoneroPeersTable);
 
-        moneroBlockHeightSubscription = EasyBind.subscribe(walletsSetup.chainHeightProperty(),
+        moneroBlockHeightSubscription = EasyBind.subscribe(connectionManager.chainHeightProperty(),
                 this::updateChainHeightTextField);
 
         nodeAddressSubscription = EasyBind.subscribe(p2PService.getNetworkNode().nodeAddressProperty(),

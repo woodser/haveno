@@ -293,7 +293,7 @@ public abstract class SupportManager {
     private boolean isReady() {
         return allServicesInitialized &&
                 p2PService.isBootstrapped() &&
-                walletsSetup.isDownloadComplete() &&
+                walletsSetup.isDownloadComplete() && // TODO (woodser): switch to xmr connection manager?
                 walletsSetup.hasSufficientPeersForBroadcast();
     }
 
