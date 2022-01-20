@@ -329,6 +329,11 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     }
 
     private void applyIsBootstrapped(Consumer<P2PServiceListener> listenerHandler) {
+        try {
+            throw new RuntimeException("P2PService.applyIsBootstrapped()");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if (!isBootstrapped) {
             isBootstrapped = true;
 

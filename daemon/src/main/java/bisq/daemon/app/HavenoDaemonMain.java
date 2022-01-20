@@ -19,6 +19,7 @@ package bisq.daemon.app;
 
 import bisq.core.app.HavenoHeadlessAppMain;
 import bisq.core.app.HavenoSetup;
+import bisq.core.api.CoreAccountService.AccountServiceListener;
 import bisq.core.app.CoreModule;
 
 import bisq.common.UserThread;
@@ -136,11 +137,15 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
 
             // Handle asynchronous account opens.
             // Will need to also close and reopen account.
-            accountService.setAccountOpenedHandler(() -> {
-                log.info("Logged in successfully through rpc");
-                // Closing the reader will stop all read attempts and end the interactive login thread.
-                reader.cancel();
-            });
+            AccountServiceListener accountListener = accountService.new AccountServiceListener() {
+                @Override
+                public void onAccountOpened() {
+                    log.info("Logged in successfully through rpc");
+                    // Closing the reader will stop all read attempts and end the interactive login thread.
+                    reader.cancel();
+                }
+            };
+            accountService.addListener(accountListener);
 
             try {
                 // Wait until interactive login or rpc. Check one more time if account is open to close race condition.
@@ -152,7 +157,7 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
                 // expected
             }
 
-            accountService.clearAccountOpenHandlers();
+            accountService.removeListener(accountListener);
             opened = accountService.isAccountOpen();
         }
 
@@ -179,6 +184,9 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
 
         String openedOrCreated = "Account unlocked\n";
         boolean accountExists = accountService.accountExists();
+        System.out.println("Account exists: " + accountExists);
+        System.out.println("Account is open: " + accountService.isAccountOpen());
+        System.out.println("Account password: " + accountService.getPassword());
         while (!accountService.isAccountOpen()) {
             try {
                 if (accountExists) {

@@ -18,7 +18,7 @@
 package bisq.core.app;
 
 import bisq.core.btc.setup.WalletsSetup;
-
+import bisq.core.xmr.connection.MoneroConnectionsManager;
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.P2PService;
 
@@ -53,7 +53,7 @@ public class AppStartupState {
     private final BooleanProperty hasSufficientPeersForBroadcast = new SimpleBooleanProperty();
 
     @Inject
-    public AppStartupState(WalletsSetup walletsSetup, P2PService p2PService) {
+    public AppStartupState(MoneroConnectionsManager connectionManager, P2PService p2PService) {
 
         p2PService.addP2PServiceListener(new BootstrapListener() {
             @Override
@@ -62,13 +62,13 @@ public class AppStartupState {
             }
         });
 
-        walletsSetup.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
-            if (walletsSetup.isDownloadComplete())
+        connectionManager.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
+            if (connectionManager.isDownloadComplete())
                 isBlockDownloadComplete.set(true);
         });
 
-        walletsSetup.numPeersProperty().addListener((observable, oldValue, newValue) -> {
-            if (walletsSetup.hasSufficientPeersForBroadcast())
+        connectionManager.numPeersProperty().addListener((observable, oldValue, newValue) -> {
+            if (connectionManager.hasSufficientPeersForBroadcast())
                 hasSufficientPeersForBroadcast.set(true);
         });
 
@@ -77,6 +77,7 @@ public class AppStartupState {
                 hasSufficientPeersForBroadcast,
                 allDomainServicesInitialized,
                 (a, b, c, d) -> {
+                    log.info("Setting walletAndNetworkReady = {} = updatedDataReceived={} && isBlockDownloadComplete={} && hasSufficientPeersForBroadcast={}", (a && b && c), a, b, c);
                     if (a && b && c) {
                         walletAndNetworkReady.set(true);
                     }

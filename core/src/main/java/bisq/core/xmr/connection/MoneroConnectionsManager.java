@@ -4,7 +4,9 @@ import static com.google.common.base.Preconditions.checkState;
 
 import bisq.common.UserThread;
 import bisq.core.api.CoreAccountService;
+import bisq.core.api.CoreAccountService.AccountServiceListener;
 import bisq.core.btc.model.EncryptedConnectionList;
+import bisq.core.btc.setup.DownloadListener;
 import bisq.core.btc.setup.WalletsSetup;
 import com.google.common.util.concurrent.Service.State;
 import java.util.Arrays;
@@ -13,6 +15,7 @@ import java.util.stream.Collectors;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -46,9 +49,10 @@ public final class MoneroConnectionsManager {
     private final WalletsSetup walletsSetup;
     private final MoneroConnectionManager connectionManager;
     private final EncryptedConnectionList connectionList;
+    private final ObjectProperty<List<MoneroPeer>> peers = new SimpleObjectProperty<>();
     private final IntegerProperty numPeers = new SimpleIntegerProperty(0);
     private final LongProperty chainHeight = new SimpleLongProperty(0);
-    private final ObjectProperty<List<MoneroPeer>> peers = new SimpleObjectProperty<>();
+    private final DownloadListener downloadListener = new DownloadListener();
     
     private MoneroDaemon daemon;
 
@@ -66,6 +70,7 @@ public final class MoneroConnectionsManager {
             @Override
             public void onAccountCreated() {
                 System.out.println("MoneroConnectionsManager.accountservice.onAccountCreated()");
+                connectionList.updatePassword(null, accountService.getPassword());
                 initialize();
                 // TODO: handle
             }
@@ -73,6 +78,7 @@ public final class MoneroConnectionsManager {
             @Override
             public void onAccountOpened() {
                 System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+                connectionList.updatePassword(null, accountService.getPassword());
                 initialize();
                 // TODO: handle
             }
@@ -80,8 +86,8 @@ public final class MoneroConnectionsManager {
             @Override
             public void onPasswordChanged(String oldPassword, String newPassword) {
                 System.out.println("MoneroConnectionsManager.accountservice.onPasswordChanged(" + oldPassword + ", " + newPassword + ")");
+                connectionList.updatePassword(oldPassword, newPassword);
                 // TODO: handle
-                // TODO: EncryptionConnectionList.setPassword(newPassword) instead of it listening to account service directly?
             }
         });
     }
@@ -123,6 +129,12 @@ public final class MoneroConnectionsManager {
     }
     
     // ------------------------ CONNECTION MANAGEMENT -------------------------
+    
+    public MoneroDaemon getDaemon() {
+        State state = walletsSetup.getWalletConfig().state();
+        checkState(state == State.STARTING || state == State.RUNNING, "Cannot call until startup is complete");
+        return this.daemon;
+    }
     
     public void addListener(MoneroConnectionManagerListener listener) {
         synchronized (lock) {
@@ -211,12 +223,6 @@ public final class MoneroConnectionsManager {
     
     // ----------------------------- APP METHODS ------------------------------
     
-    public MoneroDaemon getDaemon() {
-        State state = walletsSetup.getWalletConfig().state();
-        checkState(state == State.STARTING || state == State.RUNNING, "Cannot call until startup is complete");
-        return this.daemon;
-    }
-    
     public boolean isChainHeightSyncedWithinTolerance() {
         if (daemon == null) return false;
         Long peersChainHeight = daemon.getSyncInfo().getTargetHeight();
@@ -254,17 +260,25 @@ public final class MoneroConnectionsManager {
     public ReadOnlyObjectProperty<List<MoneroPeer>> peerConnectionsProperty() {
         return peers;
     }
-
-    public LongProperty chainHeightProperty() {
-        return chainHeight;
-    }
     
     public boolean hasSufficientPeersForBroadcast() {
         return numPeers.get() >= getMinBroadcastConnections();
     }
 
+    public LongProperty chainHeightProperty() {
+        return chainHeight;
+    }
+    
+    public ReadOnlyDoubleProperty downloadPercentageProperty() {
+        return downloadListener.percentageProperty();
+    }
+    
     public int getMinBroadcastConnections() {
         return walletsSetup.getWalletConfig().getMinBroadcastConnections();
+    }
+    
+    public boolean isDownloadComplete() {
+        return downloadPercentageProperty().get() == 1d;
     }
     
     // ------------------------------- HELPERS --------------------------------

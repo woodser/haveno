@@ -8,7 +8,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 
 import java.util.Date;
 
-class DownloadListener {
+public class DownloadListener {
     private final DoubleProperty percentage = new SimpleDoubleProperty(-1);
 
     protected void progress(double percentage, int blocksLeft, Date date) {

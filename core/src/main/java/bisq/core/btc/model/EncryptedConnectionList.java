@@ -70,14 +70,6 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         this.accountService = accountService;
         this.persistenceManager = persistenceManager;
         this.persistenceManager.initialize(this, "EncryptedConnectionList", PersistenceManager.Source.PRIVATE);
-        
-        // TODO: move this to MoneorConnectionsManager which uses setPassword
-        this.accountService.addListener(this.accountService.new AccountServiceListener() {
-            @Override
-            public void onPasswordChanged(String oldPassword, String newPassword) {
-                onPasswordChange(oldPassword, newPassword);
-            }
-        });
     }
 
     private EncryptedConnectionList(byte[] salt,
@@ -85,7 +77,9 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
                               @NonNull String currentConnectionUri,
                               long refreshPeriod,
                               boolean autoSwitch) {
+        System.out.println("Constructing EncryptedConnectionList with salt: " + salt);
         this.keyCrypterScrypt = ScryptUtil.getKeyCrypterScrypt(salt);
+        if (this.keyCrypterScrypt == null) System.out.println("WARNING: KEYCRYPTERSCRYPT IS NULL!");
         this.items.putAll(items.stream().collect(Collectors.toMap(EncryptedConnection::getUri, Function.identity())));
         this.currentConnectionUri = currentConnectionUri;
         this.refreshPeriod = refreshPeriod;
@@ -119,6 +113,11 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
     }
 
     private void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {
+        try {
+            throw new RuntimeException("Initializing encryption with keyCrypterScrypt: " + keyCrypterScrypt);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.keyCrypterScrypt = keyCrypterScrypt;
         encryptionKey = toSecretKey(accountService.getPassword());
     }
@@ -232,15 +231,12 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         }
     }
 
-    private void requestPersistence() {
-        persistenceManager.requestPersistence();
-    }
-
-    private void onPasswordChange(String oldPassword, String newPassword) {
+    public void updatePassword(String oldPassword, String newPassword) {
         writeLock.lock();
         try {
             SecretKey oldSecret = encryptionKey;
             assert Objects.equals(oldSecret, toSecretKey(oldPassword)) : "Old secret does not match old password";
+            System.out.println("Calling toSecretKey(" + newPassword + ")");
             encryptionKey = toSecretKey(newPassword);
             items.replaceAll((key, connection) -> reEncrypt(connection, oldSecret, encryptionKey));
         } finally {
@@ -249,10 +245,17 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         requestPersistence();
     }
 
+    private void requestPersistence() {
+        persistenceManager.requestPersistence();
+    }
+
     private SecretKey toSecretKey(String password) {
         if (password == null) {
             return null;
         }
+        System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
+        System.out.println("keyCrypterScrypt.deriveKey(password): " + keyCrypterScrypt.deriveKey(password));
+        System.out.println("keyCrypterScrypt.deriveKey(password).getKey(): " + keyCrypterScrypt.deriveKey(password).getKey());
         return Encryption.getSecretKeyFromBytes(keyCrypterScrypt.deriveKey(password).getKey());
     }
 
@@ -328,6 +331,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             System.arraycopy(password, 0, saltedPassword, 0, password.length);
             System.arraycopy(salt, 0, saltedPassword, password.length, salt.length);
         }
+        System.out.println("Encrypting with salted password and encryption key: " + saltedPassword + ", " + encryptionKey);
         return encrypt(saltedPassword, encryptionKey);
     }
 

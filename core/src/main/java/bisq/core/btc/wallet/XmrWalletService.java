@@ -69,7 +69,6 @@ public class XmrWalletService {
     private final int rpcBindPort;
     protected final CopyOnWriteArraySet<XmrBalanceListener> balanceListeners = new CopyOnWriteArraySet<>();
     protected final CopyOnWriteArraySet<MoneroWalletListenerI> walletListeners = new CopyOnWriteArraySet<>();
-    @Getter
     private MoneroWallet wallet;
     private Map<String, MoneroWallet> multisigWallets;
 

@@ -56,9 +56,6 @@ public class CoreAccountService {
     @Getter
     private String password;
     private List<AccountServiceListener> listeners = new ArrayList<AccountServiceListener>();
-    private Runnable accountOpenedHandler;
-    private Consumer<Runnable> accountDeletedHandler;
-    private Consumer<Runnable> accountRestoredHandler;
     
     /**
      * Account listener default class.
@@ -99,14 +96,17 @@ public class CoreAccountService {
         keyRing.generateKeys(password);
         keyStorage.saveKeyRing(keyRing, password);
         setPassword(password);
-        if (accountOpenedHandler != null) accountOpenedHandler.run();
+        for (AccountServiceListener listener : listeners) listener.onAccountCreated();
     }
     
     public void openAccount(String password) throws IncorrectPasswordException {
         if (!accountExists()) throw new IllegalStateException("Cannot open account if account does not exist");
         try {
             if (keyRing.unlockKeys(password, false)) {
-                if (accountOpenedHandler != null) accountOpenedHandler.run();
+                setPassword(password);
+                for (AccountServiceListener listener : listeners) listener.onAccountOpened();
+            } else {
+                throw new RuntimeException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): allowable?
             }
         } catch (IncorrectPasswordException ex) {
             log.warn(ex.getMessage());
@@ -148,7 +148,7 @@ public class CoreAccountService {
             keyRing.lockKeys();
             File dataDir = new File(config.appDataDir.getPath());
             FileUtil.deleteDirectory(dataDir, null, false);
-            if (accountDeletedHandler != null) accountDeletedHandler.accept(onShutdown);
+            for (AccountServiceListener listener : listeners) listener.onAccountDeleted();
         } catch (Exception err) {
             throw new RuntimeException(err);
         }
@@ -158,40 +158,21 @@ public class CoreAccountService {
         if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
         File dataDir = new File(config.appDataDir.getPath());
         ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
-        if (accountRestoredHandler != null) accountRestoredHandler.accept(onShutdown);
+        for (AccountServiceListener listener : listeners) listener.onAccountRestored();
     }
     
     public void changePassword(String password) {
         if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
         keyStorage.saveKeyRing(keyRing, password);
+        String oldPassword = this.password;
         setPassword(password);
+        for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, password);
     }
     
     // ------------------------------- HELPERS --------------------------------
     
     private void setPassword(String newPassword) {
-        String oldPassword = this.password; // TODO: need default password?
         this.password = newPassword;
         // TODO: update wallet passwords
-        for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, newPassword);
-    }
-    
-    
-    // TODO: remove these
-    
-    public void setAccountDeletedHandler(Consumer<Runnable> handler) {
-        accountDeletedHandler = handler;
-    }
-
-    public void setAccountRestoredHandler(Consumer<Runnable> handler) {
-        accountRestoredHandler = handler;
-    }
-
-    public void setAccountOpenedHandler(Runnable handler) {
-        accountOpenedHandler = handler;
-    }
-
-    public void clearAccountOpenHandlers() {
-        accountOpenedHandler = null;
     }
 }
