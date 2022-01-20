@@ -72,7 +72,7 @@ public class AppStartupState {
                 hasSufficientPeersForBroadcast.set(true);
         });
 
-        p2pNetworkAndWalletInitialized = EasyBind.combine(updatedDataReceived,
+        p2pNetworkAndWalletInitialized = EasyBind.combine(updatedDataReceived, // TODO (woodser): wallet only refers to btc wallet setup, which is disabled
                 isBlockDownloadComplete,
                 hasSufficientPeersForBroadcast,
                 allDomainServicesInitialized,
@@ -81,7 +81,11 @@ public class AppStartupState {
                     if (a && b && c) {
                         walletAndNetworkReady.set(true);
                     }
-                    return a && b && c && d;
+                    if (a) {
+                        log.info("But actually, setting walletAndNetworkReady = {} = updatedDataReceived={}", (a), a);
+                        walletAndNetworkReady.set(true); // TODO (woodser): haveno application is fully initialized when haveno network ready, not monero daemon, correct?
+                    }
+                    return a && d;
                 });
         p2pNetworkAndWalletInitialized.subscribe((observable, oldValue, newValue) -> {
             if (newValue) {
