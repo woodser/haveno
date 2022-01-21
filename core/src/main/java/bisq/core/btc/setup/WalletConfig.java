@@ -469,7 +469,7 @@ public class WalletConfig extends AbstractIdleService {
         try {
             Context.propagate(context);
 
-            vBtcWallet.saveToFile(vBtcWalletFile);
+            if (vBtcWalletFile.exists()) vBtcWallet.saveToFile(vBtcWalletFile);
             vBtcWallet = null;
             log.info("BtcWallet saved to file");
 

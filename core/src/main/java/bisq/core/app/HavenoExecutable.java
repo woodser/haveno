@@ -298,7 +298,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
                     injector.getInstance(P2PService.class).shutDown(() -> {
                         log.info("P2PService shutdown completed");
                         module.close(injector);
-                        completeShutdown(resultHandler);
+                        completeShutdown(resultHandler, EXIT_SUCCESS);
                     });
                 });
                 walletsSetup.shutDown();
@@ -308,27 +308,27 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             // Wait max 20 sec.
             UserThread.runAfter(() -> {
                 log.warn("Graceful shut down not completed in 20 sec. We trigger our timeout handler.");
-                completeShutdown(resultHandler);
+                completeShutdown(resultHandler, EXIT_SUCCESS);
 
             }, 20);
         } catch (Throwable t) {
             log.error("App shutdown failed with exception {}", t.toString());
             t.printStackTrace();
-            completeShutdown(resultHandler);
+            completeShutdown(resultHandler, EXIT_FAILURE);
         }
     }
 
-    private void completeShutdown(ResultHandler resultHandler) {
+    private void completeShutdown(ResultHandler resultHandler, int exitCode) {
         if (!isReadOnly) {
             // If user tried to downgrade we do not write the persistable data to avoid data corruption
             PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
                 log.info("Graceful shutdown flushed persistence. Exiting now.");
                 resultHandler.handleResult();
-                UserThread.runAfter(() -> System.exit(EXIT_SUCCESS), 1);
+                UserThread.runAfter(() -> System.exit(exitCode), 1);
             });
         } else {
             resultHandler.handleResult();
-            UserThread.runAfter(() -> System.exit(EXIT_FAILURE), 1);
+            UserThread.runAfter(() -> System.exit(exitCode), 1);
         }
     }
 
