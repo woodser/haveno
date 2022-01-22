@@ -63,8 +63,8 @@ public class CoreAccountService {
     public class AccountServiceListener {
         public void onAccountCreated() {}
         public void onAccountOpened() {}
-        public void onAccountRestored() {}
-        public void onAccountDeleted() {}
+        public void onAccountRestored(Runnable onShutDown) {}
+        public void onAccountDeleted(Runnable onShutDown) {}
         public void onPasswordChanged(String oldPassword, String newPassword) {}
     }
     
@@ -154,7 +154,7 @@ public class CoreAccountService {
         if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
         File dataDir = new File(config.appDataDir.getPath());
         ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
-        for (AccountServiceListener listener : listeners) listener.onAccountRestored();
+        for (AccountServiceListener listener : listeners) listener.onAccountRestored(onShutdown);
     }
     
     // TODO: flush persistence objects to disk?
@@ -163,7 +163,7 @@ public class CoreAccountService {
             keyRing.lockKeys();
             File dataDir = new File(config.appDataDir.getPath());
             FileUtil.deleteDirectory(dataDir, null, false);
-            for (AccountServiceListener listener : listeners) listener.onAccountDeleted();
+            for (AccountServiceListener listener : listeners) listener.onAccountDeleted(onShutdown);
         } catch (Exception err) {
             throw new RuntimeException(err);
         }

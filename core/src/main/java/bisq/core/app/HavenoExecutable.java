@@ -149,10 +149,8 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
 
         // Application needs to restart on delete and restore of account.
         accountService.addListener(accountService.new AccountServiceListener() {
-            @Override
-            public void onAccountDeleted() { shutDownNoPersist(); }
-            @Override
-            public void onAccountRestored() { shutDownNoPersist(); }
+            @Override public void onAccountDeleted(Runnable onShutdown) { shutDownNoPersist(onShutdown); }
+            @Override public void onAccountRestored(Runnable onShutdown) { shutDownNoPersist(onShutdown); }
         });
 
         // Attempt to login, subclasses should implement interactive login and or rpc login.
@@ -168,10 +166,11 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
      * Do not persist when shutting down after account restore and restarts since
      * that causes the current persistables to overwrite the restored or deleted state.
      */
-    protected void shutDownNoPersist() {
+    protected void shutDownNoPersist(Runnable onShutdown) {
         this.isReadOnly = true;
         gracefulShutDown(() -> {
             log.info("Shutdown without persisting");
+            if (onShutdown != null) onShutdown.run();
         });
     }
 
