@@ -109,10 +109,7 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
     @Override
     public void gracefulShutDown(ResultHandler resultHandler) {
         super.gracefulShutDown(resultHandler);
-
-        // could be null if application attempted to shutdown early.
-        if (grpcServer != null)
-            grpcServer.shutdown();
+        if (grpcServer != null) grpcServer.shutdown(); // could be null if application attempted to shutdown early
     }
 
     /**

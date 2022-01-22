@@ -188,9 +188,6 @@ public class WalletsSetup {
         Timer timeoutTimer = UserThread.runAfter(() ->
                 exceptionHandler.handleException(new TimeoutException("Wallet did not initialize in " +
                         STARTUP_TIMEOUT + " seconds.")), STARTUP_TIMEOUT);
-
-        // initialize Monero connection manager
-        //moneroConnectionsManager.initialize();
         
         backupWallets();
 

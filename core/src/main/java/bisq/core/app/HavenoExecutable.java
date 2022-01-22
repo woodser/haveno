@@ -282,7 +282,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             injector.getInstance(TradeStatisticsManager.class).shutDown();
             injector.getInstance(XmrTxProofService.class).shutDown();
             injector.getInstance(AvoidStandbyModeService.class).shutDown();
-            injector.getInstance(XmrWalletService.class).shutDown(); // TODO: why not shut down BtcWalletService, etc?
+            injector.getInstance(XmrWalletService.class).shutDown(); // TODO: why not shut down BtcWalletService, etc? shutdown MoneroConnectionsManager
             log.info("OpenOfferManager shutdown started");
             injector.getInstance(OpenOfferManager.class).shutDown(() -> {
                 log.info("OpenOfferManager shutdown completed");
@@ -308,7 +308,6 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             UserThread.runAfter(() -> {
                 log.warn("Graceful shut down not completed in 20 sec. We trigger our timeout handler.");
                 completeShutdown(resultHandler, EXIT_SUCCESS);
-
             }, 20);
         } catch (Throwable t) {
             log.error("App shutdown failed with exception {}", t.toString());

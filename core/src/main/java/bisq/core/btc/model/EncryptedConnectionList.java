@@ -88,6 +88,11 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
 
     @Override
     public void readPersisted(Runnable completeHandler) {
+        try {
+            throw new RuntimeException("EncryptedConnectionList.readPersisted()");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
             writeLock.lock();
             try {
@@ -232,6 +237,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
     }
 
     public void updatePassword(String oldPassword, String newPassword) {
+        System.out.println("EncryptedConnectionList.updatePassword(" + oldPassword + ", " + newPassword + ")");
         writeLock.lock();
         try {
             SecretKey oldSecret = encryptionKey;
@@ -242,6 +248,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         } finally {
             writeLock.unlock();
         }
+        System.out.println("EncryptedConnectionList.updatePassword(" + oldPassword + ", " + newPassword + ") requesting persistence");
         requestPersistence();
     }
 
@@ -253,6 +260,8 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         if (password == null) {
             return null;
         }
+        System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
+        if (keyCrypterScrypt == null) initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
         System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
         System.out.println("keyCrypterScrypt.deriveKey(password): " + keyCrypterScrypt.deriveKey(password));
         System.out.println("keyCrypterScrypt.deriveKey(password).getKey(): " + keyCrypterScrypt.deriveKey(password).getKey());

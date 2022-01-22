@@ -92,11 +92,17 @@ public class CoreAccountService {
     }
     
     public void createAccount(String password) {
+        System.out.println("CoreAccountService 1");
         if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
+        System.out.println("CoreAccountService 2");
         keyRing.generateKeys(password);
+        System.out.println("CoreAccountService 3");
         keyStorage.saveKeyRing(keyRing, password);
+        System.out.println("CoreAccountService 4");
         setPassword(password);
+        System.out.println("CoreAccountService 5");
         for (AccountServiceListener listener : listeners) listener.onAccountCreated();
+        System.out.println("CoreAccountService 6");
     }
     
     public void openAccount(String password) throws IncorrectPasswordException {

@@ -7,6 +7,7 @@ import bisq.core.api.CoreAccountService;
 import bisq.core.api.CoreAccountService.AccountServiceListener;
 import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.setup.DownloadListener;
+import bisq.core.btc.setup.WalletConfig;
 import bisq.core.btc.setup.WalletsSetup;
 import com.google.common.util.concurrent.Service.State;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import monero.daemon.model.MoneroPeer;
 public final class MoneroConnectionsManager {
 
     // TODO: this connection manager should update app status, don't poll in WalletsSetup every 30 seconds
+    private static final int MIN_BROADCAST_CONNECTIONS = 2;
     private static final long DAEMON_REFRESH_PERIOD_MS = 15000L; // check connection periodically in ms
     private static final long DAEMON_INFO_POLL_PERIOD_MS = 20000L; // collect daemon info periodically in ms
 
@@ -274,7 +276,7 @@ public final class MoneroConnectionsManager {
     }
     
     public int getMinBroadcastConnections() {
-        return walletsSetup.getWalletConfig().getMinBroadcastConnections();
+        return MIN_BROADCAST_CONNECTIONS;
     }
     
     public boolean isDownloadComplete() {
