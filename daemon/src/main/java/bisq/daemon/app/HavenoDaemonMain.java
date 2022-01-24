@@ -104,6 +104,9 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
     @Override
     protected void onApplicationStarted() {
         super.onApplicationStarted();
+
+        grpcServer = injector.getInstance(GrpcServer.class);
+        grpcServer.start();
     }
 
     @Override

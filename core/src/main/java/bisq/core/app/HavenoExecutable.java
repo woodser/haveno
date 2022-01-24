@@ -145,6 +145,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         isReadOnly = HavenoSetup.hasDowngraded();
 
         // Account service should be available before attempting to login.
+        // TODO (woodser): this should be moved into start application
         accountService = injector.getInstance(CoreAccountService.class);
 
         // Application needs to restart on delete and restore of account.
@@ -154,7 +155,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         });
 
         // Attempt to login, subclasses should implement interactive login and or rpc login.
-        if (!isReadOnly && loginAccount()) {
+        if (!isReadOnly) {
             readAllPersisted(this::startApplication);
         } else {
             log.warn("Running application in readonly mode");
@@ -247,9 +248,9 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     }
 
     protected void runHavenoSetup() {
-        HavenoSetup bisqSetup = injector.getInstance(HavenoSetup.class);
-        bisqSetup.addHavenoSetupListener(this);
-        bisqSetup.start();
+        HavenoSetup havenoSetup = injector.getInstance(HavenoSetup.class);
+        havenoSetup.addHavenoSetupListener(this);
+        havenoSetup.start();
     }
 
     @Override

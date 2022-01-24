@@ -24,6 +24,7 @@ import bisq.common.crypto.KeyStorage;
 import bisq.common.file.FileUtil;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.util.ZipUtil;
+import com.google.inject.name.Named;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -52,6 +53,7 @@ public class CoreAccountService {
     private final Config config;
     private final KeyStorage keyStorage;
     private final KeyRing keyRing;
+    private final File walletDir;
     
     @Getter
     private String password;
@@ -69,13 +71,26 @@ public class CoreAccountService {
     }
     
     @Inject
-    public CoreAccountService(Config config, KeyStorage keyStorage, KeyRing keyRing) {
+    public CoreAccountService(Config config,
+                              KeyStorage keyStorage,
+                              KeyRing keyRing,
+                              @Named(Config.WALLET_DIR) File walletDir) {
         this.config = config;
         this.keyStorage = keyStorage;
         this.keyRing = keyRing;
+        this.walletDir = walletDir;
+        
+        // generate default keys
+        keyRing.generateKeys(null);
+        keyStorage.saveKeyRing(keyRing, null);
     }
     
     public void addListener(AccountServiceListener listener) {
+        try {
+            throw new RuntimeException("CoreAccountService.addListener()");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         listeners.add(listener);
     }
     
@@ -84,7 +99,12 @@ public class CoreAccountService {
     }
     
     public boolean accountExists() {
-        return keyStorage.allKeyFilesExist(); // public and private key pair indicate the existence of the account
+        return walletExists("haveno_XMR"); // TODO: config?
+    }
+    
+    private boolean walletExists(String walletName) {
+        String path = walletDir.toString() + File.separator + walletName;
+        return new File(path + ".keys").exists();
     }
     
     public boolean isAccountOpen() {
@@ -92,7 +112,7 @@ public class CoreAccountService {
     }
     
     public void createAccount(String password) {
-        System.out.println("CoreAccountService 1");
+        System.out.println("CoreAccountService.createAccount(" + password + ")");
         if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
         System.out.println("CoreAccountService 2");
         keyRing.generateKeys(password);
@@ -167,9 +187,9 @@ public class CoreAccountService {
     public void deleteAccount(Runnable onShutdown) {
         try {
             keyRing.lockKeys();
-            File dataDir = new File(config.appDataDir.getPath());
-            FileUtil.deleteDirectory(dataDir, null, false);
             for (AccountServiceListener listener : listeners) listener.onAccountDeleted(onShutdown);
+            File dataDir = new File(config.appDataDir.getPath()); // TODO (woodser): deleting directory after gracefulShutdown() so services don't throw when they try to persist (e.g. XmrTxProofService). gracefulShutdown() needs to honor isReadOnly
+            FileUtil.deleteDirectory(dataDir, null, false);
         } catch (Exception err) {
             throw new RuntimeException(err);
         }

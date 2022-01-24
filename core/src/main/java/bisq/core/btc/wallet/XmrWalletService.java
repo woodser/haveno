@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 import javax.inject.Inject;
 import lombok.Getter;
 import monero.common.MoneroRpcConnection;
+import monero.common.MoneroUtils;
 import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroNetworkType;
 import monero.wallet.MoneroWallet;
@@ -85,6 +86,24 @@ public class XmrWalletService {
         this.multisigWallets = new HashMap<String, MoneroWallet>();
         this.walletDir = walletDir;
         this.rpcBindPort = rpcBindPort;
+        
+        accountService.addListener(accountService.new AccountServiceListener() {
+            
+            @Override
+            public void onAccountCreated() {
+                System.out.println("XmrWalletService.accountService.onAccountCreated()");
+                initMainWallet();
+                //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
+            }
+
+            @Override
+            public void onAccountOpened() {
+                System.out.println("XmrWalletService.accountService.onAccountOpened()");
+                //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
+                // TODO: ensure this is called when no password used
+                initMainWallet();
+            }
+        });
 
         walletsSetup.addSetupCompletedHandler(() -> {
 
@@ -100,57 +119,30 @@ public class XmrWalletService {
 //              notifyBalanceListeners();
 //            }
 //        });
-
-            accountService.addListener(accountService.new AccountServiceListener() {
-                
-                @Override
-                public void onAccountCreated() {
-                    System.out.println("XmrWalletService.accountService.onAccountCreated()");
-                    //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
-                    // TODO: create main wallet
-                }
-
-                @Override
-                public void onAccountOpened() {
-                    System.out.println("XmrWalletService.accountService.onAccountOpened()");
-                    //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
-                    // TODO: create main wallet
-                    // TODO: ensure this is called when no password used
-                }
-            });
-
-            connectionManager.addListener(newConnection -> {
-                setDaemonConnections(newConnection);
-            });
         });
     }
     
-    
-//  // set XMR daemon and listen for updates
-//  vXmrDaemon = new MoneroDaemonRpc(moneroConnectionsManager.getConnection());
-//  moneroConnectionsManager.addListener(newConnection -> {
-//      vXmrDaemon = newConnection == null ? null : new MoneroDaemonRpc(newConnection);
-//  });
-//
-//  // XMR wallet
-//  String xmrPrefix = "_XMR";
-//  vXmrWalletFile = new File(directory, filePrefix + xmrPrefix);
-//  if (MoneroUtils.walletExists(vXmrWalletFile.getPath())) {
-//    vXmrWallet = openWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
-//  } else {
-//    vXmrWallet = createWallet(new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword("abctesting123"), rpcBindPort);
-//  }
-//  System.out.println("Monero wallet path: " + vXmrWallet.getPath());
-//  System.out.println("Monero wallet address: " + vXmrWallet.getPrimaryAddress());
-//  System.out.println("Monero wallet uri: " + vXmrWallet.getRpcConnection().getUri());
-////  vXmrWallet.rescanSpent();
-////  vXmrWallet.rescanBlockchain();
-//  vXmrWallet.sync(); // blocking
-//  downloadListener.doneDownload();
-//  vXmrWallet.save();
-//  System.out.println("Loaded wallet balance: " + vXmrWallet.getBalance(0));
-//  System.out.println("Loaded wallet unlocked balance: " + vXmrWallet.getUnlockedBalance(0));
-
+    private void initMainWallet() {
+      String filePrefix = "haveno"; // TODO: move these to common config with account service
+      String xmrPrefix = "_XMR";
+      String password = "abctesting123"; // TODO: move to config
+      File xmrWalletFile = new File(walletDir, filePrefix + xmrPrefix);
+      MoneroWalletConfig walletConfig = new MoneroWalletConfig().setPath(filePrefix + xmrPrefix).setPassword(password);
+      wallet = MoneroUtils.walletExists(xmrWalletFile.getPath()) ? openWallet(walletConfig, rpcBindPort) : createWallet(walletConfig, rpcBindPort);
+      System.out.println("Monero wallet path: " + wallet.getPath());
+      System.out.println("Monero wallet address: " + wallet.getPrimaryAddress());
+      System.out.println("Monero wallet uri: " + ((MoneroWalletRpc) wallet).getRpcConnection().getUri());
+      wallet.sync(); // blocking
+      //downloadListener.doneDownload(); // TODO: need to notify of done download?
+      wallet.save();
+      System.out.println("Loaded wallet balance: " + wallet.getBalance(0));
+      System.out.println("Loaded wallet unlocked balance: " + wallet.getUnlockedBalance(0));
+      
+      // update wallet connections on change
+      connectionManager.addListener(newConnection -> {
+          setWalletDaemonConnections(newConnection);
+      });
+    }
 
     public MoneroWallet getWallet() {
         State state = walletsSetup.getWalletConfig().state();
@@ -530,7 +522,7 @@ public class XmrWalletService {
         }
     }
 
-    private void setDaemonConnections(MoneroRpcConnection connection) {
+    private void setWalletDaemonConnections(MoneroRpcConnection connection) {
         log.info("Setting wallet daemon connections: " + (connection == null ? null : connection.getUri()));
         wallet.setDaemonConnection(connection);
         for (MoneroWallet multisigWallet : multisigWallets.values()) multisigWallet.setDaemonConnection(connection);

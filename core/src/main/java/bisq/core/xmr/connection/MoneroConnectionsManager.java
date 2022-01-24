@@ -4,10 +4,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 import bisq.common.UserThread;
 import bisq.core.api.CoreAccountService;
-import bisq.core.api.CoreAccountService.AccountServiceListener;
 import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.setup.DownloadListener;
-import bisq.core.btc.setup.WalletConfig;
 import bisq.core.btc.setup.WalletsSetup;
 import com.google.common.util.concurrent.Service.State;
 import java.util.Arrays;
