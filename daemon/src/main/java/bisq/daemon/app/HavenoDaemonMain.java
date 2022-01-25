@@ -104,9 +104,6 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
     @Override
     protected void onApplicationStarted() {
         super.onApplicationStarted();
-
-        grpcServer = injector.getInstance(GrpcServer.class);
-        grpcServer.start();
     }
 
     @Override
@@ -138,11 +135,11 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
             // Handle asynchronous account opens.
             // Will need to also close and reopen account.
             AccountServiceListener accountListener = accountService.new AccountServiceListener() {
-                @Override
-                public void onAccountOpened() {
+                @Override public void onAccountCreated() { onLogin(); }
+                @Override public void onAccountOpened() { onLogin(); }
+                private void onLogin() {
                     log.info("Logged in successfully through rpc");
-                    // Closing the reader will stop all read attempts and end the interactive login thread.
-                    reader.cancel();
+                    reader.cancel(); // closing the reader will stop all read attempts and end the interactive login thread
                 }
             };
             accountService.addListener(accountListener);

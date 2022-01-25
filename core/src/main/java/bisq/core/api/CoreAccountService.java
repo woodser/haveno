@@ -53,44 +53,31 @@ public class CoreAccountService {
     private final Config config;
     private final KeyStorage keyStorage;
     private final KeyRing keyRing;
-    private final File walletDir;
     
     @Getter
     private String password;
     private List<AccountServiceListener> listeners = new ArrayList<AccountServiceListener>();
     
     /**
-     * Account listener default class.
+     * Default account listener (takes no action).
      */
     public class AccountServiceListener {
         public void onAccountCreated() {}
         public void onAccountOpened() {}
+        public void onAccountClosed() {}
         public void onAccountRestored(Runnable onShutDown) {}
         public void onAccountDeleted(Runnable onShutDown) {}
         public void onPasswordChanged(String oldPassword, String newPassword) {}
     }
     
     @Inject
-    public CoreAccountService(Config config,
-                              KeyStorage keyStorage,
-                              KeyRing keyRing,
-                              @Named(Config.WALLET_DIR) File walletDir) {
+    public CoreAccountService(Config config, KeyStorage keyStorage, KeyRing keyRing) {
         this.config = config;
         this.keyStorage = keyStorage;
         this.keyRing = keyRing;
-        this.walletDir = walletDir;
-        
-        // generate default keys
-        keyRing.generateKeys(null);
-        keyStorage.saveKeyRing(keyRing, null);
     }
     
     public void addListener(AccountServiceListener listener) {
-        try {
-            throw new RuntimeException("CoreAccountService.addListener()");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         listeners.add(listener);
     }
     
@@ -99,12 +86,7 @@ public class CoreAccountService {
     }
     
     public boolean accountExists() {
-        return walletExists("haveno_XMR"); // TODO: config?
-    }
-    
-    private boolean walletExists(String walletName) {
-        String path = walletDir.toString() + File.separator + walletName;
-        return new File(path + ".keys").exists();
+        return keyStorage.allKeyFilesExist(); // public and private key pair indicate the existence of the account
     }
     
     public boolean isAccountOpen() {
@@ -132,7 +114,7 @@ public class CoreAccountService {
                 setPassword(password);
                 for (AccountServiceListener listener : listeners) listener.onAccountOpened();
             } else {
-                throw new RuntimeException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): allowable?
+                throw new RuntimeException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): means password is rejected?
             }
         } catch (IncorrectPasswordException ex) {
             log.warn(ex.getMessage());
@@ -150,6 +132,7 @@ public class CoreAccountService {
     public void closeAccount() {
         if (!isAccountOpen()) throw new IllegalStateException("Cannot close unopened account");
         keyRing.lockKeys(); // closed account means the keys are locked
+        for (AccountServiceListener listener : listeners) listener.onAccountClosed();
     }
     
     public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {

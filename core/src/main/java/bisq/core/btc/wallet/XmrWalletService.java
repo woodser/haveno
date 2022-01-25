@@ -28,7 +28,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.inject.Inject;
-import lombok.Getter;
 import monero.common.MoneroRpcConnection;
 import monero.common.MoneroUtils;
 import monero.daemon.MoneroDaemon;
@@ -102,6 +101,12 @@ public class XmrWalletService {
                 //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
                 // TODO: ensure this is called when no password used
                 initMainWallet();
+            }
+            
+            @Override
+            public void onAccountClosed() {
+                System.out.println("XmrWalletService.accountService.onAccountClosed()");
+                closeAllWallets();
             }
         });
 
@@ -205,6 +210,7 @@ public class XmrWalletService {
 
         // get app's current daemon connection
         MoneroRpcConnection connection = connectionManager.getConnection();
+        System.out.println("XmrWalletService.startWalletRpcInstance() connection from manager: " + connection);
 
         // start monero-wallet-rpc instance and return connected client
         List<String> cmd = new ArrayList<>(Arrays.asList( // modifiable list
@@ -418,8 +424,8 @@ public class XmrWalletService {
     public List<MoneroTxWallet> getTransactions(boolean includeDead) {
         return wallet.getTxs(new MoneroTxQuery().setIsFailed(includeDead ? null : false));
     }
-
-    public void shutDown() {
+    
+    public void closeAllWallets() {
 
         // collect wallets to shutdown
         List<MoneroWallet> openWallets = new ArrayList<MoneroWallet>();
@@ -428,7 +434,7 @@ public class XmrWalletService {
             openWallets.add(multisigWallets.get(multisigWalletKey));
         }
 
-        // create shutdown threads
+        // create threads to close wallets
         List<Thread> threads = new ArrayList<Thread>();
         for (MoneroWallet openWallet : openWallets) {
             threads.add(new Thread(new Runnable() {
@@ -443,7 +449,7 @@ public class XmrWalletService {
             }));
         }
 
-        // run shutdown threads in parallel
+        // run threads in parallel
         for (Thread thread : threads)
             thread.start();
 
@@ -455,6 +461,10 @@ public class XmrWalletService {
                 e.printStackTrace();
             }
         }
+    }
+    
+    public void shutDown() {
+        closeAllWallets();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
