@@ -93,35 +93,52 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         } catch (Exception e) {
             e.printStackTrace();
         }
-        persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
-            writeLock.lock();
-            try {
-                initializeEncryption(persistedEncryptedConnectionList.keyCrypterScrypt);
-                items.clear();
-                items.putAll(persistedEncryptedConnectionList.items);
-                currentConnectionUri = persistedEncryptedConnectionList.currentConnectionUri;
-                refreshPeriod = persistedEncryptedConnectionList.refreshPeriod;
-                autoSwitch = persistedEncryptedConnectionList.autoSwitch;
-            } finally {
-                writeLock.unlock();
-            }
-            completeHandler.run();
-        }, () -> {
-            writeLock.lock();
-            try {
-                initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
-            } finally {
-                writeLock.unlock();
-            }
-            completeHandler.run();
-        });
-    }
-
-    private void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {
         try {
-            throw new RuntimeException("Initializing encryption with keyCrypterScrypt: " + keyCrypterScrypt);
+            System.out.println("persistenceManager.readPersisted()...");
+            persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
+                System.out.println("Subccess!");
+                writeLock.lock();
+                try {
+                    initializeEncryption(persistedEncryptedConnectionList.keyCrypterScrypt);
+                    items.clear();
+                    items.putAll(persistedEncryptedConnectionList.items);
+                    currentConnectionUri = persistedEncryptedConnectionList.currentConnectionUri;
+                    refreshPeriod = persistedEncryptedConnectionList.refreshPeriod;
+                    autoSwitch = persistedEncryptedConnectionList.autoSwitch;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    writeLock.unlock();
+                }
+                completeHandler.run();
+            }, () -> {
+                System.out.println("There was an error reading from encrypted connections from disk");
+                writeLock.lock();
+                try {
+                    initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    writeLock.unlock();
+                }
+                completeHandler.run();
+            });
         } catch (Exception e) {
             e.printStackTrace();
+            throw e;
+        }
+
+    }
+
+    public void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {
+        try {
+            throw new RuntimeException("Initializing encryption with keyCrypterScrypt: " + keyCrypterScrypt + ", password: " + accountService.getPassword());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (this.keyCrypterScrypt != null) {
+            System.out.println("keyCrypterScrypt is already initialized, not re-initializing!");
+            return;
         }
         this.keyCrypterScrypt = keyCrypterScrypt;
         encryptionKey = toSecretKey(accountService.getPassword());
@@ -236,11 +253,16 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         }
     }
 
-    public void updatePassword(String oldPassword, String newPassword) {
-        System.out.println("EncryptedConnectionList.updatePassword(" + oldPassword + ", " + newPassword + ")");
+    public void changePassword(String oldPassword, String newPassword) {
+        try {
+            throw new RuntimeException("EncryptedConnectionList.changePassword(" + oldPassword + ", " + newPassword + ")");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         writeLock.lock();
         try {
             SecretKey oldSecret = encryptionKey;
+            System.out.println("Old secret: " + oldSecret);
             assert Objects.equals(oldSecret, toSecretKey(oldPassword)) : "Old secret does not match old password";
             System.out.println("Calling toSecretKey(" + newPassword + ")");
             encryptionKey = toSecretKey(newPassword);
@@ -248,20 +270,18 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         } finally {
             writeLock.unlock();
         }
-        System.out.println("EncryptedConnectionList.updatePassword(" + oldPassword + ", " + newPassword + ") requesting persistence");
         requestPersistence();
     }
 
-    private void requestPersistence() {
+    public void requestPersistence() {
         persistenceManager.requestPersistence();
     }
 
     private SecretKey toSecretKey(String password) {
+        System.out.println("toSecretKey(" + password + ")");
         if (password == null) {
             return null;
         }
-        System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
-        if (keyCrypterScrypt == null) initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
         System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
         System.out.println("keyCrypterScrypt.deriveKey(password): " + keyCrypterScrypt.deriveKey(password));
         System.out.println("keyCrypterScrypt.deriveKey(password).getKey(): " + keyCrypterScrypt.deriveKey(password).getKey());
@@ -284,14 +304,18 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
     }
 
     private static byte[] decrypt(byte[] encrypted, SecretKey secret) {
+        if (secret == null) return encrypted;
         try {
             return Encryption.decrypt(encrypted, secret);
         } catch (CryptoException e) {
+            System.out.println(".decrypt() encrypted: " + encrypted);
+            System.out.println(".decrypt() secret: " + secret);
             throw new IllegalArgumentException("Illegal old password", e);
         }
     }
 
     private static byte[] encrypt(byte[] unencrypted, SecretKey secretKey) {
+        if (secretKey == null) return unencrypted; // no password
         try {
             return Encryption.encrypt(unencrypted, secretKey);
         } catch (CryptoException e) {

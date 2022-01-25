@@ -63,7 +63,8 @@ arbitrator-daemon:
 		--nodePort=4444 \
 		--appName=haveno-XMR_STAGENET_arbitrator \
 		--apiPassword=apitest \
-		--apiPort=9998
+		--apiPort=9998 \
+		--passwordRequired=true
 
 alice-desktop:
 	./haveno-desktop \

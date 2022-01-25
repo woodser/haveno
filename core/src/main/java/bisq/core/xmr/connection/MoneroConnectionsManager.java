@@ -7,9 +7,12 @@ import bisq.core.api.CoreAccountService;
 import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.setup.DownloadListener;
 import bisq.core.btc.setup.WalletsSetup;
+import bisq.core.crypto.ScryptUtil;
 import com.google.common.util.concurrent.Service.State;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
@@ -54,6 +57,7 @@ public final class MoneroConnectionsManager {
     private final LongProperty chainHeight = new SimpleLongProperty(0);
     private final DownloadListener downloadListener = new DownloadListener();
     
+    private boolean isInitialized = false;
     private MoneroDaemon daemon;
 
     @Inject
@@ -70,30 +74,44 @@ public final class MoneroConnectionsManager {
             @Override
             public void onAccountCreated() {
                 System.out.println("MoneroConnectionsManager.accountservice.onAccountCreated()");
-                connectionList.updatePassword(null, accountService.getPassword());
-                initialize();
-                // TODO: handle
+                connectionList.initializeEncryption(ScryptUtil.getKeyCrypterScrypt()); // TODO: necessary if they're already loaded?
+                initializeOnce(); // TODO: reset isInitialized if account closed or deleted
             }
             
             @Override
             public void onAccountOpened() {
-                System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
-                connectionList.updatePassword(null, accountService.getPassword());
-                initialize();
-                // TODO: handle
+                try {
+                    System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+                    initializeOnce();
+//                    BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<Integer>(1); // TODO: integer parameter type is placeholder
+//                    System.out.println("Created blocking queue, reading persisted...");
+//                    connectionList.readPersisted(new Runnable() { // TODO: only readPersisted once
+//                        @Override
+//                        public void run() {
+//                            System.out.println("readPersisted() called run handler!");
+//                            initializeOnce();
+//                            blockingQueue.offer(0);
+//                        }
+//                    });
+//                    blockingQueue.take();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e); // TODO: proper error handling
+                }
             }
             
             @Override
             public void onPasswordChanged(String oldPassword, String newPassword) {
                 System.out.println("MoneroConnectionsManager.accountservice.onPasswordChanged(" + oldPassword + ", " + newPassword + ")");
-                connectionList.updatePassword(oldPassword, newPassword);
-                // TODO: handle
+                connectionList.changePassword(oldPassword, newPassword);
             }
         });
     }
 
-    public void initialize() {
+    private void initializeOnce() {
+        System.out.println("MoneroConnectionsManager.initializeOnce()");
         synchronized (lock) {
+            if (isInitialized) return;
 
             // load connections
             connectionList.getConnections().forEach(connectionManager::addConnection);
@@ -125,6 +143,7 @@ public final class MoneroConnectionsManager {
             UserThread.runPeriodically(() -> {
                 updateDaemonInfo();
             }, DAEMON_INFO_POLL_PERIOD_MS / 1000l);
+            isInitialized = true;
         }
     }
     
