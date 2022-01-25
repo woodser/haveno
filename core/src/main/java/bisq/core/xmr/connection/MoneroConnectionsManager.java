@@ -82,6 +82,7 @@ public final class MoneroConnectionsManager {
             public void onAccountOpened() {
                 try {
                     System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+                    connectionList.initializeEncryption(ScryptUtil.getKeyCrypterScrypt()); // TODO: necessary if they're already loaded?
                     initializeOnce();
 //                    BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<Integer>(1); // TODO: integer parameter type is placeholder
 //                    System.out.println("Created blocking queue, reading persisted...");
