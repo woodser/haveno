@@ -135,6 +135,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         } catch (Exception e) {
             e.printStackTrace();
         }
+        if (this.keyCrypterScrypt != null) return; // TODO: better to not ignore? or set to null on close?
         this.keyCrypterScrypt = keyCrypterScrypt;
         encryptionKey = toSecretKey(accountService.getPassword());
     }

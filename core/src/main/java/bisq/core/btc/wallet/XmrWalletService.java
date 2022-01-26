@@ -86,31 +86,33 @@ public class XmrWalletService {
         this.walletDir = walletDir;
         this.rpcBindPort = rpcBindPort;
         
-        accountService.addListener(accountService.new AccountServiceListener() {
-            
-            @Override
-            public void onAccountCreated() {
-                System.out.println("XmrWalletService.accountService.onAccountCreated()");
-                initMainWallet();
-                //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
-            }
-
-            @Override
-            public void onAccountOpened() {
-                System.out.println("XmrWalletService.accountService.onAccountOpened()");
-                //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
-                // TODO: ensure this is called when no password used
-                initMainWallet();
-            }
-            
-            @Override
-            public void onAccountClosed() {
-                System.out.println("XmrWalletService.accountService.onAccountClosed()");
-                closeAllWallets();
-            }
-        });
-
         walletsSetup.addSetupCompletedHandler(() -> {
+            
+            initMainWallet();
+            
+            accountService.addListener(accountService.new AccountServiceListener() {
+                
+                @Override
+                public void onAccountCreated() {
+                    System.out.println("XmrWalletService.accountService.onAccountCreated()");
+                    initMainWallet();
+                    //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
+                }
+
+                @Override
+                public void onAccountOpened() {
+                    System.out.println("XmrWalletService.accountService.onAccountOpened()");
+                    //xmrAddressEntryList.onWalletReady(walletConfig.getWallet());
+                    // TODO: ensure this is called when no password used
+                    initMainWallet();
+                }
+                
+                @Override
+                public void onAccountClosed() {
+                    System.out.println("XmrWalletService.accountService.onAccountClosed()");
+                    closeAllWallets();
+                }
+            });
 
 //        wallet.addListener(new MoneroWalletListener() {
 //            @Override
@@ -461,6 +463,10 @@ public class XmrWalletService {
                 e.printStackTrace();
             }
         }
+        
+        // clear wallets
+        wallet = null;
+        multisigWallets.clear();
     }
     
     public void shutDown() {
@@ -534,7 +540,7 @@ public class XmrWalletService {
 
     private void setWalletDaemonConnections(MoneroRpcConnection connection) {
         log.info("Setting wallet daemon connections: " + (connection == null ? null : connection.getUri()));
-        wallet.setDaemonConnection(connection);
+        if (wallet != null) wallet.setDaemonConnection(connection);
         for (MoneroWallet multisigWallet : multisigWallets.values()) multisigWallet.setDaemonConnection(connection);
     }
 

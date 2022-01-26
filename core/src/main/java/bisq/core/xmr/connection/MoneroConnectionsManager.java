@@ -69,57 +69,62 @@ public final class MoneroConnectionsManager {
         this.connectionManager = connectionManager;
         this.connectionList = connectionList;
         
-        // listen for account updates
-        accountService.addListener(accountService.new AccountServiceListener() {
-            @Override
-            public void onAccountCreated() {
-                System.out.println("MoneroConnectionsManager.accountservice.onAccountCreated()");
-                connectionList.initializeEncryption(ScryptUtil.getKeyCrypterScrypt()); // TODO: necessary if they're already loaded?
-                initializeOnce(); // TODO: reset isInitialized if account closed or deleted
-            }
+        walletsSetup.addSetupCompletedHandler(() -> {
+            initialize();
             
-            @Override
-            public void onAccountOpened() {
-                try {
-                    System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+            // listen for account updates
+            accountService.addListener(accountService.new AccountServiceListener() {
+                @Override
+                public void onAccountCreated() {
+                    System.out.println("MoneroConnectionsManager.accountservice.onAccountCreated()");
                     connectionList.initializeEncryption(ScryptUtil.getKeyCrypterScrypt()); // TODO: necessary if they're already loaded?
-                    initializeOnce();
-//                    BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<Integer>(1); // TODO: integer parameter type is placeholder
-//                    System.out.println("Created blocking queue, reading persisted...");
-//                    connectionList.readPersisted(new Runnable() { // TODO: only readPersisted once
-//                        @Override
-//                        public void run() {
-//                            System.out.println("readPersisted() called run handler!");
-//                            initializeOnce();
-//                            blockingQueue.offer(0);
-//                        }
-//                    });
-//                    System.out.println("Waiting for block to take!");
-//                    blockingQueue.take();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e); // TODO: proper error handling
+                    initialize(); // TODO: reset isInitialized if account closed or deleted
                 }
-            }
-            
-            @Override
-            public void onPasswordChanged(String oldPassword, String newPassword) {
-                System.out.println("MoneroConnectionsManager.accountservice.onPasswordChanged(" + oldPassword + ", " + newPassword + ")");
-                connectionList.changePassword(oldPassword, newPassword);
-            }
+                
+                @Override
+                public void onAccountOpened() {
+                    try {
+                        System.out.println("MoneroConnectionsManager.accountservice.onAccountOpened()");
+                        connectionList.initializeEncryption(ScryptUtil.getKeyCrypterScrypt()); // TODO: necessary if they're already loaded?
+                        initialize();
+//                        BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<Integer>(1); // TODO: integer parameter type is placeholder
+//                        System.out.println("Created blocking queue, reading persisted...");
+//                        connectionList.readPersisted(new Runnable() { // TODO: only readPersisted once
+//                            @Override
+//                            public void run() {
+//                                System.out.println("readPersisted() called run handler!");
+//                                initializeOnce();
+//                                blockingQueue.offer(0);
+//                            }
+//                        });
+//                        System.out.println("Waiting for block to take!");
+//                        blockingQueue.take();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e); // TODO: proper error handling
+                    }
+                }
+                
+                @Override
+                public void onPasswordChanged(String oldPassword, String newPassword) {
+                    System.out.println("MoneroConnectionsManager.accountservice.onPasswordChanged(" + oldPassword + ", " + newPassword + ")");
+                    connectionList.changePassword(oldPassword, newPassword);
+                }
+            });
         });
     }
 
-    private void initializeOnce() {
-        System.out.println("MoneroConnectionsManager.initializeOnce()");
+    private void initialize() {
+        System.out.println("MoneroConnectionsManager.initialize()");
         synchronized (lock) {
-            if (isInitialized) {
-                System.out.println("Already initialized, ignoring");
-                return;
-            }
+            
+            // TODO: connectionManager.clear();
+            // TODO: do this on close?
+            for (MoneroRpcConnection connection : connectionManager.getConnections()) connectionManager.removeConnection(connection.getUri());
 
             // load connections
             connectionList.getConnections().forEach(connectionManager::addConnection);
+            System.out.println("Read " + connectionList.getConnections().size() + " connections from disk");
             for (MoneroRpcConnection connection : connectionList.getConnections()) {
                 System.out.println("Read decrypted connection from disk: " + connection);
             }

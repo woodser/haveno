@@ -148,9 +148,9 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         // Account service should be available before attempting to login.
         // TODO: cleanup here
         accountService = injector.getInstance(CoreAccountService.class);
-        injector.getInstance(MoneroConnectionsManager.class);
-        injector.getInstance(EncryptedConnectionList.class);
-        injector.getInstance(XmrWalletService.class);
+        //injector.getInstance(EncryptedConnectionList.class);
+        //injector.getInstance(MoneroConnectionsManager.class);
+        //injector.getInstance(XmrWalletService.class);
 
         // Application needs to restart on delete and restore of account.
         accountService.addListener(accountService.new AccountServiceListener() {
