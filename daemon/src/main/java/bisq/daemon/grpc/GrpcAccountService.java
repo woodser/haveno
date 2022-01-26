@@ -16,10 +16,24 @@
  */
 package bisq.daemon.grpc;
 
-import bisq.core.api.CoreApi;
+import static bisq.daemon.grpc.interceptor.GrpcServiceRateMeteringConfig.getCustomRateMeteringInterceptor;
+import static bisq.proto.grpc.AccountGrpc.getAccountExistsMethod;
+import static bisq.proto.grpc.AccountGrpc.getBackupAccountMethod;
+import static bisq.proto.grpc.AccountGrpc.getChangePasswordMethod;
+import static bisq.proto.grpc.AccountGrpc.getCloseAccountMethod;
+import static bisq.proto.grpc.AccountGrpc.getCreateAccountMethod;
+import static bisq.proto.grpc.AccountGrpc.getDeleteAccountMethod;
+import static bisq.proto.grpc.AccountGrpc.getIsAccountOpenMethod;
+import static bisq.proto.grpc.AccountGrpc.getOpenAccountMethod;
+import static bisq.proto.grpc.AccountGrpc.getRestoreAccountMethod;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
+import bisq.core.api.CoreApi;
+import bisq.daemon.grpc.interceptor.CallRateMeteringInterceptor;
+import bisq.daemon.grpc.interceptor.GrpcCallRateMeter;
 import bisq.proto.grpc.AccountExistsReply;
 import bisq.proto.grpc.AccountExistsRequest;
+import bisq.proto.grpc.AccountGrpc.AccountImplBase;
 import bisq.proto.grpc.BackupAccountReply;
 import bisq.proto.grpc.BackupAccountRequest;
 import bisq.proto.grpc.ChangePasswordReply;
@@ -32,35 +46,22 @@ import bisq.proto.grpc.DeleteAccountReply;
 import bisq.proto.grpc.DeleteAccountRequest;
 import bisq.proto.grpc.IsAccountOpenReply;
 import bisq.proto.grpc.IsAccountOpenRequest;
+import bisq.proto.grpc.IsAppInitializedReply;
+import bisq.proto.grpc.IsAppInitializedRequest;
 import bisq.proto.grpc.OpenAccountReply;
 import bisq.proto.grpc.OpenAccountRequest;
 import bisq.proto.grpc.RestoreAccountReply;
 import bisq.proto.grpc.RestoreAccountRequest;
-
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
 import io.grpc.ServerInterceptor;
 import io.grpc.stub.StreamObserver;
-
-import com.google.protobuf.ByteString;
-
-import javax.inject.Inject;
-
-import com.google.common.annotations.VisibleForTesting;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-
 import java.util.HashMap;
 import java.util.Optional;
-
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-
-import static bisq.daemon.grpc.interceptor.GrpcServiceRateMeteringConfig.getCustomRateMeteringInterceptor;
-import static bisq.proto.grpc.AccountGrpc.*;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
-import bisq.daemon.grpc.interceptor.CallRateMeteringInterceptor;
-import bisq.daemon.grpc.interceptor.GrpcCallRateMeter;
 
 @VisibleForTesting
 @Slf4j
@@ -86,6 +87,98 @@ public class GrpcAccountService extends AccountImplBase {
                     .build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void isAccountOpen(IsAccountOpenRequest req, StreamObserver<IsAccountOpenReply> responseObserver) {
+        try {
+            var reply = IsAccountOpenReply.newBuilder()
+                    .setIsAccountOpen(coreApi.isAccountOpen())
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+    
+    @Override
+    public void createAccount(CreateAccountRequest req, StreamObserver<CreateAccountReply> responseObserver) {
+        try {
+            coreApi.createAccount(req.getPassword());
+            var reply = CreateAccountReply.newBuilder()
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void openAccount(OpenAccountRequest req, StreamObserver<OpenAccountReply> responseObserver) {
+        try {
+            coreApi.openAccount(req.getPassword());
+            var reply = OpenAccountReply.newBuilder().build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+    
+    @Override
+    public void isAppInitialized(IsAppInitializedRequest req, StreamObserver<IsAppInitializedReply> responseObserver) {
+        try {
+            var reply = IsAppInitializedReply.newBuilder().setIsAppInitialized(coreApi.isAppInitialized()).build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+    
+    @Override
+    public void changePassword(ChangePasswordRequest req, StreamObserver<ChangePasswordReply> responseObserver) {
+        try {
+            coreApi.changePassword(req.getPassword());
+            var reply = ChangePasswordReply.newBuilder()
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void closeAccount(CloseAccountRequest req, StreamObserver<CloseAccountReply> responseObserver) {
+        try {
+            coreApi.closeAccount();
+            var reply = CloseAccountReply.newBuilder()
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Throwable cause) {
+            exceptionHandler.handleException(log, cause, responseObserver);
+        }
+    }
+
+    @Override
+    public void deleteAccount(DeleteAccountRequest req, StreamObserver<DeleteAccountReply> responseObserver) {
+        try {
+            log.warn("Got deleteAccount request");
+            // Delete account requires a long shutdown, reply after its completed.
+            coreApi.deleteAccount(() ->{
+                var reply = DeleteAccountReply.newBuilder().build();
+                log.info("DeleteAccount completed, replying to rpc client");
+                responseObserver.onNext(reply);
+                responseObserver.onCompleted();
+                log.info("DeleteAccount continuing to shutdown process");
+            });
         } catch (Throwable cause) {
             exceptionHandler.handleException(log, cause, responseObserver);
         }
@@ -119,87 +212,6 @@ public class GrpcAccountService extends AccountImplBase {
                     exceptionHandler.handleException(log, ex, responseObserver);
                 }
             }, (ex) -> exceptionHandler.handleException(log, ex, responseObserver));
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void changePassword(ChangePasswordRequest req, StreamObserver<ChangePasswordReply> responseObserver) {
-        try {
-            coreApi.changePassword(req.getPassword());
-            var reply = ChangePasswordReply.newBuilder()
-                    .build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void closeAccount(CloseAccountRequest req, StreamObserver<CloseAccountReply> responseObserver) {
-        try {
-            coreApi.closeAccount();
-            var reply = CloseAccountReply.newBuilder()
-                    .build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void createAccount(CreateAccountRequest req, StreamObserver<CreateAccountReply> responseObserver) {
-        try {
-            coreApi.createAccount(req.getPassword());
-            var reply = CreateAccountReply.newBuilder()
-                    .build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void deleteAccount(DeleteAccountRequest req, StreamObserver<DeleteAccountReply> responseObserver) {
-        try {
-            log.warn("Got deleteAccount request");
-            // Delete account requires a long shutdown, reply after its completed.
-            coreApi.deleteAccount(() ->{
-                var reply = DeleteAccountReply.newBuilder().build();
-                log.info("DeleteAccount completed, replying to rpc client");
-                responseObserver.onNext(reply);
-                responseObserver.onCompleted();
-                log.info("DeleteAccount continuing to shutdown process");
-            });
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void isAccountOpen(IsAccountOpenRequest req, StreamObserver<IsAccountOpenReply> responseObserver) {
-        try {
-            var reply = IsAccountOpenReply.newBuilder()
-                    .setIsAccountOpen(coreApi.isAccountOpen())
-                    .build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-        } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
-        }
-    }
-
-    @Override
-    public void openAccount(OpenAccountRequest req, StreamObserver<OpenAccountReply> responseObserver) {
-        try {
-            coreApi.openAccount(req.getPassword());
-            var reply = OpenAccountReply.newBuilder().build();
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
         } catch (Throwable cause) {
             exceptionHandler.handleException(log, cause, responseObserver);
         }

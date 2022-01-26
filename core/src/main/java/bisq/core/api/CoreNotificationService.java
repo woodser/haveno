@@ -40,7 +40,7 @@ public class CoreNotificationService {
             }
         }
     }
-    
+
     public void sendTradeNotification(Trade trade, String title, String message) {
         sendNotification(NotificationMessage.newBuilder()
                 .setType(NotificationType.TRADE_UPDATE)

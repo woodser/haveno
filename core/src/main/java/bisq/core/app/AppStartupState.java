@@ -17,11 +17,12 @@
 
 package bisq.core.app;
 
-import bisq.core.btc.setup.WalletsSetup;
+import bisq.core.api.CoreNotificationService;
 import bisq.core.xmr.connection.MoneroConnectionsManager;
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.P2PService;
-
+import bisq.proto.grpc.NotificationMessage;
+import bisq.proto.grpc.NotificationMessage.NotificationType;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -31,7 +32,6 @@ import org.fxmisc.easybind.monadic.MonadicBinding;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -53,7 +53,9 @@ public class AppStartupState {
     private final BooleanProperty hasSufficientPeersForBroadcast = new SimpleBooleanProperty();
 
     @Inject
-    public AppStartupState(MoneroConnectionsManager connectionManager, P2PService p2PService) {
+    public AppStartupState(CoreNotificationService notificationService,
+                           MoneroConnectionsManager connectionManager,
+                           P2PService p2PService) {
 
         p2PService.addP2PServiceListener(new BootstrapListener() {
             @Override
@@ -90,6 +92,10 @@ public class AppStartupState {
         p2pNetworkAndWalletInitialized.subscribe((observable, oldValue, newValue) -> {
             if (newValue) {
                 applicationFullyInitialized.set(true);
+                notificationService.sendNotification(NotificationMessage.newBuilder()
+                      .setType(NotificationType.APP_INITIALIZED)
+                      .setTimestamp(System.currentTimeMillis())
+                      .build());
                 log.info("Application fully initialized");
             }
         });

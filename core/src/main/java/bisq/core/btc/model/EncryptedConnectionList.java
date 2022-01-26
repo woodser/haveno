@@ -94,9 +94,8 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             e.printStackTrace();
         }
         try {
-            System.out.println("persistenceManager.readPersisted()...");
             persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
-                System.out.println("Subccess!");
+                System.out.println("Success reading persisted!!");
                 writeLock.lock();
                 try {
                     initializeEncryption(persistedEncryptedConnectionList.keyCrypterScrypt);
@@ -135,10 +134,6 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             throw new RuntimeException("Initializing encryption with keyCrypterScrypt: " + keyCrypterScrypt + ", password: " + accountService.getPassword());
         } catch (Exception e) {
             e.printStackTrace();
-        }
-        if (this.keyCrypterScrypt != null) {
-            System.out.println("keyCrypterScrypt is already initialized, not re-initializing!");
-            return;
         }
         this.keyCrypterScrypt = keyCrypterScrypt;
         encryptionKey = toSecretKey(accountService.getPassword());
@@ -274,6 +269,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
     }
 
     public void requestPersistence() {
+        System.out.println("Requesting persistence!");
         persistenceManager.requestPersistence();
     }
 
@@ -341,6 +337,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         byte[] decryptedPasswordBytes = decryptPassword(connection.getEncryptedPassword(), connection.getEncryptionSalt());
         String password = decryptedPasswordBytes == null ? null : new String(decryptedPasswordBytes, StandardCharsets.UTF_8);
         String username = connection.getUsername().isEmpty() ? null : connection.getUsername();
+        System.out.println("EncryptedConnectionList.toMoneroRpcConnection() decrypted password: " + password);
         MoneroRpcConnection moneroRpcConnection = new MoneroRpcConnection(connection.getUri(), username, password);
         moneroRpcConnection.setPriority(connection.getPriority());
         return moneroRpcConnection;
@@ -364,7 +361,11 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             System.arraycopy(password, 0, saltedPassword, 0, password.length);
             System.arraycopy(salt, 0, saltedPassword, password.length, salt.length);
         }
-        System.out.println("Encrypting with salted password and encryption key: " + saltedPassword + ", " + encryptionKey);
+        try {
+            throw new RuntimeException("Encrypting with salted password and encryption key: " + saltedPassword + ", " + encryptionKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return encrypt(saltedPassword, encryptionKey);
     }
 

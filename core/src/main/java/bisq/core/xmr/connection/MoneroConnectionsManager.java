@@ -94,6 +94,7 @@ public final class MoneroConnectionsManager {
 //                            blockingQueue.offer(0);
 //                        }
 //                    });
+//                    System.out.println("Waiting for block to take!");
 //                    blockingQueue.take();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -112,10 +113,16 @@ public final class MoneroConnectionsManager {
     private void initializeOnce() {
         System.out.println("MoneroConnectionsManager.initializeOnce()");
         synchronized (lock) {
-            if (isInitialized) return;
+            if (isInitialized) {
+                System.out.println("Already initialized, ignoring");
+                return;
+            }
 
             // load connections
             connectionList.getConnections().forEach(connectionManager::addConnection);
+            for (MoneroRpcConnection connection : connectionList.getConnections()) {
+                System.out.println("Read decrypted connection from disk: " + connection);
+            }
 
             // add default connections
             for (MoneroRpcConnection connection : DEFAULT_CONNECTIONS) {

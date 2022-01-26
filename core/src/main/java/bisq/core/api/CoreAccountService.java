@@ -24,7 +24,6 @@ import bisq.common.crypto.KeyStorage;
 import bisq.common.file.FileUtil;
 import bisq.common.persistence.PersistenceManager;
 import bisq.common.util.ZipUtil;
-import com.google.inject.name.Named;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -71,7 +70,9 @@ public class CoreAccountService {
     }
     
     @Inject
-    public CoreAccountService(Config config, KeyStorage keyStorage, KeyRing keyRing) {
+    public CoreAccountService(Config config,
+                              KeyStorage keyStorage,
+                              KeyRing keyRing) {
         this.config = config;
         this.keyStorage = keyStorage;
         this.keyRing = keyRing;

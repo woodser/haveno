@@ -22,6 +22,7 @@ import bisq.core.api.model.BalancesInfo;
 import bisq.core.api.model.MarketPriceInfo;
 import bisq.core.api.model.TxFeeRateInfo;
 import bisq.core.api.model.UriConnection;
+import bisq.core.app.AppStartupState;
 import bisq.core.monetary.Price;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
@@ -76,6 +77,7 @@ public class CoreApi {
 
     @Getter
     private final Config config;
+    private final AppStartupState appStartupState;
     private final CoreAccountService coreAccountService;
     private final CoreDisputeAgentsService coreDisputeAgentsService;
     private final CoreHelpService coreHelpService;
@@ -90,6 +92,7 @@ public class CoreApi {
 
     @Inject
     public CoreApi(Config config,
+                   AppStartupState appStartupState,
                    CoreAccountService coreAccountService,
                    CoreDisputeAgentsService coreDisputeAgentsService,
                    CoreHelpService coreHelpService,
@@ -102,6 +105,7 @@ public class CoreApi {
                    CoreNotificationService notificationService,
                    CoreMoneroConnectionsService coreMoneroConnectionsService) {
         this.config = config;
+        this.appStartupState = appStartupState;
         this.coreAccountService = coreAccountService;
         this.coreDisputeAgentsService = coreDisputeAgentsService;
         this.coreHelpService = coreHelpService;
@@ -123,29 +127,17 @@ public class CoreApi {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Account Service
     ///////////////////////////////////////////////////////////////////////////////////////////
-
+    
     public boolean accountExists() {
         return coreAccountService.accountExists();
     }
 
-    public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {
-        coreAccountService.backupAccount(bufferSize, consume, error);
-    }
-
-    public void changePassword(String password) {
-        coreAccountService.changePassword(password);
-    }
-
-    public void closeAccount() {
-        coreAccountService.closeAccount();
+    public boolean isAccountOpen() {
+        return coreAccountService.isAccountOpen();
     }
 
     public void createAccount(String password) {
         coreAccountService.createAccount(password);
-    }
-
-    public void deleteAccount(Runnable onShutdown) {
-        coreAccountService.deleteAccount(onShutdown);
     }
 
     public void openAccount(String password) {
@@ -156,8 +148,24 @@ public class CoreApi {
         }
     }
 
-    public boolean isAccountOpen() {
-        return coreAccountService.isAccountOpen();
+    public boolean isAppInitialized() {
+        return appStartupState.isApplicationFullyInitialized();
+    }
+
+    public void changePassword(String password) {
+        coreAccountService.changePassword(password);
+    }
+
+    public void closeAccount() {
+        coreAccountService.closeAccount();
+    }
+
+    public void deleteAccount(Runnable onShutdown) {
+        coreAccountService.deleteAccount(onShutdown);
+    }
+
+    public void backupAccount(int bufferSize, Consumer<InputStream> consume, Consumer<Exception> error) {
+        coreAccountService.backupAccount(bufferSize, consume, error);
     }
 
     public void restoreAccount(InputStream zipStream, int bufferSize, Runnable onShutdown) throws Exception {
