@@ -358,20 +358,23 @@ public class XmrWalletService {
         pool.submit(new Runnable() {
             @Override
             public void run() {
-                System.out.println("wallet.changePassword(" + oldPassword + ", " + newPassword);
-                wallet.changePassword(oldPassword, newPassword);
-                wallet.save();
+                try {
+                    wallet.changePassword(oldPassword, newPassword);
+                    wallet.save();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw e;
+                }
             }
         });
         for (String tradeId : tradeIds) {
             pool.submit(new Runnable() {
                 @Override
                 public void run() {
-                    MoneroWallet multisigWallet = getMultisigWallet(tradeId); // TODO (woodser): this unnecessarily connects and syncs unopen wallets
+                    MoneroWallet multisigWallet = getMultisigWallet(tradeId); // TODO (woodser): this unnecessarily connects and syncs unopen wallets and leaves open
                     if (multisigWallet == null) return;
-                    System.out.println("multisigWallet.changePassword(" + oldPassword + ", " + newPassword);
                     multisigWallet.changePassword(oldPassword, newPassword);
-                    closeWallet(multisigWallet, true);
+                    multisigWallet.save();
                 }
             });
         }

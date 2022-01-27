@@ -145,8 +145,7 @@ public class GrpcAccountService extends AccountImplBase {
     public void changePassword(ChangePasswordRequest req, StreamObserver<ChangePasswordReply> responseObserver) {
         try {
             coreApi.changePassword(req.getPassword());
-            var reply = ChangePasswordReply.newBuilder()
-                    .build();
+            var reply = ChangePasswordReply.newBuilder().build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
         } catch (Throwable cause) {
