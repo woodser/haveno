@@ -11,8 +11,6 @@ import bisq.core.crypto.ScryptUtil;
 import com.google.common.util.concurrent.Service.State;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
@@ -57,7 +55,6 @@ public final class MoneroConnectionsManager {
     private final LongProperty chainHeight = new SimpleLongProperty(0);
     private final DownloadListener downloadListener = new DownloadListener();
     
-    private boolean isInitialized = false;
     private MoneroDaemon daemon;
 
     @Inject
@@ -156,7 +153,6 @@ public final class MoneroConnectionsManager {
             UserThread.runPeriodically(() -> {
                 updateDaemonInfo();
             }, DAEMON_INFO_POLL_PERIOD_MS / 1000l);
-            isInitialized = true;
         }
     }
     

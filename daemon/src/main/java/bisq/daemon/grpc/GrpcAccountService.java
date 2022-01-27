@@ -219,6 +219,7 @@ public class GrpcAccountService extends AccountImplBase {
 
     @Override
     public void restoreAccount(RestoreAccountRequest req, StreamObserver<RestoreAccountReply> responseObserver) {
+        log.warn("Got restoreAccount request");
         try {
             // Fail fast since uploading and processing bytes takes resources.
             if (coreApi.accountExists()) {

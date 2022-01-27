@@ -79,7 +79,7 @@ service Account {
     }
     rpc BackupAccount (BackupAccountRequest) returns (stream BackupAccountReply) {
     }
-    rpc RestoreAccount(RestoreAccountRequest) returns (RestoreAccountReply) {
+    rpc RestoreAccount (RestoreAccountRequest) returns (RestoreAccountReply) {
     }
 }
 

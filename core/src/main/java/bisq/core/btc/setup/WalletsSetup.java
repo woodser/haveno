@@ -120,7 +120,7 @@ public class WalletsSetup {
     private final LocalBitcoinNode localBitcoinNode;
     private final BtcNodes btcNodes;
     @Getter
-    private final String xmrWalletFileName;
+    private final String xmrWalletFileName; // TODO: remove this
     private final int numConnectionsForBtc;
     private final String userAgent;
     private final NetworkParameters params;
