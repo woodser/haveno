@@ -8,6 +8,8 @@ import bisq.common.proto.persistable.PersistedDataHost;
 import bisq.core.api.CoreAccountService;
 import bisq.core.api.model.EncryptedConnection;
 import bisq.core.crypto.ScryptUtil;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.Message;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.HashMap;
@@ -22,8 +24,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import javax.inject.Inject;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
 import lombok.NonNull;
 import monero.common.MoneroRpcConnection;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
@@ -70,7 +70,6 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         this.accountService = accountService;
         this.persistenceManager = persistenceManager;
         this.persistenceManager.initialize(this, "EncryptedConnectionList", PersistenceManager.Source.PRIVATE);
-        this.accountService.addPasswordChangeListener(this::onPasswordChange);
     }
 
     private EncryptedConnectionList(byte[] salt,
@@ -78,7 +77,9 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
                               @NonNull String currentConnectionUri,
                               long refreshPeriod,
                               boolean autoSwitch) {
+        System.out.println("Constructing EncryptedConnectionList with salt: " + salt);
         this.keyCrypterScrypt = ScryptUtil.getKeyCrypterScrypt(salt);
+        if (this.keyCrypterScrypt == null) System.out.println("WARNING: KEYCRYPTERSCRYPT IS NULL!");
         this.items.putAll(items.stream().collect(Collectors.toMap(EncryptedConnection::getUri, Function.identity())));
         this.currentConnectionUri = currentConnectionUri;
         this.refreshPeriod = refreshPeriod;
@@ -87,31 +88,53 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
 
     @Override
     public void readPersisted(Runnable completeHandler) {
-        persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
-            writeLock.lock();
-            try {
-                initializeEncryption(persistedEncryptedConnectionList.keyCrypterScrypt);
-                items.clear();
-                items.putAll(persistedEncryptedConnectionList.items);
-                currentConnectionUri = persistedEncryptedConnectionList.currentConnectionUri;
-                refreshPeriod = persistedEncryptedConnectionList.refreshPeriod;
-                autoSwitch = persistedEncryptedConnectionList.autoSwitch;
-            } finally {
-                writeLock.unlock();
-            }
-            completeHandler.run();
-        }, () -> {
-            writeLock.lock();
-            try {
-                initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
-            } finally {
-                writeLock.unlock();
-            }
-            completeHandler.run();
-        });
+        try {
+            throw new RuntimeException("EncryptedConnectionList.readPersisted()");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            persistenceManager.readPersisted(persistedEncryptedConnectionList -> {
+                System.out.println("Success reading persisted!!");
+                writeLock.lock();
+                try {
+                    initializeEncryption(persistedEncryptedConnectionList.keyCrypterScrypt);
+                    items.clear();
+                    items.putAll(persistedEncryptedConnectionList.items);
+                    currentConnectionUri = persistedEncryptedConnectionList.currentConnectionUri;
+                    refreshPeriod = persistedEncryptedConnectionList.refreshPeriod;
+                    autoSwitch = persistedEncryptedConnectionList.autoSwitch;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    writeLock.unlock();
+                }
+                completeHandler.run();
+            }, () -> {
+                System.out.println("There was an error reading from encrypted connections from disk");
+                writeLock.lock();
+                try {
+                    initializeEncryption(ScryptUtil.getKeyCrypterScrypt());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    writeLock.unlock();
+                }
+                completeHandler.run();
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
-    private void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {
+    public void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {
+        try {
+            throw new RuntimeException("Initializing encryption with keyCrypterScrypt: " + keyCrypterScrypt + ", password: " + accountService.getPassword());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (this.keyCrypterScrypt != null) return; // TODO: better to not ignore? or set to null on close?
         this.keyCrypterScrypt = keyCrypterScrypt;
         encryptionKey = toSecretKey(accountService.getPassword());
     }
@@ -225,15 +248,18 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         }
     }
 
-    private void requestPersistence() {
-        persistenceManager.requestPersistence();
-    }
-
-    private void onPasswordChange(String oldPassword, String newPassword) {
+    public void changePassword(String oldPassword, String newPassword) {
+        try {
+            throw new RuntimeException("EncryptedConnectionList.changePassword(" + oldPassword + ", " + newPassword + ")");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         writeLock.lock();
         try {
             SecretKey oldSecret = encryptionKey;
+            System.out.println("Old secret: " + oldSecret);
             assert Objects.equals(oldSecret, toSecretKey(oldPassword)) : "Old secret does not match old password";
+            System.out.println("Calling toSecretKey(" + newPassword + ")");
             encryptionKey = toSecretKey(newPassword);
             items.replaceAll((key, connection) -> reEncrypt(connection, oldSecret, encryptionKey));
         } finally {
@@ -242,10 +268,19 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         requestPersistence();
     }
 
+    public void requestPersistence() {
+        System.out.println("Requesting persistence!");
+        persistenceManager.requestPersistence();
+    }
+
     private SecretKey toSecretKey(String password) {
+        System.out.println("toSecretKey(" + password + ")");
         if (password == null) {
             return null;
         }
+        System.out.println("keyCrypterScrypt: " + keyCrypterScrypt);
+        System.out.println("keyCrypterScrypt.deriveKey(password): " + keyCrypterScrypt.deriveKey(password));
+        System.out.println("keyCrypterScrypt.deriveKey(password).getKey(): " + keyCrypterScrypt.deriveKey(password).getKey());
         return Encryption.getSecretKeyFromBytes(keyCrypterScrypt.deriveKey(password).getKey());
     }
 
@@ -265,14 +300,18 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
     }
 
     private static byte[] decrypt(byte[] encrypted, SecretKey secret) {
+        if (secret == null) return encrypted;
         try {
             return Encryption.decrypt(encrypted, secret);
         } catch (CryptoException e) {
+            System.out.println(".decrypt() encrypted: " + encrypted);
+            System.out.println(".decrypt() secret: " + secret);
             throw new IllegalArgumentException("Illegal old password", e);
         }
     }
 
     private static byte[] encrypt(byte[] unencrypted, SecretKey secretKey) {
+        if (secretKey == null) return unencrypted; // no password
         try {
             return Encryption.encrypt(unencrypted, secretKey);
         } catch (CryptoException e) {
@@ -298,6 +337,7 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
         byte[] decryptedPasswordBytes = decryptPassword(connection.getEncryptedPassword(), connection.getEncryptionSalt());
         String password = decryptedPasswordBytes == null ? null : new String(decryptedPasswordBytes, StandardCharsets.UTF_8);
         String username = connection.getUsername().isEmpty() ? null : connection.getUsername();
+        System.out.println("EncryptedConnectionList.toMoneroRpcConnection() decrypted password: " + password);
         MoneroRpcConnection moneroRpcConnection = new MoneroRpcConnection(connection.getUri(), username, password);
         moneroRpcConnection.setPriority(connection.getPriority());
         return moneroRpcConnection;
@@ -320,6 +360,11 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             saltedPassword = new byte[password.length + salt.length];
             System.arraycopy(password, 0, saltedPassword, 0, password.length);
             System.arraycopy(salt, 0, saltedPassword, password.length, salt.length);
+        }
+        try {
+            throw new RuntimeException("Encrypting with salted password and encryption key: " + saltedPassword + ", " + encryptionKey);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return encrypt(saltedPassword, encryptionKey);
     }

@@ -230,14 +230,15 @@ public class DomainInitialisation {
         triggerPriceService.onAllServicesInitialized();
         mempoolService.onAllServicesInitialized();
 
-        if (revolutAccountsUpdateHandler != null) {
+        // User payment accounts could be null if account has not been created or opened.
+        if (revolutAccountsUpdateHandler != null && user.getPaymentAccountsAsObservable() != null) {
             revolutAccountsUpdateHandler.accept(user.getPaymentAccountsAsObservable().stream()
                     .filter(paymentAccount -> paymentAccount instanceof RevolutAccount)
                     .map(paymentAccount -> (RevolutAccount) paymentAccount)
                     .filter(RevolutAccount::userNameNotSet)
                     .collect(Collectors.toList()));
         }
-        if (amazonGiftCardAccountsUpdateHandler != null) {
+        if (amazonGiftCardAccountsUpdateHandler != null && user.getPaymentAccountsAsObservable() != null) {
             amazonGiftCardAccountsUpdateHandler.accept(user.getPaymentAccountsAsObservable().stream()
                     .filter(paymentAccount -> paymentAccount instanceof AmazonGiftCardAccount)
                     .map(paymentAccount -> (AmazonGiftCardAccount) paymentAccount)

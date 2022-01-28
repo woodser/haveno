@@ -131,26 +131,30 @@ public final class XmrAddressEntryList implements PersistableEnvelope, Persisted
 //
 //            toBeRemoved.forEach(entrySet::remove);
         }
+        
+        if (wallet != null) {
+            
+            // In case we restore from seed words and have balance we need to add the relevant addresses to our list.
+            // IssuedReceiveAddresses does not contain all addresses where we expect balance so we need to listen to
+            // incoming txs at blockchain sync to add the rest.
+            if (wallet.getBalance().compareTo(new BigInteger("0")) > 0) {
+              wallet.getAccounts().forEach(acct -> {
+                log.info("Create XmrAddressEntry for IssuedReceiveAddress. address={}", acct.getPrimaryAddress());
+                if (acct.getIndex() != 0) entrySet.add(new XmrAddressEntry(acct.getIndex(), acct.getPrimaryAddress(), XmrAddressEntry.Context.AVAILABLE));
+            });
+           }
 
-        // In case we restore from seed words and have balance we need to add the relevant addresses to our list.
-        // IssuedReceiveAddresses does not contain all addresses where we expect balance so we need to listen to
-        // incoming txs at blockchain sync to add the rest.
-        if (wallet.getBalance().compareTo(new BigInteger("0")) > 0) {
-          wallet.getAccounts().forEach(acct -> {
-            log.info("Create XmrAddressEntry for IssuedReceiveAddress. address={}", acct.getPrimaryAddress());
-            if (acct.getIndex() != 0) entrySet.add(new XmrAddressEntry(acct.getIndex(), acct.getPrimaryAddress(), XmrAddressEntry.Context.AVAILABLE));
-        });
-       }
+            // We add those listeners to get notified about potential new transactions and
+            // add an address entry list in case it does not exist yet. This is mainly needed for restore from seed words
+            // but can help as well in case the addressEntry list would miss an address where the wallet was received
+            // funds (e.g. if the user sends funds to an address which has not been provided in the main UI - like from the
+            // wallet details window).
+            wallet.addListener(new MoneroWalletListener() {
+              @Override public void onOutputReceived(MoneroOutputWallet output) { maybeAddNewAddressEntry(output); }
+              @Override public void onOutputSpent(MoneroOutputWallet output) { maybeAddNewAddressEntry(output); }
+            });
+        }
 
-        // We add those listeners to get notified about potential new transactions and
-        // add an address entry list in case it does not exist yet. This is mainly needed for restore from seed words
-        // but can help as well in case the addressEntry list would miss an address where the wallet was received
-        // funds (e.g. if the user sends funds to an address which has not been provided in the main UI - like from the
-        // wallet details window).
-        wallet.addListener(new MoneroWalletListener() {
-          @Override public void onOutputReceived(MoneroOutputWallet output) { maybeAddNewAddressEntry(output); }
-          @Override public void onOutputSpent(MoneroOutputWallet output) { maybeAddNewAddressEntry(output); }
-        });
 
         requestPersistence();
     }

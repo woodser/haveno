@@ -55,6 +55,7 @@ import bisq.core.user.Preferences;
 import bisq.network.p2p.P2PService;
 
 import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.PubKeyRingProvider;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.FaultHandler;
 import bisq.common.handlers.ResultHandler;
@@ -120,7 +121,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     private ChangeListener<Trade.State> tradeStateChangeListener;
     private Trade selectedTrade;
     @Getter
-    private final PubKeyRing pubKeyRing;
+    private final PubKeyRingProvider pubKeyRing;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor, initialization
@@ -129,7 +130,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     @Inject
     public PendingTradesDataModel(TradeManager tradeManager,
                                   XmrWalletService xmrWalletService,
-                                  PubKeyRing pubKeyRing,
+                                  PubKeyRingProvider pubKeyRing,
                                   ArbitrationManager arbitrationManager,
                                   MediationManager mediationManager,
                                   TraderChatManager traderChatManager,
@@ -517,7 +518,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                     true,
                     (offer.getDirection() == OfferPayload.Direction.BUY) == isMaker,
                     isMaker,
-                    pubKeyRing,
+                    pubKeyRing.get(),
                     trade.getDate().getTime(),
                     trade.getMaxTradePeriodDate().getTime(),
                     trade.getContract(),
@@ -553,7 +554,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                   true,
                   (offer.getDirection() == OfferPayload.Direction.BUY) == isMaker,
                   isMaker,
-                  pubKeyRing,
+                  pubKeyRing.get(),
                   trade.getDate().getTime(),
                   trade.getMaxTradePeriodDate().getTime(),
                   trade.getContract(),

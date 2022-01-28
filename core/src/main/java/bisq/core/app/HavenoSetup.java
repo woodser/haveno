@@ -639,12 +639,14 @@ public class HavenoSetup {
     }
 
     private void maybeShowSecurityRecommendation() {
-        String key = "remindPasswordAndBackup";
-        user.getPaymentAccountsAsObservable().addListener((SetChangeListener<PaymentAccount>) change -> {
-            if (!walletsManager.areWalletsEncrypted() && !user.isPaymentAccountImport() && preferences.showAgain(key) && change.wasAdded() &&
-                    displaySecurityRecommendationHandler != null)
-                displaySecurityRecommendationHandler.accept(key);
-        });
+        if (user.getPaymentAccountsAsObservable() != null) {
+            String key = "remindPasswordAndBackup";
+            user.getPaymentAccountsAsObservable().addListener((SetChangeListener<PaymentAccount>) change -> {
+                if (!walletsManager.areWalletsEncrypted() && !user.isPaymentAccountImport() && preferences.showAgain(key) && change.wasAdded() &&
+                        displaySecurityRecommendationHandler != null)
+                    displaySecurityRecommendationHandler.accept(key);
+            });
+        }
     }
 
     private void maybeShowLocalhostRunningInfo() {
