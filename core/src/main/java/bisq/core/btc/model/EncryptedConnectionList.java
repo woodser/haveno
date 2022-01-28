@@ -126,7 +126,6 @@ public class EncryptedConnectionList implements PersistableEnvelope, PersistedDa
             e.printStackTrace();
             throw e;
         }
-
     }
 
     public void initializeEncryption(KeyCrypterScrypt keyCrypterScrypt) {

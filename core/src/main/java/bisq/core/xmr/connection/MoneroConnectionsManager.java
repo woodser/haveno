@@ -263,24 +263,6 @@ public final class MoneroConnectionsManager {
         return false;
     }
     
-    private void updateDaemonInfo() {
-        System.out.println("MoneroConnectionsManager.updateDaemonInfo()!!!");
-        try {
-            if (daemon == null) throw new RuntimeException("No daemon connection"); // TODO: this is expected until initial connection set
-            peers.set(getOnlinePeers());
-            numPeers.set(peers.get().size());
-            chainHeight.set(daemon.getHeight());
-        } catch (Exception e) {
-            log.warn("Could not update daemon info: " + e.getMessage());
-        }
-    }
-
-    private List<MoneroPeer> getOnlinePeers() {
-        return daemon.getPeers().stream()
-                .filter(peer -> peer.isOnline())
-                .collect(Collectors.toList());
-    }
-    
     public ReadOnlyIntegerProperty numPeersProperty() {
         return numPeers;
     }
@@ -323,5 +305,23 @@ public final class MoneroConnectionsManager {
                 connectionList.setCurrentConnectionUri(currentConnection.getUri());
             }
         }
+    }
+
+    private void updateDaemonInfo() {
+        System.out.println("MoneroConnectionsManager.updateDaemonInfo()!!!");
+        try {
+            if (daemon == null) throw new RuntimeException("No daemon connection"); // TODO: this is expected until initial connection set
+            peers.set(getOnlinePeers());
+            numPeers.set(peers.get().size());
+            chainHeight.set(daemon.getHeight());
+        } catch (Exception e) {
+            log.warn("Could not update daemon info: " + e.getMessage());
+        }
+    }
+
+    private List<MoneroPeer> getOnlinePeers() {
+        return daemon.getPeers().stream()
+                .filter(peer -> peer.isOnline())
+                .collect(Collectors.toList());
     }
 }
