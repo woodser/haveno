@@ -18,7 +18,6 @@
 package bisq.core.app;
 
 import bisq.core.api.CoreAccountService;
-import bisq.core.btc.model.EncryptedConnectionList;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.XmrWalletService;
@@ -29,7 +28,6 @@ import bisq.core.setup.CoreSetup;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.trade.txproof.xmr.XmrTxProofService;
-import bisq.core.xmr.connection.MoneroConnectionsManager;
 import bisq.network.p2p.P2PService;
 
 import bisq.common.UserThread;

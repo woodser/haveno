@@ -140,12 +140,8 @@ public class CoreApi {
         coreAccountService.createAccount(password);
     }
 
-    public void openAccount(String password) {
-        try {
-            coreAccountService.openAccount(password);
-        } catch (IncorrectPasswordException ipe) {
-            log.warn(ipe.getMessage());
-        }
+    public void openAccount(String password) throws IncorrectPasswordException {
+        coreAccountService.openAccount(password);
     }
 
     public boolean isAppInitialized() {

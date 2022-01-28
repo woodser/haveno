@@ -28,6 +28,7 @@ import static bisq.proto.grpc.AccountGrpc.getOpenAccountMethod;
 import static bisq.proto.grpc.AccountGrpc.getRestoreAccountMethod;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import bisq.common.crypto.IncorrectPasswordException;
 import bisq.core.api.CoreApi;
 import bisq.daemon.grpc.interceptor.CallRateMeteringInterceptor;
 import bisq.daemon.grpc.interceptor.GrpcCallRateMeter;
@@ -126,6 +127,7 @@ public class GrpcAccountService extends AccountImplBase {
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
         } catch (Throwable cause) {
+            if (cause instanceof IncorrectPasswordException) cause = new IllegalStateException(cause);
             exceptionHandler.handleException(log, cause, responseObserver);
         }
     }

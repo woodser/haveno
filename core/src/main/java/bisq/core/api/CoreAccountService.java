@@ -97,28 +97,19 @@ public class CoreAccountService {
     public void createAccount(String password) {
         System.out.println("CoreAccountService.createAccount(" + password + ")");
         if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
-        System.out.println("CoreAccountService 2");
         keyRing.generateKeys(password);
-        System.out.println("CoreAccountService 3");
         keyStorage.saveKeyRing(keyRing, password);
-        System.out.println("CoreAccountService 4");
-        setPassword(password);
-        System.out.println("CoreAccountService 5");
+        this.password = password;
         for (AccountServiceListener listener : listeners) listener.onAccountCreated();
-        System.out.println("CoreAccountService 6");
     }
     
     public void openAccount(String password) throws IncorrectPasswordException {
         if (!accountExists()) throw new IllegalStateException("Cannot open account if account does not exist");
-        try {
-            if (keyRing.unlockKeys(password, false)) {
-                setPassword(password);
-                for (AccountServiceListener listener : listeners) listener.onAccountOpened();
-            } else {
-                throw new RuntimeException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): means password is rejected?
-            }
-        } catch (IncorrectPasswordException ex) {
-            log.warn(ex.getMessage());
+        if (keyRing.unlockKeys(password, false)) {
+            this.password = password;
+            for (AccountServiceListener listener : listeners) listener.onAccountOpened();
+        } else {
+            throw new IllegalStateException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): means password is rejected?
         }
     }
     
@@ -126,7 +117,7 @@ public class CoreAccountService {
         if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
         keyStorage.saveKeyRing(keyRing, password);
         String oldPassword = this.password;
-        setPassword(password);
+        this.password = password;
         for (AccountServiceListener listener : listeners) listener.onPasswordChanged(oldPassword, password);
     }
     
@@ -177,12 +168,5 @@ public class CoreAccountService {
         } catch (Exception err) {
             throw new RuntimeException(err);
         }
-    }
-    
-    // ------------------------------- HELPERS --------------------------------
-    
-    private void setPassword(String newPassword) {
-        this.password = newPassword;
-        // TODO: update wallet passwords
     }
 }
