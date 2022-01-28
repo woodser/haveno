@@ -388,6 +388,10 @@ public class XmrWalletService {
         }
     }
     
+    public boolean isChainHeightSyncedWithinTolerance() {
+        return connectionManager.isChainHeightSyncedWithinTolerance();
+    }
+    
     public XmrAddressEntry recoverAddressEntry(String offerId, String address, XmrAddressEntry.Context context) {
         var available = findAddressEntry(address, XmrAddressEntry.Context.AVAILABLE);
         if (!available.isPresent()) return null;

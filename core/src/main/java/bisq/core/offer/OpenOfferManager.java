@@ -751,8 +751,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             return;
         }
 
-        // Don't allow trade start if BitcoinJ is not fully synced (bisq issue #4764)
-        if (!btcWalletService.isChainHeightSyncedWithinTolerance()) {
+        // Don't allow trade start if Monero node is not fully synced
+        if (!xmrWalletService.isChainHeightSyncedWithinTolerance()) {
             errorMessage = "We got a handleOfferAvailabilityRequest but our chain is not synced.";
             log.info(errorMessage);
             sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);
