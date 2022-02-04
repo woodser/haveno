@@ -19,7 +19,6 @@ package bisq.common.crypto;
 
 import bisq.common.config.Config;
 import bisq.common.file.FileUtil;
-import bisq.common.util.Hex;
 
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 
@@ -153,16 +152,15 @@ public class KeyStorage {
                     ByteBuffer buf = ByteBuffer.wrap(encodedPrivateKey, position, ENCRYPTED_FORMAT_LENGTH);
                     position += ENCRYPTED_FORMAT_LENGTH;
                     int version = buf.getInt();
-                    if (version != 1)
-                        throw new RuntimeException("Unable to parse encrypted keys");
+                    if (version != 1) throw new RuntimeException("Unable to parse encrypted keys");
                     int saltLength = buf.getInt();
                     int iterations = buf.getInt();
                     int secretLength = buf.getInt();
 
                     byte[] salt = Arrays.copyOfRange(encodedPrivateKey, position, position + saltLength);
                     position += saltLength;
-                    KeyCrypterScrypt crypter = CryptoUtils.getKeyCrypterScrypt(salt);
-                    KeyParameter pwKey = CryptoUtils.deriveKeyWithScrypt(crypter, password);
+                    KeyCrypterScrypt crypter = ScryptUtil.getKeyCrypterScrypt(salt);
+                    KeyParameter pwKey = ScryptUtil.deriveKeyWithScrypt(crypter, password);
                     byte[] pwEncrypted = Arrays.copyOfRange(encodedPrivateKey, position, position + pwKey.getKey().length);
                     if (Arrays.compare(pwEncrypted, pwKey.getKey()) != 0) {
                         throw new IncorrectPasswordException("Incorrect password");
@@ -240,8 +238,8 @@ public class KeyStorage {
                 // Write pw salt and pw encrypted
                 byte[] salt = CryptoUtils.getRandomBytes(SALT_LENGTH);
                 fos.write(salt);
-                KeyCrypterScrypt crypter = CryptoUtils.getKeyCrypterScrypt(salt);
-                KeyParameter pwKey = CryptoUtils.deriveKeyWithScrypt(crypter, password);
+                KeyCrypterScrypt crypter = ScryptUtil.getKeyCrypterScrypt(salt);
+                KeyParameter pwKey = ScryptUtil.deriveKeyWithScrypt(crypter, password);
                 fos.write(pwKey.getKey());
 
                 // Write new salt and generate SecretKey

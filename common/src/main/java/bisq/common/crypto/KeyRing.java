@@ -34,14 +34,15 @@ import javax.annotation.Nullable;
 @Singleton
 public final class KeyRing {
 
+    private final KeyStorage keyStorage;
+
     private KeyPair signatureKeyPair;
     private KeyPair encryptionKeyPair;
     private PubKeyRing pubKeyRing;
 
-    private KeyStorage keyStorage;
-
     /**
      * Creates the KeyRing. Unlocks if not encrypted. Does not generate keys.
+     * 
      * @param keyStorage Persisted storage
      */
     @Inject
@@ -51,18 +52,17 @@ public final class KeyRing {
 
     /**
      * Creates KeyRing with a password. Attempts to generate keys if they don't exist.
+     * 
      * @param keyStorage Persisted storage
      * @param password The password to unlock the keys or to generate new keys, nullable.
      * @param generateKeys Generate new keys with password if not created yet.
      */
     public KeyRing(KeyStorage keyStorage, String password, boolean generateKeys) {
         this.keyStorage = keyStorage;
-
         try {
             unlockKeys(password, generateKeys);
         } catch(IncorrectPasswordException ex) {
-            log.info("Account is password protected, waiting for user to openAccount");
-            return;
+            // no action
         }
     }
 
@@ -86,31 +86,29 @@ public final class KeyRing {
     /**
      * Unlocks the keyring with a given password if required. If the keyring is already
      * unlocked, do nothing.
+     * 
      * @param password Decrypts the or encrypts newly generated keys with the given password.
      * @return Whether KeyRing is unlocked
      */
     public boolean unlockKeys(@Nullable String password, boolean generateKeys) throws IncorrectPasswordException {
-
-        if (isUnlocked())
-            return true;
-
+        if (isUnlocked()) return true;
         if (keyStorage.allKeyFilesExist()) {
             signatureKeyPair = keyStorage.loadKeyPair(KeyStorage.KeyEntry.MSG_SIGNATURE, password);
             encryptionKeyPair = keyStorage.loadKeyPair(KeyStorage.KeyEntry.MSG_ENCRYPTION, password);
-            if (signatureKeyPair != null && encryptionKeyPair != null)
-                pubKeyRing = new PubKeyRing(signatureKeyPair.getPublic(), encryptionKeyPair.getPublic());
+            if (signatureKeyPair != null && encryptionKeyPair != null) pubKeyRing = new PubKeyRing(signatureKeyPair.getPublic(), encryptionKeyPair.getPublic());
         } else if (generateKeys) {
             generateKeys(password);
         }
-
         return isUnlocked();
     }
 
     /**
      * Generates a new set of keys if the current keyring is closed.
-     * @param password
+     * 
+     * @param password The password to unlock the keys or to generate new keys, nullable.
      */
     public void generateKeys(String password) {
+        if (isUnlocked()) throw new Error("Current keyring must be closed to generate new keys");
         signatureKeyPair = Sig.generateKeyPair();
         encryptionKeyPair = Encryption.generateKeyPair();
         pubKeyRing = new PubKeyRing(signatureKeyPair.getPublic(), encryptionKeyPair.getPublic());

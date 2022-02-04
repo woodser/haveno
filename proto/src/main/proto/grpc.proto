@@ -221,7 +221,7 @@ service MoneroConnections {
     }
 }
 
-message UriConnection {
+message UrlConnection {
     enum OnlineStatus {
         UNKNOWN = 0;
         ONLINE = 1;
@@ -233,7 +233,7 @@ message UriConnection {
         NOT_AUTHENTICATED = 2;
     }
 
-    string uri = 1;
+    string url = 1;
     string username = 2; // request only
     string password = 3; // request only
     int32 priority = 4;
@@ -242,13 +242,13 @@ message UriConnection {
 }
 
 message AddConnectionRequest {
-    UriConnection connection = 1;
+    UrlConnection connection = 1;
 }
 
 message AddConnectionReply {}
 
 message RemoveConnectionRequest {
-    string uri = 1;
+    string url = 1;
 }
 
 message RemoveConnectionReply {}
@@ -256,18 +256,18 @@ message RemoveConnectionReply {}
 message GetConnectionRequest {}
 
 message GetConnectionReply {
-    UriConnection connection = 1;
+    UrlConnection connection = 1;
 }
 
 message GetConnectionsRequest {}
 
 message GetConnectionsReply {
-    repeated UriConnection connections = 1;
+    repeated UrlConnection connections = 1;
 }
 
 message SetConnectionRequest {
-    string uri = 1;
-    UriConnection connection = 2;
+    string url = 1;
+    UrlConnection connection = 2;
 }
 
 message SetConnectionReply {}
@@ -275,13 +275,13 @@ message SetConnectionReply {}
 message CheckConnectionRequest {}
 
 message CheckConnectionReply {
-    UriConnection connection = 1;
+    UrlConnection connection = 1;
 }
 
 message CheckConnectionsRequest {}
 
 message CheckConnectionsReply {
-    repeated UriConnection connections = 1;
+    repeated UrlConnection connections = 1;
 }
 
 message StartCheckingConnectionsRequest {
@@ -297,7 +297,7 @@ message StopCheckingConnectionsReply {}
 message GetBestAvailableConnectionRequest {}
 
 message GetBestAvailableConnectionReply {
-    UriConnection connection = 1;
+    UrlConnection connection = 1;
 }
 
 message SetAutoSwitchRequest {

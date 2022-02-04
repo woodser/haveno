@@ -18,6 +18,7 @@
 package bisq.core.offer;
 
 import bisq.core.api.CoreContext;
+import bisq.core.api.CoreMoneroConnectionsService;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.TradeWalletService;
 import bisq.core.btc.wallet.XmrWalletService;
@@ -110,6 +111,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private final KeyRing keyRing;
     private final User user;
     private final P2PService p2PService;
+    private final CoreMoneroConnectionsService connectionService;
     private final BtcWalletService btcWalletService;
     private final XmrWalletService xmrWalletService;
     private final TradeWalletService tradeWalletService;
@@ -144,6 +146,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                             KeyRing keyRing,
                             User user,
                             P2PService p2PService,
+                            CoreMoneroConnectionsService connectionService,
                             BtcWalletService btcWalletService,
                             XmrWalletService xmrWalletService,
                             TradeWalletService tradeWalletService,
@@ -163,6 +166,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         this.keyRing = keyRing;
         this.user = user;
         this.p2PService = p2PService;
+        this.connectionService = connectionService;
         this.btcWalletService = btcWalletService;
         this.xmrWalletService = xmrWalletService;
         this.tradeWalletService = tradeWalletService;
@@ -752,7 +756,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         }
 
         // Don't allow trade start if Monero node is not fully synced
-        if (!xmrWalletService.isChainHeightSyncedWithinTolerance()) {
+        if (!connectionService.isChainHeightSyncedWithinTolerance()) {
             errorMessage = "We got a handleOfferAvailabilityRequest but our chain is not synced.";
             log.info(errorMessage);
             sendAckMessage(request.getClass(), peer, request.getPubKeyRing(), request.getOfferId(), request.getUid(), false, errorMessage);

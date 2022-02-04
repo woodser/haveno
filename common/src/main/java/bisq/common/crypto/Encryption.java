@@ -234,6 +234,7 @@ public class Encryption {
 
     /**
      * Generates a secret key from password string.
+     * 
      * @param p Password
      * @param s Salt
      * @param i Iterations

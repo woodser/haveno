@@ -17,13 +17,15 @@
 
 package bisq.core.api;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import bisq.common.config.Config;
 import bisq.common.crypto.IncorrectPasswordException;
 import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.KeyStorage;
 import bisq.common.file.FileUtil;
 import bisq.common.persistence.PersistenceManager;
-import bisq.common.util.ZipUtil;
+import bisq.common.util.ZipUtils;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -57,18 +59,6 @@ public class CoreAccountService {
     private String password;
     private List<AccountServiceListener> listeners = new ArrayList<AccountServiceListener>();
     
-    /**
-     * Default account listener (takes no action).
-     */
-    public class AccountServiceListener {
-        public void onAccountCreated() {}
-        public void onAccountOpened() {}
-        public void onAccountClosed() {}
-        public void onAccountRestored(Runnable onShutDown) {}
-        public void onAccountDeleted(Runnable onShutDown) {}
-        public void onPasswordChanged(String oldPassword, String newPassword) {}
-    }
-    
     @Inject
     public CoreAccountService(Config config,
                               KeyStorage keyStorage,
@@ -94,11 +84,13 @@ public class CoreAccountService {
         return keyRing.isUnlocked() && accountExists();
     }
     
+    public void checkAccountOpen() {
+        checkState(isAccountOpen(), "Account not open");
+    }
+    
     public void createAccount(String password) {
-        System.out.println("CoreAccountService.createAccount(" + password + ")");
         if (accountExists()) throw new IllegalStateException("Cannot create account if account already exists");
         keyRing.generateKeys(password);
-        keyStorage.saveKeyRing(keyRing, password);
         this.password = password;
         for (AccountServiceListener listener : listeners) listener.onAccountCreated();
     }
@@ -109,7 +101,7 @@ public class CoreAccountService {
             this.password = password;
             for (AccountServiceListener listener : listeners) listener.onAccountOpened();
         } else {
-            throw new IllegalStateException("keyRing.unlockKeys() returned false, that should never happen"); // TODO (woodser): means password is rejected?
+            throw new IllegalStateException("keyRing.unlockKeys() returned false, that should never happen");
         }
     }
     
@@ -139,7 +131,7 @@ public class CoreAccountService {
                 log.info("Zipping directory " + dataDir);
                 new Thread(() -> {
                     try {
-                        ZipUtil.zipDirToStream(dataDir, out, bufferSize);
+                        ZipUtils.zipDirToStream(dataDir, out, bufferSize);
                     } catch (Exception ex) {
                         error.accept(ex);
                     }
@@ -154,16 +146,15 @@ public class CoreAccountService {
     public void restoreAccount(InputStream inputStream, int bufferSize, Runnable onShutdown) throws Exception {
         if (accountExists()) throw new IllegalStateException("Cannot restore account if there is an existing account");
         File dataDir = new File(config.appDataDir.getPath());
-        ZipUtil.unzipToDir(dataDir, inputStream, bufferSize);
+        ZipUtils.unzipToDir(dataDir, inputStream, bufferSize);
         for (AccountServiceListener listener : listeners) listener.onAccountRestored(onShutdown);
     }
     
-    // TODO: flush persistence objects to disk?
     public void deleteAccount(Runnable onShutdown) {
         try {
             keyRing.lockKeys();
             for (AccountServiceListener listener : listeners) listener.onAccountDeleted(onShutdown);
-            File dataDir = new File(config.appDataDir.getPath()); // TODO (woodser): deleting directory after gracefulShutdown() so services don't throw when they try to persist (e.g. XmrTxProofService). gracefulShutdown() needs to honor isReadOnly
+            File dataDir = new File(config.appDataDir.getPath()); // TODO (woodser): deleting directory after gracefulShutdown() so services don't throw when they try to persist (e.g. XmrTxProofService), but gracefulShutdown() should honor read-only shutdown
             FileUtil.deleteDirectory(dataDir, null, false);
         } catch (Exception err) {
             throw new RuntimeException(err);

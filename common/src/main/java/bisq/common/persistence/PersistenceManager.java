@@ -116,7 +116,6 @@ public class PersistenceManager<T extends PersistableEnvelope> {
 
         // We don't know from which thread we are called so we map to user thread
         UserThread.execute(() -> {
-
             if (doShutdown) {
                 if (flushAtShutdownCalled) {
                     log.warn("We got flushAllDataToDisk called again. This can happen in some rare cases. We ignore the repeated call.");
@@ -230,7 +229,6 @@ public class PersistenceManager<T extends PersistableEnvelope> {
     public PersistenceManager(@Named(Config.STORAGE_DIR) File dir,
                               PersistenceProtoResolver persistenceProtoResolver,
                               CorruptedStorageFileHandler corruptedStorageFileHandler) {
-        // If we turned off persistence and is shutting down skip these checks.
         this.dir = checkDir(dir);
         this.persistenceProtoResolver = persistenceProtoResolver;
         this.corruptedStorageFileHandler = corruptedStorageFileHandler;
@@ -384,7 +382,7 @@ public class PersistenceManager<T extends PersistableEnvelope> {
         }
 
         if (!initCalled.get()) {
-            log.warn("requestPersistence called before init. Ignoring request");
+            log.warn("requestPersistence() called before init. Ignoring request");
             return;
         }
 

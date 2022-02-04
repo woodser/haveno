@@ -21,8 +21,6 @@ import bisq.core.api.CoreMoneroConnectionsService;
 import bisq.core.api.CoreNotificationService;
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.P2PService;
-import bisq.proto.grpc.NotificationMessage;
-import bisq.proto.grpc.NotificationMessage.NotificationType;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -52,7 +50,7 @@ public class AppStartupState {
 
     @Inject
     public AppStartupState(CoreNotificationService notificationService,
-                           CoreMoneroConnectionsService connectionService,
+                           CoreMoneroConnectionsService connectionsService,
                            P2PService p2PService) {
 
         p2PService.addP2PServiceListener(new BootstrapListener() {
@@ -62,38 +60,31 @@ public class AppStartupState {
             }
         });
 
-        connectionService.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
-            if (connectionService.isDownloadComplete())
+        connectionsService.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
+            if (connectionsService.isDownloadComplete())
                 isBlockDownloadComplete.set(true);
         });
 
-        connectionService.numPeersProperty().addListener((observable, oldValue, newValue) -> {
-            if (connectionService.hasSufficientPeersForBroadcast())
+        connectionsService.numPeersProperty().addListener((observable, oldValue, newValue) -> {
+            if (connectionsService.hasSufficientPeersForBroadcast())
                 hasSufficientPeersForBroadcast.set(true);
         });
 
-        p2pNetworkAndWalletInitialized = EasyBind.combine(updatedDataReceived, // TODO (woodser): wallet only refers to btc wallet setup, which is disabled
+        p2pNetworkAndWalletInitialized = EasyBind.combine(updatedDataReceived,
                 isBlockDownloadComplete,
                 hasSufficientPeersForBroadcast,
                 allDomainServicesInitialized,
                 (a, b, c, d) -> {
-                    log.info("Setting walletAndNetworkReady = {} = updatedDataReceived={} && isBlockDownloadComplete={} && hasSufficientPeersForBroadcast={}", (a && b && c), a, b, c);
+                    log.info("p2pNetworkAndWalletInitialized = {} = updatedDataReceived={} && isBlockDownloadComplete={} && hasSufficientPeersForBroadcast={} && allDomainServicesInitialized={}", (a && b && c && d), updatedDataReceived.get(), isBlockDownloadComplete.get(), hasSufficientPeersForBroadcast.get(), allDomainServicesInitialized.get());
                     if (a && b && c) {
                         walletAndNetworkReady.set(true);
                     }
-                    if (a) {
-                        log.info("But actually, setting walletAndNetworkReady = {} = updatedDataReceived={}", (a), a);
-                        walletAndNetworkReady.set(true); // TODO (woodser): haveno application is fully initialized when haveno network ready, not monero daemon, correct?
-                    }
-                    return a && d;
+                    return a && b && c && d;
                 });
         p2pNetworkAndWalletInitialized.subscribe((observable, oldValue, newValue) -> {
             if (newValue) {
                 applicationFullyInitialized.set(true);
-                notificationService.sendNotification(NotificationMessage.newBuilder()
-                      .setType(NotificationType.APP_INITIALIZED)
-                      .setTimestamp(System.currentTimeMillis())
-                      .build());
+                notificationService.sendAppInitializedNotification();
                 log.info("Application fully initialized");
             }
         });

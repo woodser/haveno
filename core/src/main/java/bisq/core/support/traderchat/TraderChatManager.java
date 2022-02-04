@@ -17,7 +17,7 @@
 
 package bisq.core.support.traderchat;
 
-import bisq.core.btc.setup.WalletsSetup;
+import bisq.core.api.CoreMoneroConnectionsService;
 import bisq.core.locale.Res;
 import bisq.core.support.SupportManager;
 import bisq.core.support.SupportType;
@@ -56,10 +56,10 @@ public class TraderChatManager extends SupportManager {
 
     @Inject
     public TraderChatManager(P2PService p2PService,
-                             WalletsSetup walletsSetup,
+                             CoreMoneroConnectionsService connectionService,
                              TradeManager tradeManager,
                              PubKeyRingProvider pubKeyRing) {
-        super(p2PService, walletsSetup);
+        super(p2PService, connectionService);
         this.tradeManager = tradeManager;
         this.pubKeyRing = pubKeyRing;
     }
@@ -140,11 +140,13 @@ public class TraderChatManager extends SupportManager {
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    @Override
     public void onAllServicesInitialized() {
         super.onAllServicesInitialized();
         tryApplyMessages();
     }
 
+    @Override
     public void onSupportMessage(SupportMessage message) {
         if (canProcessMessage(message)) {
             log.info("Received {} with tradeId {} and uid {}",

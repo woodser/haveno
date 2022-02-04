@@ -120,6 +120,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import monero.wallet.model.MoneroTxWallet;
 
+
 public class TradeManager implements PersistedDataHost, DecryptedDirectMessageListener {
     private static final Logger log = LoggerFactory.getLogger(TradeManager.class);
 

@@ -56,7 +56,7 @@ class GrpcShutdownService extends ShutdownServerGrpc.ShutdownServerImplBase {
                     responseObserver.onCompleted();
                 }
             });
-            UserThread.runAfter(HavenoHeadlessApp.getShutDownHandler(), 500, MILLISECONDS); // TODO: no need to wait?
+            UserThread.runAfter(HavenoHeadlessApp.getShutDownHandler(), 500, MILLISECONDS);
         } catch (Throwable cause) {
             exceptionHandler.handleException(log, cause, responseObserver);
         }

@@ -29,7 +29,7 @@ import bisq.desktop.main.support.dispute.client.mediation.MediationClientView;
 import bisq.desktop.util.GUIUtil;
 
 import bisq.core.account.witness.AccountAgeWitnessService;
-import bisq.core.btc.setup.WalletsSetup;
+import bisq.core.api.CoreMoneroConnectionsService;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.locale.Res;
 import bisq.core.offer.Offer;
@@ -98,7 +98,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     public final ArbitrationManager arbitrationManager;
     public final MediationManager mediationManager;
     private final P2PService p2PService;
-    private final WalletsSetup walletsSetup;
+    private final CoreMoneroConnectionsService connectionService;
     @Getter
     private final AccountAgeWitnessService accountAgeWitnessService;
     public final Navigation navigation;
@@ -136,7 +136,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                                   TraderChatManager traderChatManager,
                                   Preferences preferences,
                                   P2PService p2PService,
-                                  WalletsSetup walletsSetup,
+                                  CoreMoneroConnectionsService connectionService,
                                   AccountAgeWitnessService accountAgeWitnessService,
                                   Navigation navigation,
                                   WalletPasswordWindow walletPasswordWindow,
@@ -150,7 +150,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
         this.traderChatManager = traderChatManager;
         this.preferences = preferences;
         this.p2PService = p2PService;
-        this.walletsSetup = walletsSetup;
+        this.connectionService = connectionService;
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.navigation = navigation;
         this.walletPasswordWindow = walletPasswordWindow;
@@ -596,7 +596,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     }
 
     public boolean isReadyForTxBroadcast() {
-        return GUIUtil.isReadyForTxBroadcastOrShowPopup(p2PService, walletsSetup);
+        return GUIUtil.isReadyForTxBroadcastOrShowPopup(p2PService, connectionService);
     }
 
     public boolean isBootstrappedOrShowPopup() {

@@ -41,6 +41,13 @@ public class CoreNotificationService {
         }
     }
 
+    public void sendAppInitializedNotification() {
+        sendNotification(NotificationMessage.newBuilder()
+                .setType(NotificationType.APP_INITIALIZED)
+                .setTimestamp(System.currentTimeMillis())
+                .build());
+    }
+
     public void sendTradeNotification(Trade trade, String title, String message) {
         sendNotification(NotificationMessage.newBuilder()
                 .setType(NotificationType.TRADE_UPDATE)

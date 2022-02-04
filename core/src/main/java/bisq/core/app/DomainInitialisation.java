@@ -230,7 +230,6 @@ public class DomainInitialisation {
         triggerPriceService.onAllServicesInitialized();
         mempoolService.onAllServicesInitialized();
 
-        // User payment accounts could be null if account has not been created or opened.
         if (revolutAccountsUpdateHandler != null && user.getPaymentAccountsAsObservable() != null) {
             revolutAccountsUpdateHandler.accept(user.getPaymentAccountsAsObservable().stream()
                     .filter(paymentAccount -> paymentAccount instanceof RevolutAccount)

@@ -31,10 +31,11 @@ import java.util.zip.ZipOutputStream;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ZipUtil {
+public class ZipUtils {
 
     /**
      * Zips directory into the output stream. Empty directories are not included.
+     * 
      * @param dir The directory to create the zip from.
      * @param out The stream to write to.
      */
@@ -43,9 +44,7 @@ public class ZipUtil {
         // Get all files in directory and subdirectories.
         ArrayList<String> fileList = new ArrayList<>();
         getFilesRecursive(dir, fileList);
-
         try (ZipOutputStream zos = new ZipOutputStream(out)) {
-
             for (String filePath : fileList) {
                 log.info("Compressing: " + filePath);
 
@@ -89,12 +88,12 @@ public class ZipUtil {
     /**
      * Unzips the zipStream into the specified directory, overwriting any files.
      * Existing files are preserved.
+     * 
      * @param dir The directory to write to.
      * @param inputStream The raw stream assumed to be in zip format.
      * @param bufferSize The buffer used to read from efficiently.
      */
     public static void unzipToDir(File dir, InputStream inputStream, int bufferSize) throws Exception {
-
         try (ZipInputStream zipStream = new ZipInputStream(inputStream)) {
             ZipEntry entry;
             byte[] buffer = new byte[bufferSize];

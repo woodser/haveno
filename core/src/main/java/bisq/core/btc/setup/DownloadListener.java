@@ -11,11 +11,11 @@ import java.util.Date;
 public class DownloadListener {
     private final DoubleProperty percentage = new SimpleDoubleProperty(-1);
 
-    protected void progress(double percentage, int blocksLeft, Date date) {
+    public void progress(double percentage, int blocksLeft, Date date) {
         UserThread.execute(() -> this.percentage.set(percentage / 100d));
     }
 
-    protected void doneDownload() {
+    public void doneDownload() {
         UserThread.execute(() -> this.percentage.set(1d));
     }
 

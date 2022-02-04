@@ -19,7 +19,7 @@ package bisq.daemon.app;
 
 import bisq.core.app.HavenoHeadlessAppMain;
 import bisq.core.app.HavenoSetup;
-import bisq.core.api.CoreAccountService.AccountServiceListener;
+import bisq.core.api.AccountServiceListener;
 import bisq.core.app.CoreModule;
 
 import bisq.common.UserThread;
@@ -30,7 +30,6 @@ import bisq.common.handlers.ResultHandler;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.io.Console;
-
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -134,11 +133,11 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
 
             // Handle asynchronous account opens.
             // Will need to also close and reopen account.
-            AccountServiceListener accountListener = accountService.new AccountServiceListener() {
+            AccountServiceListener accountListener = new AccountServiceListener() {
                 @Override public void onAccountCreated() { onLogin(); }
                 @Override public void onAccountOpened() { onLogin(); }
                 private void onLogin() {
-                    log.info("Logged in successfully through rpc");
+                    log.info("Logged in successfully");
                     reader.cancel(); // closing the reader will stop all read attempts and end the interactive login thread
                 }
             };
@@ -169,7 +168,7 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
         Console console = System.console();
         if (console == null) {
             // The ConsoleInput class reads from system.in, can wait for input without a console.
-            log.warn("No console available, account must be opened through rpc");
+            log.info("No console available, account must be opened through rpc");
             try {
                 // If user logs in through rpc, the reader will be interrupted through the event.
                 reader.readLine();
@@ -181,9 +180,6 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
 
         String openedOrCreated = "Account unlocked\n";
         boolean accountExists = accountService.accountExists();
-        System.out.println("Account exists: " + accountExists);
-        System.out.println("Account is open: " + accountService.isAccountOpen());
-        System.out.println("Account password: " + accountService.getPassword());
         while (!accountService.isAccountOpen()) {
             try {
                 if (accountExists) {
@@ -219,5 +215,4 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
         System.out.printf(openedOrCreated);
         return true;
     }
-
 }

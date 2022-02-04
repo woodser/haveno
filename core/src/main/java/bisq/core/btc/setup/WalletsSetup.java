@@ -21,7 +21,6 @@ import bisq.core.btc.exceptions.InvalidHostException;
 import bisq.core.btc.exceptions.RejectedTxException;
 import bisq.core.btc.model.AddressEntry;
 import bisq.core.btc.model.AddressEntryList;
-import bisq.core.btc.model.XmrAddressEntryList;
 import bisq.core.btc.nodes.BtcNetworkConfig;
 import bisq.core.btc.nodes.BtcNodes;
 import bisq.core.btc.nodes.BtcNodes.BtcNode;
@@ -104,7 +103,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class WalletsSetup {
 
     public static final String PRE_SEGWIT_WALLET_BACKUP = "pre_segwit_haveno_BTC.wallet.backup";
-    private static final int MIN_BROADCAST_CONNECTIONS = 2;
+    private static final int MIN_BROADCAST_CONNECTIONS = 0;
 
     @Getter
     public final BooleanProperty walletsSetupFailed = new SimpleBooleanProperty();
@@ -119,8 +118,6 @@ public class WalletsSetup {
     private final Config config;
     private final LocalBitcoinNode localBitcoinNode;
     private final BtcNodes btcNodes;
-    @Getter
-    private final String xmrWalletFileName; // TODO: remove this
     private final int numConnectionsForBtc;
     private final String userAgent;
     private final NetworkParameters params;
@@ -129,6 +126,7 @@ public class WalletsSetup {
     private final IntegerProperty numPeers = new SimpleIntegerProperty(0);
     private final LongProperty chainHeight = new SimpleLongProperty(0);
     private final DownloadListener downloadListener = new DownloadListener();
+    private final List<Runnable> setupTaskHandlers = new ArrayList<>();
     private final List<Runnable> setupCompletedHandlers = new ArrayList<>();
     public final BooleanProperty shutDownComplete = new SimpleBooleanProperty();
     private final boolean useAllProvidedNodes;
@@ -141,7 +139,6 @@ public class WalletsSetup {
     @Inject
     public WalletsSetup(RegTestHost regTestHost,
                         AddressEntryList addressEntryList,
-                        XmrAddressEntryList xmrAddressEntryList,
                         Preferences preferences,
                         Socks5ProxyProvider socks5ProxyProvider,
                         Config config,
@@ -165,7 +162,6 @@ public class WalletsSetup {
         this.socks5DiscoverMode = evaluateMode(socks5DiscoverModeString);
         this.walletDir = walletDir;
 
-        xmrWalletFileName = "haveno_" + config.baseCurrencyNetwork.getCurrencyCode();
         params = Config.baseCurrencyNetworkParameters();
         PeerGroup.setIgnoreHttpSeeds(true);
     }
@@ -188,7 +184,7 @@ public class WalletsSetup {
         Timer timeoutTimer = UserThread.runAfter(() ->
                 exceptionHandler.handleException(new TimeoutException("Wallet did not initialize in " +
                         STARTUP_TIMEOUT + " seconds.")), STARTUP_TIMEOUT);
-        
+
         backupWallets();
 
         final Socks5Proxy socks5Proxy = preferences.getUseTorForBitcoinJ() ? socks5ProxyProvider.getSocks5Proxy() : null;
@@ -201,7 +197,6 @@ public class WalletsSetup {
                 super.onSetupCompleted();
 
                 final PeerGroup peerGroup = walletConfig.peerGroup();
-                final BlockChain chain = walletConfig.chain();
 
                 // We don't want to get our node white list polluted with nodes from AddressMessage calls.
                 if (preferences.getBitcoinNodes() != null && !preferences.getBitcoinNodes().isEmpty())
@@ -219,6 +214,9 @@ public class WalletsSetup {
                     }
                     return message;
                 });
+
+                // run external startup handlers
+                setupTaskHandlers.forEach(Runnable::run);
 
                 // Map to user thread
                 UserThread.execute(() -> {
@@ -384,9 +382,7 @@ public class WalletsSetup {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     public void backupWallets() {
-        FileUtil.rollingBackup(walletDir, xmrWalletFileName, 20);
-        FileUtil.rollingBackup(walletDir, xmrWalletFileName + ".keys", 20);
-        FileUtil.rollingBackup(walletDir, xmrWalletFileName + ".address.txt", 20);
+        // TODO: remove?
     }
 
     public void clearBackups() {
@@ -435,6 +431,10 @@ public class WalletsSetup {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Handlers
     ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public void addSetupTaskHandler(Runnable handler) {
+        setupTaskHandlers.add(handler);
+    }
 
     public void addSetupCompletedHandler(Runnable handler) {
         setupCompletedHandlers.add(handler);

@@ -17,6 +17,7 @@
 
 package bisq.core.app;
 
+import bisq.core.api.AccountServiceListener;
 import bisq.core.api.CoreAccountService;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
@@ -46,7 +47,6 @@ import bisq.common.util.Utilities;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -147,7 +147,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         accountService = injector.getInstance(CoreAccountService.class);
 
         // Application needs to restart on delete and restore of account.
-        accountService.addListener(accountService.new AccountServiceListener() {
+        accountService.addListener(new AccountServiceListener() {
             @Override public void onAccountDeleted(Runnable onShutdown) { shutDownNoPersist(onShutdown); }
             @Override public void onAccountRestored(Runnable onShutdown) { shutDownNoPersist(onShutdown); }
         });
@@ -175,24 +175,22 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
 
     /**
      * Attempt to login. TODO: supply a password in config or args
+     * 
      * @return true if account is opened successfully.
      */
     protected boolean loginAccount() {
-        boolean accountOpened = false;
         if (accountService.accountExists()) {
-            log.info("Previously persisted Haveno account detected, attempting to open");
+            log.info("Account already exists, attempting to open");
             try {
                 accountService.openAccount(null);
-                accountOpened = accountService.isAccountOpen();
             } catch (IncorrectPasswordException ipe) {
                 log.info("Account password protected, password required");
             }
         } else if (!config.passwordRequired) {
-            // Create an account with no password.
             log.info("Creating Haveno account with null password");
-            accountService.createAccount(null); // TODO (woodser): don't create account with null password?
+            accountService.createAccount(null);
         }
-        return accountOpened;
+        return accountService.isAccountOpen();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +279,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             injector.getInstance(TradeStatisticsManager.class).shutDown();
             injector.getInstance(XmrTxProofService.class).shutDown();
             injector.getInstance(AvoidStandbyModeService.class).shutDown();
-            injector.getInstance(XmrWalletService.class).shutDown(); // TODO: why not shut down BtcWalletService, etc? shutdown CoreMoneroConnectionService
+            injector.getInstance(XmrWalletService.class).shutDown(); // TODO: why not shut down BtcWalletService, etc? shutdown CoreMoneroConnectionsService
             log.info("OpenOfferManager shutdown started");
             injector.getInstance(OpenOfferManager.class).shutDown(() -> {
                 log.info("OpenOfferManager shutdown completed");
@@ -341,5 +339,4 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         if (doShutDown)
             gracefulShutDown(() -> log.info("gracefulShutDown complete"));
     }
-
 }

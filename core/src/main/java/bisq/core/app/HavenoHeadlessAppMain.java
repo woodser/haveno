@@ -115,9 +115,8 @@ public class HavenoHeadlessAppMain extends HavenoExecutable {
         onApplicationStarted();
     }
 
+    // TODO: implement interactive console which allows user to input commands; login, logoff, exit
     private void keepRunning() {
-        // TODO: Implement an interactive console which allows user to input commands
-        //  login, logoff, exit
         while (true) {
             try {
                 Thread.sleep(Long.MAX_VALUE);

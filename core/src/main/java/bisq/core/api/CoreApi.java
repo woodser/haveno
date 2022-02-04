@@ -124,6 +124,14 @@ public class CoreApi {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
+    // Help
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public String getMethodHelp(String methodName) {
+        return coreHelpService.getMethodHelp(methodName);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
     // Account Service
     ///////////////////////////////////////////////////////////////////////////////////////////
     
@@ -166,13 +174,147 @@ public class CoreApi {
     public void restoreAccount(InputStream zipStream, int bufferSize, Runnable onShutdown) throws Exception {
         coreAccountService.restoreAccount(zipStream, bufferSize, onShutdown);
     }
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Monero Connections
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public void addMoneroConnection(MoneroRpcConnection connection) {
+        coreMoneroConnectionsService.addConnection(connection);
+    }
+
+    public void removeMoneroConnection(String connectionUri) {
+        coreMoneroConnectionsService.removeConnection(connectionUri);
+    }
+
+    public MoneroRpcConnection getMoneroConnection() {
+        return coreMoneroConnectionsService.getConnection();
+    }
+
+    public List<MoneroRpcConnection> getMoneroConnections() {
+        return coreMoneroConnectionsService.getConnections();
+    }
+
+    public void setMoneroConnection(String connectionUri) {
+        coreMoneroConnectionsService.setConnection(connectionUri);
+    }
+
+    public void setMoneroConnection(MoneroRpcConnection connection) {
+        coreMoneroConnectionsService.setConnection(connection);
+    }
+
+    public MoneroRpcConnection checkMoneroConnection() {
+        return coreMoneroConnectionsService.checkConnection();
+    }
+
+    public List<MoneroRpcConnection> checkMoneroConnections() {
+        return coreMoneroConnectionsService.checkConnections();
+    }
+
+    public void startCheckingMoneroConnection(Long refreshPeriod) {
+        coreMoneroConnectionsService.startCheckingConnection(refreshPeriod);
+    }
+
+    public void stopCheckingMoneroConnection() {
+        coreMoneroConnectionsService.stopCheckingConnection();
+    }
+
+    public MoneroRpcConnection getBestAvailableMoneroConnection() {
+        return coreMoneroConnectionsService.getBestAvailableConnection();
+    }
+
+    public void setMoneroConnectionAutoSwitch(boolean autoSwitch) {
+        coreMoneroConnectionsService.setAutoSwitch(autoSwitch);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    // Dispute Agents
+    // Wallets
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void registerDisputeAgent(String disputeAgentType, String registrationKey) {
-        coreDisputeAgentsService.registerDisputeAgent(disputeAgentType, registrationKey);
+    public BalancesInfo getBalances(String currencyCode) {
+        return walletsService.getBalances(currencyCode);
+    }
+
+    public String getNewDepositSubaddress() {
+        return walletsService.getNewDepositSubaddress();
+    }
+
+    public List<MoneroTxWallet> getXmrTxs() {
+        return walletsService.getXmrTxs();
+    }
+
+    public MoneroTxWallet createXmrTx(List<MoneroDestination> destinations) {
+        return walletsService.createXmrTx(destinations);
+    }
+
+    public String relayXmrTx(String metadata) {
+        return walletsService.relayXmrTx(metadata);
+    }
+
+    public long getAddressBalance(String addressString) {
+        return walletsService.getAddressBalance(addressString);
+    }
+
+    public AddressBalanceInfo getAddressBalanceInfo(String addressString) {
+        return walletsService.getAddressBalanceInfo(addressString);
+    }
+
+    public List<AddressBalanceInfo> getFundingAddresses() {
+        return walletsService.getFundingAddresses();
+    }
+
+    public void sendBtc(String address,
+                        String amount,
+                        String txFeeRate,
+                        String memo,
+                        FutureCallback<Transaction> callback) {
+        walletsService.sendBtc(address, amount, txFeeRate, memo, callback);
+    }
+
+
+    public void getTxFeeRate(ResultHandler resultHandler) {
+        walletsService.getTxFeeRate(resultHandler);
+    }
+
+    public void setTxFeeRatePreference(long txFeeRate,
+                                       ResultHandler resultHandler) {
+        walletsService.setTxFeeRatePreference(txFeeRate, resultHandler);
+    }
+
+    public void unsetTxFeeRatePreference(ResultHandler resultHandler) {
+        walletsService.unsetTxFeeRatePreference(resultHandler);
+    }
+
+    public TxFeeRateInfo getMostRecentTxFeeRateInfo() {
+        return walletsService.getMostRecentTxFeeRateInfo();
+    }
+
+    public Transaction getTransaction(String txId) {
+        return walletsService.getTransaction(txId);
+    }
+
+    public void setWalletPassword(String password, String newPassword) {
+        walletsService.setWalletPassword(password, newPassword);
+    }
+
+    public void lockWallet() {
+        walletsService.lockWallet();
+    }
+
+    public void unlockWallet(String password, long timeout) {
+        walletsService.unlockWallet(password, timeout);
+    }
+
+    public void removeWalletPassword(String password) {
+        walletsService.removeWalletPassword(password);
+    }
+
+    public List<TradeStatistics3> getTradeStatistics() {
+        return new ArrayList<>(tradeStatisticsManager.getObservableTradeStatisticsSet());
+    }
+
+    public int getNumConfirmationsForMostRecentTransaction(String addressString) {
+        return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -192,11 +334,11 @@ public class CoreApi {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    // Help
+    // Dispute Agents
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public String getMethodHelp(String methodName) {
-        return coreHelpService.getMethodHelp(methodName);
+    public void registerDisputeAgent(String disputeAgentType, String registrationKey) {
+        coreDisputeAgentsService.registerDisputeAgent(disputeAgentType, registrationKey);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -364,147 +506,5 @@ public class CoreApi {
 
     public String getTradeRole(String tradeId) {
         return coreTradesService.getTradeRole(tradeId);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // Wallets
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    public BalancesInfo getBalances(String currencyCode) {
-        return walletsService.getBalances(currencyCode);
-    }
-
-    public String getNewDepositSubaddress() {
-        return walletsService.getNewDepositSubaddress();
-    }
-
-    public List<MoneroTxWallet> getXmrTxs() {
-        return walletsService.getXmrTxs();
-    }
-
-    public MoneroTxWallet createXmrTx(List<MoneroDestination> destinations) {
-        return walletsService.createXmrTx(destinations);
-    }
-
-    public String relayXmrTx(String metadata) {
-        return walletsService.relayXmrTx(metadata);
-    }
-
-    public long getAddressBalance(String addressString) {
-        return walletsService.getAddressBalance(addressString);
-    }
-
-    public AddressBalanceInfo getAddressBalanceInfo(String addressString) {
-        return walletsService.getAddressBalanceInfo(addressString);
-    }
-
-    public List<AddressBalanceInfo> getFundingAddresses() {
-        return walletsService.getFundingAddresses();
-    }
-
-    public void sendBtc(String address,
-                        String amount,
-                        String txFeeRate,
-                        String memo,
-                        FutureCallback<Transaction> callback) {
-        walletsService.sendBtc(address, amount, txFeeRate, memo, callback);
-    }
-
-
-    public void getTxFeeRate(ResultHandler resultHandler) {
-        walletsService.getTxFeeRate(resultHandler);
-    }
-
-    public void setTxFeeRatePreference(long txFeeRate,
-                                       ResultHandler resultHandler) {
-        walletsService.setTxFeeRatePreference(txFeeRate, resultHandler);
-    }
-
-    public void unsetTxFeeRatePreference(ResultHandler resultHandler) {
-        walletsService.unsetTxFeeRatePreference(resultHandler);
-    }
-
-    public TxFeeRateInfo getMostRecentTxFeeRateInfo() {
-        return walletsService.getMostRecentTxFeeRateInfo();
-    }
-
-    public Transaction getTransaction(String txId) {
-        return walletsService.getTransaction(txId);
-    }
-
-    public void setWalletPassword(String password, String newPassword) {
-        walletsService.setWalletPassword(password, newPassword);
-    }
-
-    public void lockWallet() {
-        walletsService.lockWallet();
-    }
-
-    public void unlockWallet(String password, long timeout) {
-        walletsService.unlockWallet(password, timeout);
-    }
-
-    public void removeWalletPassword(String password) {
-        walletsService.removeWalletPassword(password);
-    }
-
-    public List<TradeStatistics3> getTradeStatistics() {
-        return new ArrayList<>(tradeStatisticsManager.getObservableTradeStatisticsSet());
-    }
-
-    public int getNumConfirmationsForMostRecentTransaction(String addressString) {
-        return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // Monero Connections
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    public void addMoneroConnection(MoneroRpcConnection connection) {
-        coreMoneroConnectionsService.addConnection(connection);
-    }
-
-    public void removeMoneroConnection(String connectionUri) {
-        coreMoneroConnectionsService.removeConnection(connectionUri);
-    }
-
-    public MoneroRpcConnection getMoneroConnection() {
-        return coreMoneroConnectionsService.getConnection();
-    }
-
-    public List<MoneroRpcConnection> getMoneroConnections() {
-        return coreMoneroConnectionsService.getConnections();
-    }
-
-    public void setMoneroConnection(String connectionUri) {
-        coreMoneroConnectionsService.setConnection(connectionUri);
-    }
-
-    public void setMoneroConnection(MoneroRpcConnection connection) {
-        coreMoneroConnectionsService.setConnection(connection);
-    }
-
-    public MoneroRpcConnection checkMoneroConnection() {
-        return coreMoneroConnectionsService.checkConnection();
-    }
-
-    public List<MoneroRpcConnection> checkMoneroConnections() {
-        return coreMoneroConnectionsService.checkConnections();
-    }
-
-    public void startCheckingMoneroConnection(Long refreshPeriod) {
-        coreMoneroConnectionsService.startCheckingConnection(refreshPeriod);
-    }
-
-    public void stopCheckingMoneroConnection() {
-        coreMoneroConnectionsService.stopCheckingConnection();
-    }
-
-    public MoneroRpcConnection getBestAvailableMoneroConnection() {
-        return coreMoneroConnectionsService.getBestAvailableConnection();
-    }
-
-    public void setMoneroConnectionAutoSwitch(boolean autoSwitch) {
-        coreMoneroConnectionsService.setAutoSwitch(autoSwitch);
     }
 }
