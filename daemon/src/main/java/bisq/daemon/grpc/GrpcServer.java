@@ -64,7 +64,6 @@ public class GrpcServer {
                       GrpcNotificationsService notificationsService,
                       GrpcMoneroConnectionsService moneroConnectionsService) {
         this.server = ServerBuilder.forPort(config.apiPort)
-                .executor(UserThread.getExecutor())
                 .addService(interceptForward(accountService, accountService.interceptors()))
                 .addService(interceptForward(disputeAgentsService, disputeAgentsService.interceptors()))
                 .addService(interceptForward(disputesService, disputesService.interceptors()))

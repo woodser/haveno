@@ -93,7 +93,7 @@ public class Balances {
 
     private void updateBalance() {
         // Need to delay a bit to get the balances correct
-        UserThread.execute(() -> {
+        UserThread.execute(() -> { // TODO (woodser): running on user thread because JFX properties updated for legacy app
             updateAvailableBalance();
             updateLockedBalance();
             updateReservedOfferBalance();
