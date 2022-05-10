@@ -170,12 +170,11 @@ public class XmrWalletService {
         return walletExists("xmr_multisig_trade_" + tradeId);
     }
 
-    // TODO (woodser): test retaking failed trade. create new multisig wallet or replace? cannot reuse
     public MoneroWallet createMultisigWallet(String tradeId) {
         log.info("{}.createMultisigWallet({})", getClass().getSimpleName(), tradeId);
         Trade trade = tradeManager.getOpenTrade(tradeId).get();
         synchronized (trade) {
-            if (multisigWallets.containsKey(trade.getId())) return multisigWallets.get(trade.getId());
+            if (multisigWallets.containsKey(trade.getId())) throw new RuntimeException("Multisig wallet already exists for trade " + tradeId); // TODO (woodser): test retaking failed trade. create new multisig wallet or replace? cannot reuse
             String path = "xmr_multisig_trade_" + trade.getId();
             MoneroWallet multisigWallet = createWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null); // auto-assign port
             multisigWallets.put(trade.getId(), multisigWallet);
@@ -188,11 +187,15 @@ public class XmrWalletService {
         log.info("{}.getMultisigWallet({})", getClass().getSimpleName(), tradeId);
         Trade trade = tradeManager.getTrade(tradeId);
         synchronized (trade) {
-            if (multisigWallets.containsKey(trade.getId())) return multisigWallets.get(trade.getId());
-            String path = "xmr_multisig_trade_" + trade.getId();
-            if (!walletExists(path)) throw new RuntimeException("Multisig wallet does not exist for trade " + trade.getId());
-            MoneroWallet multisigWallet = openWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null);
-            multisigWallets.put(trade.getId(), multisigWallet);
+            MoneroWallet multisigWallet;
+            if (multisigWallets.containsKey(trade.getId())) multisigWallet = multisigWallets.get(trade.getId());
+            else {
+                String path = "xmr_multisig_trade_" + trade.getId();
+                if (!walletExists(path)) throw new RuntimeException("Multisig wallet does not exist for trade " + trade.getId());
+                multisigWallet = openWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null);
+                multisigWallets.put(trade.getId(), multisigWallet);
+            }
+            multisigWallet.sync(); // TODO: avoid double sync with startSyncing()
             return multisigWallet;
         }
     }
