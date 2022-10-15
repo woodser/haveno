@@ -53,6 +53,8 @@ import com.google.protobuf.Message;
 import common.utils.GenUtils;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
+import org.fxmisc.easybind.EasyBind;
+import org.fxmisc.easybind.Subscription;
 
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -355,7 +357,8 @@ public abstract class Trade implements Tradable, Model {
     transient final private ObjectProperty<DisputeState> disputeStateProperty = new SimpleObjectProperty<>(disputeState);
     transient final private ObjectProperty<TradePeriodState> tradePeriodStateProperty = new SimpleObjectProperty<>(periodState);
     transient final private StringProperty errorMessageProperty = new SimpleStringProperty();
-
+    transient private Subscription tradeStateSubscription = null;
+    
     //  Mutable
     @Getter
     transient private boolean isInitialized;
@@ -589,6 +592,35 @@ public abstract class Trade implements Tradable, Model {
         serviceProvider.getArbitratorManager().getDisputeAgentByNodeAddress(getArbitratorNodeAddress()).ifPresent(arbitrator -> {
             getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
         });
+
+        // listen for deposit txs
+        if (getPhase().ordinal() >= Trade.Phase.DEPOSIT_REQUESTED.ordinal() && getPhase().ordinal() <= Trade.Phase.DEPOSITS_CONFIRMED.ordinal()) {
+            listenForDepositTxs();
+        }
+
+        // listen for payout tx
+        if (getPhase().ordinal() == Trade.Phase.PAYMENT_SENT.ordinal() || getPhase().ordinal() == Trade.Phase.PAYMENT_RECEIVED.ordinal()) {
+
+            // skip if payout already published
+            if (!isPayoutPublished()) {
+
+                // listen for payout tx
+                listenForPayoutTx();
+                tradeStateSubscription = EasyBind.subscribe(stateProperty(), newValue -> {
+                    if (isPayoutPublished()) {
+
+                        // cleanup on trade completion
+                        processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
+                        UserThread.execute(() -> {
+                            if (tradeStateSubscription != null) {
+                                tradeStateSubscription.unsubscribe();
+                                tradeStateSubscription = null;
+                            }
+                        });
+                    }
+                });
+            }
+        }
 
         isInitialized = true;
     }

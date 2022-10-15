@@ -22,7 +22,6 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
-import bisq.core.trade.protocol.BuyerProtocol.BuyerEvent;
 import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.SellerMaybeSendPayoutTxPublishedMessage;
@@ -30,8 +29,6 @@ import bisq.core.trade.protocol.tasks.SellerPreparePaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerProcessPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerSendPaymentAccountPayloadKey;
-import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
-import bisq.core.trade.protocol.tasks.SetupPayoutTxListener;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
@@ -61,18 +58,6 @@ public abstract class SellerProtocol extends DisputeProtocol {
         if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
             sendPaymentAccountPayloadKeyWhenConfirmed(SellerEvent.STARTUP);
         }
-
-        // listen for deposit txs
-        given(anyPhase(Trade.Phase.DEPOSIT_REQUESTED, Trade.Phase.DEPOSITS_PUBLISHED, Trade.Phase.DEPOSITS_CONFIRMED)
-                .with(SellerEvent.STARTUP))
-                .setup(tasks(SetupDepositTxsListener.class))
-                .executeTasks();
-
-        // listen for payout tx
-        given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED)
-                .with(BuyerEvent.STARTUP))
-                .setup(tasks(SetupPayoutTxListener.class))
-                .executeTasks();
     }
 
     @Override

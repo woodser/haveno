@@ -19,7 +19,6 @@ package bisq.core.trade.protocol.tasks;
 
 
 import bisq.common.app.Version;
-import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentAccountKeyResponse;

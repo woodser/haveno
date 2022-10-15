@@ -34,8 +34,6 @@ import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentAccountKeyRequestToArbitrator;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPayoutTxPublishedMessage;
-import bisq.core.trade.protocol.tasks.SetupDepositTxsListener;
-import bisq.core.trade.protocol.tasks.SetupPayoutTxListener;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
@@ -68,18 +66,6 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         
         // request key to decrypt seller's payment account payload after first confirmation
         sendPaymentAccountKeyRequestIfWhenNeeded(BuyerEvent.STARTUP, false);
-
-        // listen for deposit txs
-        given(anyPhase(Trade.Phase.DEPOSIT_REQUESTED, Trade.Phase.DEPOSITS_PUBLISHED, Trade.Phase.DEPOSITS_CONFIRMED)
-                .with(BuyerEvent.STARTUP))
-                .setup(tasks(SetupDepositTxsListener.class))
-                .executeTasks();
-
-        // listen for payout tx
-        given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED)
-                .with(BuyerEvent.STARTUP))
-                .setup(tasks(SetupPayoutTxListener.class))
-                .executeTasks();
 
         // send payment sent message
         given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED) // TODO: remove payment received phase?
