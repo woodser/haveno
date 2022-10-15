@@ -1352,14 +1352,10 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public boolean isPayoutPublished() {
-        return getState().getPhase().ordinal() >= Phase.PAYOUT_PUBLISHED.ordinal() || isWithdrawn();
+        return getState().getPhase().ordinal() >= Phase.PAYOUT_PUBLISHED.ordinal();
     }
 
     public boolean isCompleted() {
-        return isPayoutPublished();
-    }
-
-    public boolean isWithdrawn() {
         return getState().getPhase().ordinal() == Phase.COMPLETED.ordinal();
     }
 

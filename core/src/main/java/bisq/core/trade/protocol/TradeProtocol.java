@@ -110,7 +110,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     protected void onInitialized() {
-        if (!trade.isWithdrawn()) {
+        if (!trade.isCompleted()) {
             processModel.getP2PService().addDecryptedDirectMessageListener(this);
         }
 
@@ -196,7 +196,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             TradeMessage tradeMessage = (TradeMessage) mailboxMessage;
             // We only remove here if we have already completed the trade.
             // Otherwise removal is done after successfully applied the task runner.
-            if (trade.isWithdrawn()) {
+            if (trade.isCompleted()) {
                 processModel.getP2PService().getMailboxMessageService().removeMailboxMsg(mailboxMessage);
                 log.info("Remove {} from the P2P network as trade is already completed.",
                         tradeMessage.getClass().getSimpleName());
@@ -205,7 +205,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             onMailboxMessage(tradeMessage, mailboxMessage.getSenderNodeAddress());
         } else if (mailboxMessage instanceof AckMessage) {
             AckMessage ackMessage = (AckMessage) mailboxMessage;
-            if (!trade.isWithdrawn()) {
+            if (!trade.isCompleted()) {
                 // We only apply the msg if we have not already completed the trade
                 onAckMessage(ackMessage, mailboxMessage.getSenderNodeAddress());
             }

@@ -183,7 +183,7 @@ public class NotificationCenter {
 
     private void onTradePhaseChanged(Trade trade, Trade.Phase phase) {
         String message = null;
-        if (trade.isPayoutPublished() && !trade.isWithdrawn()) {
+        if (trade.isPayoutPublished() && !trade.isCompleted()) {
             message = Res.get("notification.trade.completed");
         } else {
             if (trade instanceof MakerTrade &&

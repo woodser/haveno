@@ -150,7 +150,7 @@ public class ArbitratorProtocol extends DisputeProtocol {
       System.out.println("ArbitratorProtocol.handle(PayoutTxPublishedMessage)");
       new Thread(() -> {
           synchronized (trade) {
-              if (trade.isCompleted()) return; // ignore subsequent requests
+              if (trade.isPayoutPublished()) return; // ignore subsequent requests
               latchTrade();
               Validator.checkTradeId(processModel.getOfferId(), request);
               processModel.setTradeMessage(request);
