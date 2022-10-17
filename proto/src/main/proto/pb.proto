@@ -1662,15 +1662,8 @@ message Trade {
         SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG = 24;
         SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG = 25;
         SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG = 26;
-        SELLER_PUBLISHED_PAYOUT_TX = 27;
-        SELLER_SENT_PAYOUT_TX_PUBLISHED_MSG = 28;
-        SELLER_SAW_ARRIVED_PAYOUT_TX_PUBLISHED_MSG = 29;
-        SELLER_STORED_IN_MAILBOX_PAYOUT_TX_PUBLISHED_MSG = 30;
-        SELLER_SEND_FAILED_PAYOUT_TX_PUBLISHED_MSG = 31;
-        BUYER_RECEIVED_PAYOUT_TX_PUBLISHED_MSG = 32;
-        BUYER_PUBLISHED_PAYOUT_TX = 33;
-        PAYOUT_TX_SEEN_IN_NETWORK = 34;
-        TRADE_COMPLETED = 35;
+        BUYER_RECEIVED_PAYOUT_TX_PUBLISHED_MSG = 27;
+        TRADE_COMPLETED = 28;
     }
 
     enum Phase {
@@ -1682,8 +1675,7 @@ message Trade {
         DEPOSITS_UNLOCKED = 5;
         PAYMENT_SENT = 6;
         PAYMENT_RECEIVED = 7;
-        PAYOUT_PUBLISHED = 8;
-        COMPLETED = 9;
+        COMPLETED = 8;
     }
 
     enum DisputeState {
@@ -1707,6 +1699,13 @@ message Trade {
         TRADE_PERIOD_OVER = 3;
     }
 
+    enum PayoutState {
+        UNPUBLISHED = 0;
+        PUBLISHED = 1;
+        CONFIRMED = 2;
+        UNLOCKED = 3;
+    }
+
     Offer offer = 1;
     ProcessModel process_model = 2;
     string payout_tx_id = 3;
@@ -1718,23 +1717,24 @@ message Trade {
     int64 take_offer_date = 9;
     int64 price = 10;
     State state = 11;
-    DisputeState dispute_state = 12;
-    TradePeriodState period_state = 13;
-    Contract contract = 14;
-    string contract_as_json = 15;
-    bytes contract_hash = 16;
-    NodeAddress arbitrator_node_address = 17;
-    NodeAddress mediator_node_address = 18;
-    string error_message = 19;
-    string counter_currency_tx_id = 20;
-    repeated ChatMessage chat_message = 21;
-    MediationResultState mediation_result_state = 22;
-    int64 lock_time = 23;
-    NodeAddress refund_agent_node_address = 24;
-    RefundResultState refund_result_state = 25;
-    string counter_currency_extra_data = 26;
-    string asset_tx_proof_result = 27; // name of AssetTxProofResult enum
-    string uid = 28;
+    PayoutState payout_state = 12;
+    DisputeState dispute_state = 13;
+    TradePeriodState period_state = 14;
+    Contract contract = 15;
+    string contract_as_json = 16;
+    bytes contract_hash = 17;
+    NodeAddress arbitrator_node_address = 18;
+    NodeAddress mediator_node_address = 19;
+    string error_message = 20;
+    string counter_currency_tx_id = 21;
+    repeated ChatMessage chat_message = 22;
+    MediationResultState mediation_result_state = 23;
+    int64 lock_time = 24;
+    NodeAddress refund_agent_node_address = 25;
+    RefundResultState refund_result_state = 26;
+    string counter_currency_extra_data = 27;
+    string asset_tx_proof_result = 28; // name of AssetTxProofResult enum
+    string uid = 29;
 }
 
 message BuyerAsMakerTrade {

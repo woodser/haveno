@@ -56,7 +56,7 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
             trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 
             // handle if payout tx is not seen on network
-            if (trade.getPhase().ordinal() < Trade.Phase.PAYOUT_PUBLISHED.ordinal()) {
+            if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
 
                 // publish payout tx if signed. otherwise verify, sign, and publish payout tx
                 boolean previouslySigned = trade.getPayoutTxHex() != null;
@@ -67,19 +67,19 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
                     List<String> txHashes = multisigWallet.submitMultisigTxHex(message.getPayoutTxHex());
                     trade.setPayoutTx(multisigWallet.getTx(txHashes.get(0)));
                     XmrWalletService.printTxs("payoutTx received from peer", trade.getPayoutTx());
-                    trade.setStateIfValidTransitionTo(Trade.State.BUYER_RECEIVED_PAYOUT_TX_PUBLISHED_MSG);
+                    trade.setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
                     walletService.closeMultisigWallet(trade.getId());
                 } else {
                     log.info("Buyer verifying, signing, and publishing seller's payout tx");
                     trade.verifyPayoutTx(message.getPayoutTxHex(), true, true);
-                    trade.setStateIfValidTransitionTo(Trade.State.BUYER_PUBLISHED_PAYOUT_TX);
+                    trade.setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
                     // TODO (woodser): send PayoutTxPublishedMessage to seller
                 }
 
                 // mark address entries as available
                 processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
             } else {
-                log.info("We got the payout tx already set from BuyerSetupPayoutTxListener and do nothing here. trade ID={}", trade.getId());
+                log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());
             }
 
             // TODO: remove witness
@@ -91,6 +91,7 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
                 processModel.getAccountAgeWitnessService().publishOwnSignedWitness(signedWitness);
             }
 
+            trade.setStateIfValidTransitionTo(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
             processModel.getTradeManager().requestPersistence();
             complete();
         } catch (Throwable t) {

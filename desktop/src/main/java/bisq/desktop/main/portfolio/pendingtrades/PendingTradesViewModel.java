@@ -30,6 +30,7 @@ import bisq.core.offer.Offer;
 import bisq.core.offer.OfferUtil;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.provider.mempool.MempoolService;
+import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.ClosedTradableManager;
 import bisq.core.trade.Contract;
 import bisq.core.trade.Trade;
@@ -456,26 +457,13 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
             // seller step 4
             case SELLER_CONFIRMED_IN_UI_PAYMENT_RECEIPT: // UI action
             case SELLER_SENT_PAYMENT_RECEIVED_MSG:
-            case SELLER_PUBLISHED_PAYOUT_TX: // payout tx broadcasted
-            case SELLER_SENT_PAYOUT_TX_PUBLISHED_MSG: // PAYOUT_TX_PUBLISHED_MSG sent
-                sellerState.set(SellerState.STEP3);
+                if (trade instanceof BuyerTrade) buyerState.set(BuyerState.STEP4);
+                else sellerState.set(SellerState.STEP3);
                 break;
             case SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG:
             case SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG:
             case SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG:
-            case SELLER_SAW_ARRIVED_PAYOUT_TX_PUBLISHED_MSG: // PAYOUT_TX_PUBLISHED_MSG arrived
-            case SELLER_STORED_IN_MAILBOX_PAYOUT_TX_PUBLISHED_MSG: // PAYOUT_TX_PUBLISHED_MSG mailbox
-            case SELLER_SEND_FAILED_PAYOUT_TX_PUBLISHED_MSG: // PAYOUT_TX_PUBLISHED_MSG failed -  payout tx is published, peer will see it in network so we ignore failure and complete
                 sellerState.set(SellerState.STEP4);
-                break;
-
-            // buyer step 4
-            case BUYER_RECEIVED_PAYOUT_TX_PUBLISHED_MSG:
-                // Alternatively the maker could have seen the payout tx earlier before he received the PAYOUT_TX_PUBLISHED_MSG:
-            case PAYOUT_TX_SEEN_IN_NETWORK:
-                // Alternatively the buyer could fully sign and publish the payout tx
-            case BUYER_PUBLISHED_PAYOUT_TX:
-                buyerState.set(BuyerState.STEP4);
                 break;
 
             case TRADE_COMPLETED:

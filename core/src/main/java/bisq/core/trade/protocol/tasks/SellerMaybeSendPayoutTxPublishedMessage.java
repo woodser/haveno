@@ -42,7 +42,7 @@ public class SellerMaybeSendPayoutTxPublishedMessage extends SendMailboxMessageT
             runInterceptHook();
 
             // skip if payout tx not published
-            if (trade.getPhase().ordinal() < Trade.Phase.PAYOUT_PUBLISHED.ordinal()) {
+            if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
                 complete();
                 return;
             }

@@ -424,7 +424,6 @@ class TakeOfferViewModel extends ActivatableWithDataModel<TakeOfferDataModel> im
                 case PAYMENT_RECEIVED:
                     appendMsg = Res.get("takeOffer.error.depositPublished");
                     break;
-                case PAYOUT_PUBLISHED:
                 case COMPLETED:
                     appendMsg = Res.get("takeOffer.error.payoutPublished");
                     break;

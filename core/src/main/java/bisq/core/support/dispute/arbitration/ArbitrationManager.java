@@ -579,7 +579,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
       // update state
       trade.setPayoutTx(txSet.getTxs().get(0));   // TODO (woodser): is trade.payoutTx() mutually exclusive from dispute payout tx?
       trade.setPayoutTxId(txSet.getTxs().get(0).getHash());
-      trade.setState(Trade.State.SELLER_PUBLISHED_PAYOUT_TX);
+      trade.setPayoutState(Trade.PayoutState.PUBLISHED);
       dispute.setDisputePayoutTxId(txSet.getTxs().get(0).getHash());
       sendPeerPublishedPayoutTxMessage(multisigWallet.exportMultisigHex(), txSet.getMultisigTxHex(), dispute, contract);
       closeTradeOrOffer(tradeId);

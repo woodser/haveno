@@ -156,16 +156,6 @@ public abstract class Trade implements Tradable, Model {
         SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG(Phase.PAYMENT_RECEIVED),
         SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG(Phase.PAYMENT_RECEIVED),
 
-        // payout published
-        SELLER_PUBLISHED_PAYOUT_TX(Phase.PAYOUT_PUBLISHED), // TODO (woodser): this enum is over used, like during arbitration
-        SELLER_SENT_PAYOUT_TX_PUBLISHED_MSG(Phase.PAYOUT_PUBLISHED),
-        SELLER_SAW_ARRIVED_PAYOUT_TX_PUBLISHED_MSG(Phase.PAYOUT_PUBLISHED),
-        SELLER_STORED_IN_MAILBOX_PAYOUT_TX_PUBLISHED_MSG(Phase.PAYOUT_PUBLISHED),
-        SELLER_SEND_FAILED_PAYOUT_TX_PUBLISHED_MSG(Phase.PAYOUT_PUBLISHED),
-        BUYER_RECEIVED_PAYOUT_TX_PUBLISHED_MSG(Phase.PAYOUT_PUBLISHED),
-        BUYER_PUBLISHED_PAYOUT_TX(Phase.PAYOUT_PUBLISHED),
-        PAYOUT_TX_SEEN_IN_NETWORK(Phase.PAYOUT_PUBLISHED),
-
         // trade completed
         TRADE_COMPLETED(Phase.COMPLETED);
 
@@ -201,13 +191,12 @@ public abstract class Trade implements Tradable, Model {
 
     public enum Phase {
         INIT,
-        DEPOSIT_REQUESTED, // TODO (woodser): remove unused phases
+        DEPOSIT_REQUESTED,
         DEPOSITS_PUBLISHED,
         DEPOSITS_CONFIRMED,
         DEPOSITS_UNLOCKED,
         PAYMENT_SENT,
         PAYMENT_RECEIVED,
-        PAYOUT_PUBLISHED,
         COMPLETED;
 
         public static Trade.Phase fromProto(protobuf.Trade.Phase phase) {
@@ -223,6 +212,25 @@ public abstract class Trade implements Tradable, Model {
         public boolean isValidTransitionTo(Phase newPhase) {
             // this is current phase
             return newPhase.ordinal() > this.ordinal();
+        }
+    }
+
+    public enum PayoutState {
+        UNPUBLISHED,
+        PUBLISHED,
+        CONFIRMED,
+        UNLOCKED;
+
+        public static Trade.PayoutState fromProto(protobuf.Trade.PayoutState state) {
+            return ProtoUtil.enumFromProto(Trade.PayoutState.class, state.name());
+        }
+
+        public static protobuf.Trade.PayoutState toProtoMessage(Trade.PayoutState state) {
+            return protobuf.Trade.PayoutState.valueOf(state.name());
+        }
+
+        public boolean isValidTransitionTo(PayoutState newState) {
+            return newState.ordinal() > this.ordinal();
         }
     }
 
@@ -317,6 +325,9 @@ public abstract class Trade implements Tradable, Model {
     @Nullable
     @Getter
     private State state = State.PREPARATION;
+    @Nullable
+    @Getter
+    private PayoutState payoutState = PayoutState.UNPUBLISHED;
     @Getter
     private DisputeState disputeState = DisputeState.NO_DISPUTE;
     @Getter
@@ -352,7 +363,8 @@ public abstract class Trade implements Tradable, Model {
     transient final private XmrWalletService xmrWalletService;
 
     transient final private ObjectProperty<State> stateProperty = new SimpleObjectProperty<>(state);
-    transient final private ObjectProperty<Phase> statePhaseProperty = new SimpleObjectProperty<>(state.phase);
+    transient final private ObjectProperty<Phase> phaseProperty = new SimpleObjectProperty<>(state.phase);
+    transient final private ObjectProperty<PayoutState> payoutStateProperty = new SimpleObjectProperty<>(payoutState);
     transient final private ObjectProperty<DisputeState> disputeStateProperty = new SimpleObjectProperty<>(disputeState);
     transient final private ObjectProperty<TradePeriodState> tradePeriodStateProperty = new SimpleObjectProperty<>(periodState);
     transient final private StringProperty errorMessageProperty = new SimpleStringProperty();
@@ -532,6 +544,7 @@ public abstract class Trade implements Tradable, Model {
                 .setAmountAsLong(amountAsLong)
                 .setPrice(price)
                 .setState(Trade.State.toProtoMessage(state))
+                .setPayoutState(Trade.PayoutState.toProtoMessage(payoutState))
                 .setDisputeState(Trade.DisputeState.toProtoMessage(disputeState))
                 .setPeriodState(Trade.TradePeriodState.toProtoMessage(periodState))
                 .addAllChatMessage(chatMessages.stream()
@@ -558,6 +571,7 @@ public abstract class Trade implements Tradable, Model {
     public static Trade fromProto(Trade trade, protobuf.Trade proto, CoreProtoResolver coreProtoResolver) {
         trade.setTakeOfferDate(proto.getTakeOfferDate());
         trade.setState(State.fromProto(proto.getState()));
+        trade.setPayoutState(PayoutState.fromProto(proto.getPayoutState()));
         trade.setDisputeState(DisputeState.fromProto(proto.getDisputeState()));
         trade.setPeriodState(TradePeriodState.fromProto(proto.getPeriodState()));
         trade.setPayoutTxId(ProtoUtil.stringOrNullFromProto(proto.getPayoutTxId()));
@@ -788,7 +802,7 @@ public abstract class Trade implements Tradable, Model {
         // submit payout tx
         if (publish) {
             multisigWallet.submitMultisigTxHex(payoutTxHex);
-            setState(isArbitrator() ? Trade.State.TRADE_COMPLETED : isBuyer() ? Trade.State.BUYER_PUBLISHED_PAYOUT_TX : Trade.State.SELLER_PUBLISHED_PAYOUT_TX);
+            setPayoutState(Trade.PayoutState.PUBLISHED);
         }
         walletService.closeMultisigWallet(getId());
     }
@@ -911,7 +925,7 @@ public abstract class Trade implements Tradable, Model {
         log.info("Listening for payout tx for trade {}", getId());
 
         // check if payout tx already seen
-        if (getState().ordinal() >= Trade.State.PAYOUT_TX_SEEN_IN_NETWORK.ordinal()) {
+        if (getPayoutState().ordinal() >= Trade.PayoutState.PUBLISHED.ordinal()) {
           log.warn("We had a payout tx already set. tradeId={}, state={}", getId(), getState());
           return;
         }
@@ -940,7 +954,7 @@ public abstract class Trade implements Tradable, Model {
                         if (txCheck.isGood() && txCheck.receivedAmount.compareTo(new BigInteger("0")) > 0) {
                             found = true;
                             setPayoutTx(tx);
-                            setStateIfValidTransitionTo(Trade.State.PAYOUT_TX_SEEN_IN_NETWORK);
+                            setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
                             return;
                         }
                     }
@@ -1082,7 +1096,33 @@ public abstract class Trade implements Tradable, Model {
         this.state = state;
         UserThread.execute(() -> {
             stateProperty.set(state);
-            statePhaseProperty.set(state.getPhase());
+            phaseProperty.set(state.getPhase());
+        });
+    }
+
+    public void setPayoutStateIfValidTransitionTo(PayoutState newPayoutState) {
+        if (payoutState.isValidTransitionTo(newPayoutState)) {
+            setPayoutState(newPayoutState);
+        } else {
+            log.warn("Payout state change is not getting applied because it would cause an invalid transition. " +
+                    "Trade payout state={}, intended payout state={}", payoutState, newPayoutState);
+        }
+    }
+
+    public void setPayoutState(PayoutState payoutState) {
+        if (isInitialized) {
+            // We don't want to log at startup the setState calls from all persisted trades
+            log.info("Set new state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), state);
+        }
+        if (state.ordinal() < this.state.ordinal()) {
+            String message = "We got a state change to a previous phase (id=" + getShortId() + ").\n" +
+                    "Old state is: " + this.state + ". New state is: " + state;
+            log.warn(message);
+        }
+
+        this.payoutState = payoutState;
+        UserThread.execute(() -> {
+            payoutStateProperty.set(payoutState);
         });
     }
 
@@ -1346,12 +1386,12 @@ public abstract class Trade implements Tradable, Model {
         return getState().getPhase().ordinal() >= Phase.PAYMENT_RECEIVED.ordinal();
     }
 
-    public boolean isPayoutPublished() {
-        return getState().getPhase().ordinal() >= Phase.PAYOUT_PUBLISHED.ordinal();
-    }
-
     public boolean isCompleted() {
         return getState().getPhase().ordinal() == Phase.COMPLETED.ordinal();
+    }
+
+    public boolean isPayoutPublished() {
+        return getPayoutState().ordinal() >= PayoutState.PUBLISHED.ordinal();
     }
 
     public ReadOnlyObjectProperty<State> stateProperty() {
@@ -1359,7 +1399,7 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public ReadOnlyObjectProperty<Phase> statePhaseProperty() {
-        return statePhaseProperty;
+        return phaseProperty;
     }
 
     public ReadOnlyObjectProperty<DisputeState> disputeStateProperty() {
@@ -1500,7 +1540,7 @@ public abstract class Trade implements Tradable, Model {
                 ",\n     takerFee=" + takerFee +
                 ",\n     xmrWalletService=" + xmrWalletService +
                 ",\n     stateProperty=" + stateProperty +
-                ",\n     statePhaseProperty=" + statePhaseProperty +
+                ",\n     statePhaseProperty=" + phaseProperty +
                 ",\n     disputeStateProperty=" + disputeStateProperty +
                 ",\n     tradePeriodStateProperty=" + tradePeriodStateProperty +
                 ",\n     errorMessageProperty=" + errorMessageProperty +
