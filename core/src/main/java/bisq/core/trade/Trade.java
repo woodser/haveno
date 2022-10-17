@@ -598,27 +598,23 @@ public abstract class Trade implements Tradable, Model {
         }
 
         // listen for payout tx
-        if (getPhase().ordinal() == Trade.Phase.PAYMENT_SENT.ordinal() || getPhase().ordinal() == Trade.Phase.PAYMENT_RECEIVED.ordinal()) {
+        // TODO: listen until payout tx unlocked
+        if (getPhase().ordinal() >= Trade.Phase.PAYMENT_SENT.ordinal() && !isPayoutPublished()) {
+            listenForPayoutTx();
+            tradeStateSubscription = EasyBind.subscribe(stateProperty(), newValue -> {
+                if (isPayoutPublished()) {
 
-            // skip if payout already published
-            if (!isPayoutPublished()) {
-
-                // listen for payout tx
-                listenForPayoutTx();
-                tradeStateSubscription = EasyBind.subscribe(stateProperty(), newValue -> {
-                    if (isPayoutPublished()) {
-
-                        // cleanup on trade completion
-                        processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
-                        UserThread.execute(() -> {
-                            if (tradeStateSubscription != null) {
-                                tradeStateSubscription.unsubscribe();
-                                tradeStateSubscription = null;
-                            }
-                        });
-                    }
-                });
-            }
+                    // cleanup on trade completion
+                    // TODO: delete multisig wallet on unlock
+                    processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
+                    UserThread.execute(() -> {
+                        if (tradeStateSubscription != null) {
+                            tradeStateSubscription.unsubscribe();
+                            tradeStateSubscription = null;
+                        }
+                    });
+                }
+            });
         }
 
         isInitialized = true;
