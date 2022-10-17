@@ -309,7 +309,6 @@ public abstract class Trade implements Tradable, Model {
     private long takeOfferDate;
 
     //  Mutable
-    @Nullable
     @Getter
     @Setter
     private long amountAsLong;
