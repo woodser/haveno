@@ -18,23 +18,16 @@
 package bisq.core.trade.protocol.tasks;
 
 import bisq.core.account.sign.SignedWitness;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.util.Validator;
 
 import bisq.common.taskrunner.TaskRunner;
 
-import java.util.List;
-
 import lombok.extern.slf4j.Slf4j;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-
-
-
-import monero.wallet.MoneroWallet;
 
 @Slf4j
 public class BuyerProcessPaymentReceivedMessage extends TradeTask {
@@ -58,23 +51,15 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
             // handle if payout tx is not seen on network
             if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
 
-                // publish payout tx if signed. otherwise verify, sign, and publish payout tx
+                // verify, sign (if unsigned), and publish payout tx
                 boolean previouslySigned = trade.getPayoutTxHex() != null;
                 if (previouslySigned) {
                     log.info("Buyer publishing signed payout tx from seller");
-                    XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
-                    MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
-                    List<String> txHashes = multisigWallet.submitMultisigTxHex(message.getPayoutTxHex());
-                    trade.setPayoutTx(multisigWallet.getTx(txHashes.get(0)));
-                    XmrWalletService.printTxs("payoutTx received from peer", trade.getPayoutTx());
-                    trade.setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
-                    walletService.closeMultisigWallet(trade.getId());
                 } else {
                     log.info("Buyer verifying, signing, and publishing seller's payout tx");
-                    trade.verifyPayoutTx(message.getPayoutTxHex(), true, true);
-                    trade.setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
-                    // TODO (woodser): send PayoutTxPublishedMessage to seller
                 }
+                trade.verifyPayoutTx(message.getPayoutTxHex(), !previouslySigned, true);
+                // TODO (woodser): send PayoutTxPublishedMessage to seller
 
                 // mark address entries as available
                 processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());

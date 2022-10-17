@@ -199,7 +199,7 @@ public class TradeInfo implements Payload {
                 .setIsDepositUnlocked(isDepositUnlocked)
                 .setIsPaymentSent(isPaymentSent)
                 .setIsPaymentReceived(isPaymentReceived)
-                .setIsPayoutPublished(isPayoutPublished)
+                .setIsCompleted(isCompleted)
                 .setIsPayoutPublished(isCompleted)
                 .setContractAsJson(contractAsJson == null ? "" : contractAsJson)
                 .setContract(contract.toProtoMessage())
