@@ -79,6 +79,7 @@ public class TradeInfo implements Payload {
     private final String state;
     private final String phase;
     private final String periodState;
+    private final String payoutState;
     private final boolean isDepositPublished;
     private final boolean isDepositUnlocked;
     private final boolean isPaymentSent;
@@ -107,6 +108,7 @@ public class TradeInfo implements Payload {
         this.state = builder.getState();
         this.phase = builder.getPhase();
         this.periodState = builder.getPeriodState();
+        this.payoutState = builder.getPayoutState();
         this.isDepositPublished = builder.isDepositPublished();
         this.isDepositUnlocked = builder.isDepositUnlocked();
         this.isPaymentSent = builder.isPaymentSent();
@@ -158,6 +160,7 @@ public class TradeInfo implements Payload {
                 .withState(trade.getState().name())
                 .withPhase(trade.getPhase().name())
                 .withPeriodState(trade.getPeriodState().name())
+                .withPayoutState(trade.getPayoutState().name())
                 .withIsDepositPublished(trade.isDepositPublished())
                 .withIsDepositUnlocked(trade.isDepositUnlocked())
                 .withIsPaymentSent(trade.isPaymentSent())
@@ -195,6 +198,7 @@ public class TradeInfo implements Payload {
                 .setState(state)
                 .setPhase(phase)
                 .setPeriodState(periodState)
+                .setPayoutState(payoutState)
                 .setIsDepositPublished(isDepositPublished)
                 .setIsDepositUnlocked(isDepositUnlocked)
                 .setIsPaymentSent(isPaymentSent)
@@ -222,6 +226,7 @@ public class TradeInfo implements Payload {
                 .withPrice(proto.getPrice())
                 .withVolume(proto.getTradeVolume())
                 .withPeriodState(proto.getPeriodState())
+                .withPayoutState(proto.getPayoutState())
                 .withState(proto.getState())
                 .withPhase(proto.getPhase())
                 .withArbitratorNodeAddress(proto.getArbitratorNodeAddress())
@@ -256,6 +261,7 @@ public class TradeInfo implements Payload {
                 ", state='" + state + '\'' + "\n" +
                 ", phase='" + phase + '\'' + "\n" +
                 ", periodState='" + periodState + '\'' + "\n" +
+                ", payoutState='" + payoutState + '\'' + "\n" +
                 ", isDepositPublished=" + isDepositPublished + "\n" +
                 ", isDepositConfirmed=" + isDepositUnlocked + "\n" +
                 ", isPaymentSent=" + isPaymentSent + "\n" +

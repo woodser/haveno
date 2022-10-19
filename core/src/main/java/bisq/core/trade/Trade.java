@@ -371,7 +371,7 @@ public abstract class Trade implements Tradable, Model {
     transient final private ObjectProperty<DisputeState> disputeStateProperty = new SimpleObjectProperty<>(disputeState);
     transient final private ObjectProperty<TradePeriodState> tradePeriodStateProperty = new SimpleObjectProperty<>(periodState);
     transient final private StringProperty errorMessageProperty = new SimpleStringProperty();
-    transient private Subscription tradeStateSubscription = null;
+    transient private Subscription payoutStateSubscription = null;
     
     //  Mutable
     @Getter
@@ -609,6 +609,8 @@ public abstract class Trade implements Tradable, Model {
             getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
         });
 
+        isInitialized = true;
+
         // listen for deposit txs
         if (getPhase().ordinal() >= Trade.Phase.DEPOSIT_REQUESTED.ordinal() && getPhase().ordinal() <= Trade.Phase.DEPOSITS_CONFIRMED.ordinal()) {
             listenForDepositTxs();
@@ -618,23 +620,21 @@ public abstract class Trade implements Tradable, Model {
         // TODO: listen until payout tx unlocked
         if (getPhase().ordinal() >= Trade.Phase.PAYMENT_SENT.ordinal() && !isPayoutPublished()) {
             listenForPayoutTx();
-            tradeStateSubscription = EasyBind.subscribe(stateProperty(), newValue -> {
+            payoutStateSubscription = EasyBind.subscribe(payoutStateProperty, newValue -> {
                 if (isPayoutPublished()) {
 
                     // cleanup on trade completion
                     // TODO: delete multisig wallet on unlock
                     processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
                     UserThread.execute(() -> {
-                        if (tradeStateSubscription != null) {
-                            tradeStateSubscription.unsubscribe();
-                            tradeStateSubscription = null;
+                        if (payoutStateSubscription != null) {
+                            payoutStateSubscription.unsubscribe();
+                            payoutStateSubscription = null;
                         }
                     });
                 }
             });
         }
-
-        isInitialized = true;
     }
 
 
@@ -1156,7 +1156,7 @@ public abstract class Trade implements Tradable, Model {
     public void setPayoutState(PayoutState payoutState) {
         if (isInitialized) {
             // We don't want to log at startup the setState calls from all persisted trades
-            log.info("Set new payout state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), state);
+            log.info("Set new payout state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), payoutState);
         }
         if (payoutState.ordinal() < this.payoutState.ordinal()) {
             String message = "We got a payout state change to a previous phase (id=" + getShortId() + ").\n" +

@@ -439,9 +439,11 @@ public class XmrWalletService {
         // initialize main wallet if connected or previously created
         maybeInitMainWallet();
 
-        // update wallet connections on change
+        // set and listen to daemon connection
+        payoutKeyImagePoller.setDaemon(connectionsService.getDaemon());
         connectionsService.addListener(newConnection -> {
             setWalletDaemonConnections(newConnection);
+            payoutKeyImagePoller.setDaemon(connectionsService.getDaemon());
         });
     }
 

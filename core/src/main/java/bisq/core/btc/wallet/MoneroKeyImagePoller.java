@@ -159,7 +159,7 @@ public class MoneroKeyImagePoller {
     public void poll() {
 
         // fetch spent statuses
-        List<MoneroKeyImageSpentStatus> spentStatuses = daemon.getKeyImageSpentStatuses(keyImages);
+        List<MoneroKeyImageSpentStatus> spentStatuses = keyImages.isEmpty() ? new ArrayList<MoneroKeyImageSpentStatus>() : daemon.getKeyImageSpentStatuses(keyImages);
 
         // collect changed statuses
         Map<String, MoneroKeyImageSpentStatus> changedStatuses = new HashMap<String, MoneroKeyImageSpentStatus>();
