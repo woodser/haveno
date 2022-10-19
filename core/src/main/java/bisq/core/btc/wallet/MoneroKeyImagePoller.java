@@ -1,19 +1,30 @@
 package bisq.core.btc.wallet;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import monero.common.MoneroError;
+import monero.common.TaskLooper;
+import monero.daemon.MoneroDaemon;
+import monero.daemon.model.MoneroKeyImageSpentStatus;
 
 /**
- * Listen for changes to the spent status of key images.
+ * Poll for changes to the spent status of key images.
  */
 public class MoneroKeyImagePoller {
 
+    private MoneroDaemon daemon;
     private long refreshPeriodMs;
-    private Set<String> keyImages = new HashSet<String>();
+    private List<String> keyImages = new ArrayList<String>();
     private Set<MoneroKeyImageListener> listeners = new HashSet<MoneroKeyImageListener>();
+    private TaskLooper looper;
+    private Map<String, MoneroKeyImageSpentStatus> lastStatuses = new HashMap<String, MoneroKeyImageSpentStatus>();
 
     /**
      * Construct the listener.
@@ -21,8 +32,10 @@ public class MoneroKeyImagePoller {
      * @param refreshPeriodMs - refresh period in milliseconds
      * @param keyImages - key images to listen to
      */
-    public MoneroKeyImagePoller(long refreshPeriodMs, String... keyImages) {
-        this.refreshPeriodMs = refreshPeriodMs;
+    public MoneroKeyImagePoller(MoneroDaemon daemon, long refreshPeriodMs, String... keyImages) {
+        looper = new TaskLooper(() -> poll());
+        setDaemon(daemon);
+        setRefreshPeriodMs(refreshPeriodMs);
         setKeyImages(keyImages);
     }
 
@@ -48,6 +61,24 @@ public class MoneroKeyImagePoller {
     }
 
     /**
+     * Set the Monero daemon to fetch key images from.
+     * 
+     * @param daemon - the daemon to fetch key images from
+     */
+    public void setDaemon(MoneroDaemon daemon) {
+        this.daemon = daemon;
+    }
+
+    /**
+     * Get the Monero daemon to fetch key images from.
+     * 
+     * @return the daemon to fetch key images from
+     */
+    public MoneroDaemon getDaemon() {
+        return daemon;
+    }
+
+    /**
      * Set the refresh period in milliseconds.
      * 
      * @param refreshPeriodMs - the refresh period in milliseconds
@@ -70,7 +101,7 @@ public class MoneroKeyImagePoller {
      * 
      * @return the key images to listen to
      */
-    public Set<String> getKeyImages() {
+    public Collection<String> getKeyImages() {
         return keyImages;
     }
 
@@ -101,7 +132,7 @@ public class MoneroKeyImagePoller {
      * @param keyImages - key images to listen to
      */
     public void addKeyImages(String... keyImages) {
-        this.keyImages.addAll(Arrays.asList(keyImages));
+        for (String keyImage : keyImages) if (!this.keyImages.contains(keyImage)) this.keyImages.add(keyImage);
         refreshPolling();
     }
 
@@ -126,10 +157,29 @@ public class MoneroKeyImagePoller {
     }
 
     public void poll() {
-        throw new RuntimeException("Not implemented");
+
+        // fetch spent statuses
+        List<MoneroKeyImageSpentStatus> spentStatuses = daemon.getKeyImageSpentStatuses(keyImages);
+
+        // collect changed statuses
+        Map<String, MoneroKeyImageSpentStatus> changedStatuses = new HashMap<String, MoneroKeyImageSpentStatus>();
+        for (int i = 0; i < keyImages.size(); i++) {
+            if (lastStatuses.get(keyImages.get(i)) != spentStatuses.get(i)) {
+                lastStatuses.put(keyImages.get(i), spentStatuses.get(i));
+                changedStatuses.put(keyImages.get(i), spentStatuses.get(i));
+            }
+        }
+
+        // announce changes
+        for (MoneroKeyImageListener listener : listeners) listener.onSpentStatusChanged(changedStatuses);
     }
 
     private void refreshPolling() {
-        throw new RuntimeException("Not implemented");
+        setIsPolling(listeners.size() > 0);
+    }
+
+    private void setIsPolling(boolean isPolling) {
+        if (isPolling) looper.start(refreshPeriodMs);
+        else looper.stop();
     }
 }

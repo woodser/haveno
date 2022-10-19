@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,7 +117,7 @@ public class XmrWalletService {
         this.walletDir = walletDir;
         this.rpcBindPort = rpcBindPort;
         this.xmrWalletFile = new File(walletDir, MONERO_WALLET_NAME);
-        this.payoutKeyImagePoller = new MoneroKeyImagePoller(connectionsService.getDefaultRefreshPeriodMs()); // TODO: update on refresh rate change
+        this.payoutKeyImagePoller = new MoneroKeyImagePoller(null, connectionsService.getDefaultRefreshPeriodMs()); // TODO: update on refresh rate change
 
         // initialize after account open and basic setup
         walletsSetup.addSetupTaskHandler(() -> { // TODO: use something better than legacy WalletSetup for notification to initialize
@@ -930,18 +929,19 @@ public class XmrWalletService {
     }
 
     public void listenToPayoutKeyImages(Collection<String> keyImages, MoneroKeyImageListener keyImageListener) {
-        Set<String> confirmedKeyImages = new HashSet<String>();
         payoutKeyImagePoller.addListener(new MoneroKeyImageListener() {
             @Override
             public void onSpentStatusChanged(Map<String, MoneroKeyImageSpentStatus> spentStatuses) {
 
                 // filter results
                 Map<String, MoneroKeyImageSpentStatus> filtered = new HashMap<String, MoneroKeyImageSpentStatus>();
-                for (String keyImage : keyImages) filtered.put(keyImage, spentStatuses.get(keyImage));
+                for (String keyImage : keyImages) if (spentStatuses.containsKey(keyImage)) filtered.put(keyImage, spentStatuses.get(keyImage));
 
-                // remove listener when all key images confirmed
-                for (Entry<String, MoneroKeyImageSpentStatus> entry : filtered.entrySet()) if (entry.getValue() == MoneroKeyImageSpentStatus.CONFIRMED) confirmedKeyImages.add(entry.getKey());
-                if (keyImages.equals(confirmedKeyImages)) payoutKeyImagePoller.removeListener(this);
+                // stop fetching confirmed key images
+                for (String keyImage : filtered.keySet()) if (filtered.get(keyImage) == MoneroKeyImageSpentStatus.CONFIRMED) payoutKeyImagePoller.removeKeyImage(keyImage);
+
+                // remove listener if no key images
+                if (payoutKeyImagePoller.getKeyImages().isEmpty()) payoutKeyImagePoller.removeListener(this);
 
                 // notify if changes
                 if (!filtered.isEmpty()) keyImageListener.onSpentStatusChanged(filtered);

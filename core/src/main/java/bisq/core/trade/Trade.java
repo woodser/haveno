@@ -18,8 +18,6 @@
 package bisq.core.trade;
 
 import bisq.core.btc.model.XmrAddressEntry;
-import bisq.core.btc.wallet.MoneroKeyImageListener;
-import bisq.core.btc.wallet.MoneroKeyImagePoller;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.monetary.Price;
@@ -54,7 +52,6 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import common.utils.GenUtils;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Transaction;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
 
@@ -1159,11 +1156,11 @@ public abstract class Trade implements Tradable, Model {
     public void setPayoutState(PayoutState payoutState) {
         if (isInitialized) {
             // We don't want to log at startup the setState calls from all persisted trades
-            log.info("Set new state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), state);
+            log.info("Set new payout state at {} (id={}): {}", this.getClass().getSimpleName(), getShortId(), state);
         }
-        if (state.ordinal() < this.state.ordinal()) {
-            String message = "We got a state change to a previous phase (id=" + getShortId() + ").\n" +
-                    "Old state is: " + this.state + ". New state is: " + state;
+        if (payoutState.ordinal() < this.payoutState.ordinal()) {
+            String message = "We got a payout state change to a previous phase (id=" + getShortId() + ").\n" +
+                    "Old payout state is: " + this.state + ". New payout state is: " + state;
             log.warn(message);
         }
 
