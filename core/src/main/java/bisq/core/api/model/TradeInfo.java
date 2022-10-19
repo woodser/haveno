@@ -84,8 +84,8 @@ public class TradeInfo implements Payload {
     private final boolean isDepositUnlocked;
     private final boolean isPaymentSent;
     private final boolean isPaymentReceived;
-    private final boolean isPayoutPublished;
     private final boolean isCompleted;
+    private final boolean isPayoutPublished;
     private final String contractAsJson;
     private final ContractInfo contract;
 
@@ -204,7 +204,7 @@ public class TradeInfo implements Payload {
                 .setIsPaymentSent(isPaymentSent)
                 .setIsPaymentReceived(isPaymentReceived)
                 .setIsCompleted(isCompleted)
-                .setIsPayoutPublished(isCompleted)
+                .setIsPayoutPublished(isPayoutPublished)
                 .setContractAsJson(contractAsJson == null ? "" : contractAsJson)
                 .setContract(contract.toProtoMessage())
                 .build();
@@ -235,8 +235,8 @@ public class TradeInfo implements Payload {
                 .withIsDepositUnlocked(proto.getIsDepositUnlocked())
                 .withIsPaymentSent(proto.getIsPaymentSent())
                 .withIsPaymentReceived(proto.getIsPaymentReceived())
-                .withIsPayoutPublished(proto.getIsPayoutPublished())
                 .withIsCompleted(proto.getIsCompleted())
+                .withIsPayoutPublished(proto.getIsPayoutPublished())
                 .withContractAsJson(proto.getContractAsJson())
                 .withContract((ContractInfo.fromProto(proto.getContract())))
                 .build();
@@ -266,8 +266,8 @@ public class TradeInfo implements Payload {
                 ", isDepositConfirmed=" + isDepositUnlocked + "\n" +
                 ", isPaymentSent=" + isPaymentSent + "\n" +
                 ", isPaymentReceived=" + isPaymentReceived + "\n" +
-                ", isPayoutPublished=" + isPayoutPublished + "\n" +
                 ", isCompleted=" + isCompleted + "\n" +
+                ", isPayoutPublished=" + isPayoutPublished + "\n" +
                 ", offer=" + offer + "\n" +
                 ", contractAsJson=" + contractAsJson + "\n" +
                 ", contract=" + contract + "\n" +

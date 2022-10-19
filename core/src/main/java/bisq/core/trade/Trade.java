@@ -72,7 +72,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -328,7 +327,6 @@ public abstract class Trade implements Tradable, Model {
     @Nullable
     @Getter
     private State state = State.PREPARATION;
-    @Nullable
     @Getter
     private PayoutState payoutState = PayoutState.UNPUBLISHED;
     @Getter
@@ -1444,6 +1442,10 @@ public abstract class Trade implements Tradable, Model {
 
     public ReadOnlyObjectProperty<Phase> statePhaseProperty() {
         return phaseProperty;
+    }
+
+    public ReadOnlyObjectProperty<PayoutState> payoutStateProperty() {
+        return payoutStateProperty;
     }
 
     public ReadOnlyObjectProperty<DisputeState> disputeStateProperty() {

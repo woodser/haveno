@@ -21,12 +21,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.payment.PaymentAccount;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
 import bisq.network.p2p.NodeAddress;
-import java.util.UUID;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
