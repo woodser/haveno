@@ -29,12 +29,14 @@ import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,6 +49,7 @@ import monero.common.MoneroRpcConnection;
 import monero.common.MoneroRpcError;
 import monero.common.MoneroUtils;
 import monero.daemon.MoneroDaemonRpc;
+import monero.daemon.model.MoneroKeyImageSpentStatus;
 import monero.daemon.model.MoneroNetworkType;
 import monero.daemon.model.MoneroOutput;
 import monero.daemon.model.MoneroSubmitTxResult;
@@ -91,6 +94,7 @@ public class XmrWalletService {
     private final File walletDir;
     private final File xmrWalletFile;
     private final int rpcBindPort;
+    private final MoneroKeyImagePoller payoutKeyImagePoller;
     protected final CopyOnWriteArraySet<XmrBalanceListener> balanceListeners = new CopyOnWriteArraySet<>();
     protected final CopyOnWriteArraySet<MoneroWalletListenerI> walletListeners = new CopyOnWriteArraySet<>();
 
@@ -114,6 +118,7 @@ public class XmrWalletService {
         this.walletDir = walletDir;
         this.rpcBindPort = rpcBindPort;
         this.xmrWalletFile = new File(walletDir, MONERO_WALLET_NAME);
+        this.payoutKeyImagePoller = new MoneroKeyImagePoller(connectionsService.getDefaultRefreshPeriodMs()); // TODO: update on refresh rate change
 
         // initialize after account open and basic setup
         walletsSetup.addSetupTaskHandler(() -> { // TODO: use something better than legacy WalletSetup for notification to initialize
@@ -922,6 +927,27 @@ public class XmrWalletService {
     public void removeWalletListener(MoneroWalletListenerI listener) {
         if (!walletListeners.contains(listener)) throw new RuntimeException("Listener is not registered with wallet");
         walletListeners.remove(listener);
+    }
+
+    public void listenToPayoutKeyImages(Collection<String> keyImages, MoneroKeyImageListener keyImageListener) {
+        Set<String> confirmedKeyImages = new HashSet<String>();
+        payoutKeyImagePoller.addListener(new MoneroKeyImageListener() {
+            @Override
+            public void onSpentStatusChanged(Map<String, MoneroKeyImageSpentStatus> spentStatuses) {
+
+                // filter results
+                Map<String, MoneroKeyImageSpentStatus> filtered = new HashMap<String, MoneroKeyImageSpentStatus>();
+                for (String keyImage : keyImages) filtered.put(keyImage, spentStatuses.get(keyImage));
+
+                // remove listener when all key images confirmed
+                for (Entry<String, MoneroKeyImageSpentStatus> entry : filtered.entrySet()) if (entry.getValue() == MoneroKeyImageSpentStatus.CONFIRMED) confirmedKeyImages.add(entry.getKey());
+                if (keyImages.equals(confirmedKeyImages)) payoutKeyImagePoller.removeListener(this);
+
+                // notify if changes
+                if (!filtered.isEmpty()) keyImageListener.onSpentStatusChanged(filtered);
+            }
+        });
+        payoutKeyImagePoller.addKeyImages(keyImages.toArray(new String[0]));
     }
 
     // TODO (woodser): update balance and other listening

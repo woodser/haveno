@@ -18,6 +18,8 @@
 package bisq.core.trade;
 
 import bisq.core.btc.model.XmrAddressEntry;
+import bisq.core.btc.wallet.MoneroKeyImageListener;
+import bisq.core.btc.wallet.MoneroKeyImagePoller;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.monetary.Price;
@@ -73,6 +75,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -91,11 +94,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import monero.common.MoneroError;
 import monero.daemon.MoneroDaemon;
+import monero.daemon.model.MoneroKeyImage;
+import monero.daemon.model.MoneroKeyImageSpentStatus;
 import monero.daemon.model.MoneroTx;
 import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroCheckTx;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
+import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroTransferQuery;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxQuery;
@@ -882,10 +888,10 @@ public abstract class Trade implements Tradable, Model {
                 // skip if no longer listening
                 if (depositTxListener == null) return;
 
-                // use latest height
+                // get latest height
                 height = havenoWallet.getHeight();
 
-                // skip if before unlock height
+                // skip if confirmed and awaiting unlock
                 if (unlockHeight != null && height < unlockHeight) return;
 
                 // fetch txs from daemon
@@ -922,6 +928,47 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void listenForPayoutTx() {
+        log.info("Listening for payout tx for trade {}", getId());
+
+        // skip if payout tx already unlocked
+        if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) {
+            log.warn("We had a payout tx already unlocked. tradeId={}, state={}", getId(), getState());
+            return;
+        }
+
+        // get key images of multisig outputs
+        // TODO: ensure multisig wallet already open when used normally or store earlier?
+        MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(getId());
+        List<String> keyImages = multisigWallet.getOutputs().stream().map(MoneroOutputWallet::getKeyImage).map(MoneroKeyImage::getHex).collect(Collectors.toList());
+
+        // listen for key images to be spent
+        xmrWalletService.listenToPayoutKeyImages(keyImages, (changedStatuses -> {
+
+            // get max spent status
+            MoneroKeyImageSpentStatus maxStatus = null;
+            for (MoneroKeyImageSpentStatus status : changedStatuses.values()) {
+                if (maxStatus == null || status.ordinal() > maxStatus.ordinal()) maxStatus = status;
+            }
+
+            // handle spent status
+            switch (maxStatus) {
+                case NOT_SPENT:
+                if (getPayoutState() != PayoutState.UNPUBLISHED) setPayoutState(PayoutState.UNPUBLISHED);
+                break;
+                case TX_POOL:
+                if (getPayoutState() != PayoutState.PUBLISHED) setPayoutState(PayoutState.PUBLISHED);
+                break;
+                case CONFIRMED:
+                if (getPayoutState().ordinal() < PayoutState.CONFIRMED.ordinal()) {
+                    setPayoutState(PayoutState.CONFIRMED);
+                    // TODO: detect payout tx unlock, unregister listener
+                }
+                break;
+            }
+        }));
+    }
+
+    public void listenForPayoutTx2() {
         log.info("Listening for payout tx for trade {}", getId());
 
         // check if payout tx already seen
