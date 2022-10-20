@@ -45,8 +45,8 @@ public class MoneroKeyImagePoller {
      * @param listener - the listener to add
      */
     public void addListener(MoneroKeyImageListener listener) {
-      listeners.add(listener);
-      refreshPolling();
+        listeners.add(listener);
+        refreshPolling();
     }
     
     /**
@@ -55,9 +55,9 @@ public class MoneroKeyImagePoller {
      * @param listener - the listener to remove
      */
     public void removeListener(MoneroKeyImageListener listener) {
-      if (!listeners.contains(listener)) throw new MoneroError("Listener is not registered");
-      listeners.remove(listener);
-      refreshPolling();
+        if (!listeners.contains(listener)) throw new MoneroError("Listener is not registered");
+        listeners.remove(listener);
+        refreshPolling();
     }
 
     /**
@@ -171,7 +171,7 @@ public class MoneroKeyImagePoller {
         }
 
         // announce changes
-        for (MoneroKeyImageListener listener : listeners) listener.onSpentStatusChanged(changedStatuses);
+        for (MoneroKeyImageListener listener : new ArrayList<MoneroKeyImageListener>(listeners)) listener.onSpentStatusChanged(changedStatuses);
     }
 
     private void refreshPolling() {
