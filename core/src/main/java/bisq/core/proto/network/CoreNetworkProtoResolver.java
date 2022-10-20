@@ -53,8 +53,6 @@ import bisq.core.trade.messages.RefreshTradeStateRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TraderSignedWitnessMessage;
-import bisq.core.trade.messages.UpdateMultisigRequest;
-import bisq.core.trade.messages.UpdateMultisigResponse;
 
 import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.BundleOfEnvelopes;
@@ -162,10 +160,6 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return PaymentAccountKeyRequest.fromProto(proto.getPaymentAccountKeyRequest(), this, messageVersion);
                 case PAYMENT_ACCOUNT_KEY_RESPONSE:
                     return PaymentAccountKeyResponse.fromProto(proto.getPaymentAccountKeyResponse(), this, messageVersion);
-                case UPDATE_MULTISIG_REQUEST:
-                  return UpdateMultisigRequest.fromProto(proto.getUpdateMultisigRequest(), this, messageVersion);
-                case UPDATE_MULTISIG_RESPONSE:
-                  return UpdateMultisigResponse.fromProto(proto.getUpdateMultisigResponse(), this, messageVersion);
 
                 case PAYMENT_SENT_MESSAGE:
                     return PaymentSentMessage.fromProto(proto.getPaymentSentMessage(), messageVersion);

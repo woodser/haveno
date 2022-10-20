@@ -44,7 +44,6 @@ import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.PaymentAccountKeyRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
-import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.protocol.ArbitratorProtocol;
 import bisq.core.trade.protocol.MakerProtocol;
 import bisq.core.trade.protocol.ProcessModel;
@@ -66,7 +65,6 @@ import bisq.network.p2p.P2PService;
 import bisq.network.p2p.network.TorNetworkNode;
 import com.google.common.collect.ImmutableList;
 import bisq.common.ClockWatcher;
-import bisq.common.config.Config;
 import bisq.common.crypto.KeyRing;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.FaultHandler;
@@ -247,8 +245,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleDepositResponse((DepositResponse) networkEnvelope, peer);
         } else if (networkEnvelope instanceof PaymentAccountKeyRequest) {
             handlePaymentAccountKeyRequest((PaymentAccountKeyRequest) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof UpdateMultisigRequest) {
-            handleUpdateMultisigRequest((UpdateMultisigRequest) networkEnvelope, peer);
         }
     }
 
@@ -677,26 +673,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         ((ArbitratorProtocol) getTradeProtocol(trade)).handlePaymentAccountKeyRequest(request, peer);
     }
 
-    private void handleUpdateMultisigRequest(UpdateMultisigRequest request, NodeAddress peer) {
-      log.info("Received UpdateMultisigRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
-
-      try {
-          Validator.nonEmptyStringOf(request.getTradeId());
-      } catch (Throwable t) {
-          log.warn("Invalid UpdateMultisigRequest message " + request.toString());
-          return;
-      }
-
-      Optional<Trade> tradeOptional = getOpenTrade(request.getTradeId());
-      if (!tradeOptional.isPresent()) throw new RuntimeException("No trade with id " + request.getTradeId()); // TODO (woodser): error handling
-      Trade trade = tradeOptional.get();
-      getTradeProtocol(trade).handleUpdateMultisigRequest(request, peer, errorMessage -> {
-          log.warn("Error handling UpdateMultisigRequest: " + errorMessage);
-          if (takeOfferRequestErrorMessageHandler != null)
-              takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
-      });
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Take offer
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1032,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             if (!tradableList.contains(trade)) return;
 
             // delete trade if not possibly funded
-            if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal() || trade.getPayoutState().ordinal() >= Trade.PayoutState.PUBLISHED.ordinal()) { // TODO: delete after payout unlocked
+            if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal() || trade.getPayoutState().ordinal() >= Trade.PayoutState.CONFIRMED.ordinal()) { // TODO: delete after payout unlocked
 
                 // remove trade
                 tradableList.remove(trade);

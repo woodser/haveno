@@ -28,14 +28,12 @@ import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
-import bisq.core.trade.messages.UpdateMultisigRequest;
 import bisq.core.trade.protocol.tasks.RemoveOffer;
 import bisq.core.trade.protocol.tasks.MaybeSendSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
-import bisq.core.trade.protocol.tasks.ProcessUpdateMultisigRequest;
 import bisq.core.util.Validator;
 
 import bisq.network.p2p.AckMessage;
@@ -356,27 +354,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                 awaitTradeLatch();
             }
         }).start();
-    }
-
-    // TODO (woodser): update to use fluent for consistency
-    public void handleUpdateMultisigRequest(UpdateMultisigRequest message, NodeAddress peer, ErrorMessageHandler errorMessageHandler) {
-        latchTrade();
-        Validator.checkTradeId(processModel.getOfferId(), message);
-        processModel.setTradeMessage(message);
-        TradeTaskRunner taskRunner = new TradeTaskRunner(trade,
-                () -> {
-                    stopTimeout();
-                    handleTaskRunnerSuccess(peer, message, "handleUpdateMultisigRequest");
-                },
-                errorMessage -> {
-                    handleTaskRunnerFault(peer, message, errorMessage);
-                });
-        taskRunner.addTasks(
-                ProcessUpdateMultisigRequest.class
-        );
-        startTimeout(TRADE_TIMEOUT);
-        taskRunner.run();
-        awaitTradeLatch();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

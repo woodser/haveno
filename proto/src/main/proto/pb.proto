@@ -81,10 +81,6 @@ message NetworkEnvelope {
         PayoutTxPublishedMessage payout_tx_published_message = 1013;
         ArbitratorPayoutTxRequest arbitrator_payout_tx_request = 1016;
         ArbitratorPayoutTxResponse arbitrator_payout_tx_response = 1017;
-
-        // TODO: delete these
-        UpdateMultisigRequest update_multisig_request = 1018;
-        UpdateMultisigResponse update_multisig_response = 1019;
     }
 }
 
@@ -368,24 +364,6 @@ message PaymentAccountKeyResponse {
     PubKeyRing pub_key_ring = 3;
     string uid = 4;
     bytes payment_account_key = 5;
-    string updated_multisig_hex = 6;
-}
-
-message UpdateMultisigRequest {
-    string trade_id = 1;
-    NodeAddress sender_node_address = 2;
-    PubKeyRing pub_key_ring = 3;
-    string uid = 4;
-    int64 current_date = 5;
-    string updated_multisig_hex = 6;
-}
-
-message UpdateMultisigResponse {
-    string trade_id = 1;
-    NodeAddress sender_node_address = 2;
-    PubKeyRing pub_key_ring = 3;
-    string uid = 4;
-    int64 current_date = 5;
     string updated_multisig_hex = 6;
 }
 
