@@ -118,9 +118,6 @@ public class ArbitratorProcessDepositRequest extends TradeTask {
               // send deposit response to maker and taker
               sendDepositResponse(trade.getMaker().getNodeAddress(), trade.getMaker().getPubKeyRing(), response);
               sendDepositResponse(trade.getTaker().getNodeAddress(), trade.getTaker().getPubKeyRing(), response);
-
-              // start listening for payout tx
-              trade.listenForPayoutTx(); // TODO: support custom refresh period for passive listening, e.g. once every hour for arbitrator
           } else {
               if (processModel.getMaker().getDepositTxHex() == null) log.info("Arbitrator waiting for deposit request from maker for trade " + trade.getId());
               if (processModel.getTaker().getDepositTxHex() == null) log.info("Arbitrator waiting for deposit request from taker for trade " + trade.getId());

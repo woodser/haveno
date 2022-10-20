@@ -22,6 +22,7 @@ import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import lombok.extern.slf4j.Slf4j;
+import monero.wallet.MoneroWallet;
 
 // TODO: this class is not currently used, should dispute opener send arbitrator PayoutTxPublishedMessage?
 @Slf4j
@@ -37,6 +38,13 @@ public class ArbitratorProcessPayoutTxPublishedMessage extends TradeTask {
         try {
           runInterceptHook();
           PayoutTxPublishedMessage request = (PayoutTxPublishedMessage) processModel.getTradeMessage();
+
+          // update multisig
+          MoneroWallet multisigWallet = trade.getXmrWalletService().getMultisigWallet(trade.getId());
+          multisigWallet.importMultisigHex(request.getUpdatedMultisigHex());
+
+          // start listening for payout tx
+          trade.listenForPayoutTx(); // TODO: support custom refresh period for passive listening, e.g. once every hour for arbitrator
 
           // verify and publish payout tx
           trade.verifyPayoutTx(request.getSignedPayoutTxHex(), false, true);

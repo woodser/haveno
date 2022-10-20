@@ -442,6 +442,7 @@ message PayoutTxPublishedMessage {
     string uid = 4;
     SignedWitness signed_witness = 5;
     string signed_payout_tx_hex = 6;
+    string updated_multisig_hex = 7;
 }
 
 message ArbitratorPayoutTxRequest {

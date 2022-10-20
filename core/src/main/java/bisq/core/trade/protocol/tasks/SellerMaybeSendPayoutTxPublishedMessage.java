@@ -27,6 +27,7 @@ import bisq.core.trade.messages.TradeMailboxMessage;
 import bisq.network.p2p.NodeAddress;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
+import monero.wallet.MoneroWallet;
 
 @EqualsAndHashCode(callSuper = true)
 @Slf4j
@@ -66,12 +67,14 @@ public class SellerMaybeSendPayoutTxPublishedMessage extends SendMailboxMessageT
     @Override
     protected TradeMailboxMessage getTradeMailboxMessage(String tradeId) {
         checkNotNull(trade.getPayoutTxHex(), "Payout tx must not be null");
+        MoneroWallet multisigWallet = trade.getXmrWalletService().getMultisigWallet(trade.getId()); // TODO: store from previous use to avoid opening
         return new PayoutTxPublishedMessage(
                 tradeId,
                 processModel.getMyNodeAddress(),
                 trade.isMaker(),
                 null, // TODO: send witness data?
-                trade.getPayoutTxHex()
+                trade.getPayoutTxHex(),
+                multisigWallet.exportMultisigHex()
         );
     }
 

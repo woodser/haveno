@@ -980,32 +980,6 @@ public abstract class Trade implements Tradable, Model {
                 break;
             }
         }));
-
-        // listen for key images to be spent
-        xmrWalletService.listenToPayoutKeyImages(keyImages, (changedStatuses -> {
-
-            // get max spent status
-            MoneroKeyImageSpentStatus maxStatus = null;
-            for (MoneroKeyImageSpentStatus status : changedStatuses.values()) {
-                if (maxStatus == null || status.ordinal() > maxStatus.ordinal()) maxStatus = status;
-            }
-
-            // handle spent status
-            switch (maxStatus) {
-                case NOT_SPENT:
-                if (getPayoutState() != PayoutState.UNPUBLISHED) setPayoutState(PayoutState.UNPUBLISHED);
-                break;
-                case TX_POOL:
-                if (getPayoutState() != PayoutState.PUBLISHED) setPayoutState(PayoutState.PUBLISHED);
-                break;
-                case CONFIRMED:
-                if (getPayoutState().ordinal() < PayoutState.CONFIRMED.ordinal()) {
-                    setPayoutState(PayoutState.CONFIRMED);
-                    // TODO: detect payout tx unlock, unregister listener
-                }
-                break;
-            }
-        }));
     }
 
     public void listenForPayoutTx2() {
