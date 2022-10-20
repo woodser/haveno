@@ -89,6 +89,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 
 import monero.common.MoneroError;
+import monero.common.MoneroUtils;
 import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroKeyImage;
 import monero.daemon.model.MoneroKeyImageSpentStatus;
@@ -369,6 +370,7 @@ public abstract class Trade implements Tradable, Model {
     transient final private ObjectProperty<DisputeState> disputeStateProperty = new SimpleObjectProperty<>(disputeState);
     transient final private ObjectProperty<TradePeriodState> tradePeriodStateProperty = new SimpleObjectProperty<>(periodState);
     transient final private StringProperty errorMessageProperty = new SimpleStringProperty();
+    transient private Subscription tradeStateSubscription = null;
     transient private Subscription payoutStateSubscription = null;
     
     //  Mutable
@@ -923,11 +925,28 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void listenForPayoutTx() {
-        log.info("Listening for payout tx for trade {}", getId());
+        log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
 
         // skip if payout tx already unlocked
-        if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) {
+        if (getPayoutState().ordinal() >= Trade.PayoutState.CONFIRMED.ordinal()) {
             log.warn("We had a payout tx already unlocked. tradeId={}, state={}", getId(), getState());
+            return;
+        }
+
+        // wait for deposits to confirm
+        if (!isDepositConfirmed()) {
+            if (tradeStateSubscription != null) throw new RuntimeException("Trade state subscription is already initialized");
+            tradeStateSubscription = EasyBind.subscribe(stateProperty, newValue -> {
+                if (isDepositConfirmed()) {
+                    listenForPayoutTx();
+                    UserThread.execute(() -> {
+                        if (tradeStateSubscription != null) {
+                            tradeStateSubscription.unsubscribe();
+                            tradeStateSubscription = null;
+                        }
+                    });
+                }
+            });
             return;
         }
 
@@ -935,6 +954,32 @@ public abstract class Trade implements Tradable, Model {
         // TODO: ensure multisig wallet already open when used normally or store earlier?
         MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(getId());
         List<String> keyImages = multisigWallet.getOutputs().stream().map(MoneroOutputWallet::getKeyImage).map(MoneroKeyImage::getHex).collect(Collectors.toList());
+
+        // listen for key images to be spent
+        xmrWalletService.listenToPayoutKeyImages(keyImages, (changedStatuses -> {
+
+            // get max spent status
+            MoneroKeyImageSpentStatus maxStatus = null;
+            for (MoneroKeyImageSpentStatus status : changedStatuses.values()) {
+                if (maxStatus == null || status.ordinal() > maxStatus.ordinal()) maxStatus = status;
+            }
+
+            // handle spent status
+            switch (maxStatus) {
+                case NOT_SPENT:
+                if (getPayoutState() != PayoutState.UNPUBLISHED) setPayoutState(PayoutState.UNPUBLISHED);
+                break;
+                case TX_POOL:
+                if (getPayoutState() != PayoutState.PUBLISHED) setPayoutState(PayoutState.PUBLISHED);
+                break;
+                case CONFIRMED:
+                if (getPayoutState().ordinal() < PayoutState.CONFIRMED.ordinal()) {
+                    setPayoutState(PayoutState.CONFIRMED);
+                    // TODO: detect payout tx unlock, unregister listener
+                }
+                break;
+            }
+        }));
 
         // listen for key images to be spent
         xmrWalletService.listenToPayoutKeyImages(keyImages, (changedStatuses -> {
@@ -1158,7 +1203,7 @@ public abstract class Trade implements Tradable, Model {
         }
         if (payoutState.ordinal() < this.payoutState.ordinal()) {
             String message = "We got a payout state change to a previous phase (id=" + getShortId() + ").\n" +
-                    "Old payout state is: " + this.state + ". New payout state is: " + state;
+                    "Old payout state is: " + this.state + ". New payout state is: " + payoutState;
             log.warn(message);
         }
 
