@@ -18,6 +18,7 @@
 package bisq.core.trade.protocol.tasks;
 
 import bisq.core.account.sign.SignedWitness;
+import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.util.Validator;
@@ -25,6 +26,7 @@ import bisq.core.util.Validator;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
+import monero.wallet.MoneroWallet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -48,7 +50,18 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
             // update to the latest peer address of our peer if the message is correct
             trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 
-            // handle if payout tx is not seen on network
+            // get multisig wallet
+            XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
+            MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
+
+            // import multisig hex
+            System.out.println("Buyer needs multisig import: " + multisigWallet.isMultisigImportNeeded());
+            if (message.getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(message.getUpdatedMultisigHex());
+
+            // listen for payout tx
+            trade.listenForPayoutTx();
+
+            // handle if payout tx not published
             if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
 
                 // verify, sign (if unsigned), and publish payout tx
@@ -67,9 +80,6 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
                 log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());
             }
 
-            trade.listenForPayoutTx();
-
-            // TODO: remove witness
             SignedWitness signedWitness = message.getSignedWitness();
             if (signedWitness != null) {
                 // We received the signedWitness from the seller and publish the data to the network.

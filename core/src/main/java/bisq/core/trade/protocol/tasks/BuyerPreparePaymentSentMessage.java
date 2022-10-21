@@ -77,11 +77,10 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
                 trade.listenForPayoutTx();
             }
 
-            // only export multisig hex once
+            // export multisig hex once
             if (trade.getSelf().getUpdatedMultisigHex() == null) trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
-
-            // close multisig wallet
             walletService.closeMultisigWallet(trade.getId());
+            
             complete();
         } catch (Throwable t) {
             failed(t);

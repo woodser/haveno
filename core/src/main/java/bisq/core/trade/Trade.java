@@ -807,6 +807,7 @@ public abstract class Trade implements Tradable, Model {
             multisigWallet.submitMultisigTxHex(payoutTxHex);
             setPayoutState(Trade.PayoutState.PUBLISHED);
         }
+
         walletService.closeMultisigWallet(getId());
     }
 
@@ -953,6 +954,8 @@ public abstract class Trade implements Tradable, Model {
         // get key images of multisig outputs
         // TODO: ensure multisig wallet already open when used normally or store earlier?
         MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(getId());
+        log.info("{} outputs...", getClass().getSimpleName());
+        log.info(multisigWallet.getOutputs().toString());
         List<String> keyImages = multisigWallet.getOutputs().stream().map(MoneroOutputWallet::getKeyImage).map(MoneroKeyImage::getHex).collect(Collectors.toList());
 
         // listen for key images to be spent

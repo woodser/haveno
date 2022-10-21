@@ -17,11 +17,12 @@
 
 package bisq.core.trade.protocol.tasks;
 
+import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
-
+import monero.wallet.MoneroWallet;
 import monero.wallet.model.MoneroTxWallet;
 
 @Slf4j
@@ -55,8 +56,21 @@ public class SellerPreparePaymentReceivedMessage extends TradeTask {
                 System.out.println("created payout tx: " + payoutTx);
                 trade.setPayoutTx(payoutTx);
                 trade.setPayoutTxHex(payoutTx.getTxSet().getMultisigTxHex());
+
+                // export multisig hex once
+                // TODO: don't re-open and close
+                if (trade.getSelf().getUpdatedMultisigHex() == null) {
+                    System.out.println("Updating multisig info!" + trade.getSelf().getUpdatedMultisigHex());
+                    XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
+                    MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
+                    trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
+                    walletService.closeMultisigWallet(trade.getId());
+                } else{
+                    System.out.println("Keeping multisig info!" + trade.getSelf().getUpdatedMultisigHex());
+                }
             }
 
+            processModel.getTradeManager().requestPersistence();
             complete();
         } catch (Throwable t) {
             failed(t);

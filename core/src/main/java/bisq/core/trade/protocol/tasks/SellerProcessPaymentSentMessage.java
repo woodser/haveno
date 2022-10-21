@@ -49,7 +49,7 @@ public class SellerProcessPaymentSentMessage extends TradeTask {
             // decrypt buyer's payment account payload
             trade.decryptPeersPaymentAccountPayload(message.getPaymentAccountKey());
 
-            // sync and update multisig wallet
+            // import multisig hex
             if (trade.getBuyer().getUpdatedMultisigHex() != null) {
                 XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                 MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId()); // TODO: ensure sync() always called before importMultisigHex()
@@ -73,7 +73,6 @@ public class SellerProcessPaymentSentMessage extends TradeTask {
             trade.setState(Trade.State.SELLER_RECEIVED_PAYMENT_SENT_MSG);
 
             processModel.getTradeManager().requestPersistence();
-
             complete();
         } catch (Throwable t) {
             failed(t);

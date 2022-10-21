@@ -61,7 +61,8 @@ public class SellerSendPaymentReceivedMessage extends SendMailboxMessageTask {
                 id,
                 processModel.getMyNodeAddress(),
                 signedWitness,
-                trade.getPayoutTxHex()
+                trade.getPayoutTxHex(),
+                trade.getSelf().getUpdatedMultisigHex()
         );
     }
 
