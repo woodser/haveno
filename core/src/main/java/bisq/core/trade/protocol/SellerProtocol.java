@@ -22,19 +22,16 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
-import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.SellerMaybeSendPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.SellerPreparePaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerProcessPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessage;
-import bisq.core.trade.protocol.tasks.SellerSendFirstConfirmationMessageToBuyer;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
-
+import bisq.common.taskrunner.Task;
 import lombok.extern.slf4j.Slf4j;
-import org.fxmisc.easybind.EasyBind;
 
 @Slf4j
 public abstract class SellerProtocol extends DisputeProtocol {
@@ -51,13 +48,6 @@ public abstract class SellerProtocol extends DisputeProtocol {
     @Override
     protected void onInitialized() {
         super.onInitialized();
-        
-        // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
-        
-        // send first confirmation message when trade state confirmed
-        if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
-            sendMessagesOnConfirm(SellerEvent.STARTUP);
-        }
     }
 
     @Override
@@ -79,7 +69,6 @@ public abstract class SellerProtocol extends DisputeProtocol {
 
     @Override
     public void handleSignContractResponse(SignContractResponse response, NodeAddress sender) {
-        sendMessagesOnConfirm(SellerEvent.DEPOSIT_TXS_CONFIRMED);
         super.handleSignContractResponse(response, sender);
     }
 
@@ -168,26 +157,8 @@ public abstract class SellerProtocol extends DisputeProtocol {
         }).start();
     }
 
-    private void sendMessagesOnConfirm(SellerEvent event) {
-        EasyBind.subscribe(trade.stateProperty(), state -> {
-            if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
-                new Thread(() -> {
-                    synchronized (trade) {
-                        latchTrade();
-                        expect(new Condition(trade))
-                                .setup(tasks(SellerSendFirstConfirmationMessageToBuyer.class)
-                                .using(new TradeTaskRunner(trade,
-                                        () -> {
-                                            handleTaskRunnerSuccess(event);
-                                        },
-                                        (errorMessage) -> {
-                                            handleTaskRunnerFault(event, errorMessage);
-                                        })))
-                                .executeTasks(true);
-                        awaitTradeLatch();
-                    }
-                }).start();
-            }
-        });
+    @Override
+    public Class<? extends Task<Trade>>[] getFirstConfirmationTasks() {
+        throw new RuntimeException("Not implemented");
     }
 }

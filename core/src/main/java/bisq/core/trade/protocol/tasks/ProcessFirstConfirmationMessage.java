@@ -24,10 +24,10 @@ import bisq.core.trade.messages.FirstConfirmationMessage;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class BuyerProcessFirstConfirmationMessage extends TradeTask {
+public class ProcessFirstConfirmationMessage extends TradeTask {
     
     @SuppressWarnings({"unused"})
-    public BuyerProcessFirstConfirmationMessage(TaskRunner taskHandler, Trade trade) {
+    public ProcessFirstConfirmationMessage(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 

@@ -1,6 +1,7 @@
 package bisq.core.trade.protocol;
 
 import bisq.common.handlers.ErrorMessageHandler;
+import bisq.common.taskrunner.Task;
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DepositRequest;
@@ -140,5 +141,10 @@ public class ArbitratorProtocol extends DisputeProtocol {
               awaitTradeLatch();
           }
       }).start();
+  }
+
+  @Override
+  public Class<? extends Task<Trade>>[] getFirstConfirmationTasks() {
+    throw new RuntimeException("Not implemented");
   }
 }

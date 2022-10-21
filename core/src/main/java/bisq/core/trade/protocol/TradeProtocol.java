@@ -24,13 +24,17 @@ import bisq.core.trade.TradeUtils;
 import bisq.core.trade.handlers.TradeResultHandler;
 import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.DepositResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.RemoveOffer;
+import bisq.core.trade.protocol.tasks.SellerSendFirstConfirmationMessageToBuyer;
+import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.MaybeSendSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
+import bisq.core.trade.protocol.tasks.ProcessFirstConfirmationMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
@@ -55,6 +59,7 @@ import bisq.common.taskrunner.Task;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -113,6 +118,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
 
         MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
+
         // We delay a bit here as the trade gets updated from the wallet to update the trade
         // state (deposit confirmed) and that happens after our method is called.
         // TODO To fix that in a better way we would need to change the order of some routines
@@ -122,6 +128,13 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             mailboxMessageService.addDecryptedMailboxListener(this);
             handleMailboxCollection(mailboxMessageService.getMyDecryptedMailboxMessages());
         }, 100, TimeUnit.MILLISECONDS);
+
+        // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
+        
+        // send first confirmation message when trade state confirmed
+        if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
+            sendMessagesOnConfirm();
+        }
     }
 
     public void onWithdrawCompleted() {
@@ -225,6 +238,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // Abstract
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    public abstract Class<? extends Task<Trade>>[] getFirstConfirmationTasks();
+
     public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender) {
         System.out.println(getClass().getCanonicalName() + ".handleInitMultisigRequest()");
         new Thread(() -> {
@@ -291,6 +306,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     public void handleSignContractResponse(SignContractResponse message, NodeAddress sender) {
         System.out.println(getClass().getCanonicalName() + ".handleSignContractResponse() " + trade.getId());
+        sendMessagesOnConfirm(); // send message to peers on first confirmation
         new Thread(() -> {
             synchronized (trade) {
                 Validator.checkTradeId(processModel.getOfferId(), message);
@@ -351,6 +367,28 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                             }))
                         .withTimeout(TRADE_TIMEOUT))
                         .executeTasks(true);
+                awaitTradeLatch();
+            }
+        }).start();
+    }
+
+    public void handle(FirstConfirmationMessage response, NodeAddress sender) {
+        System.out.println(getClass().getCanonicalName() + ".handle(FirstConfirmationMessage)");
+        new Thread(() -> {
+            synchronized (trade) {
+                latchTrade();
+                expect(new Condition(trade)
+                        .with(response)
+                        .from(sender))
+                        .setup(tasks(ProcessFirstConfirmationMessage.class)
+                        .using(new TradeTaskRunner(trade,
+                                () -> {
+                                    handleTaskRunnerSuccess(sender, response);
+                                },
+                                errorMessage -> {
+                                    handleTaskRunnerFault(sender, response, errorMessage);
+                                })))
+                        .executeTasks();
                 awaitTradeLatch();
             }
         }).start();
@@ -568,7 +606,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // Private
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void handleTaskRunnerSuccess(NodeAddress sender, @Nullable TradeMessage message, String source) {
+    protected void handleTaskRunnerSuccess(NodeAddress sender, @Nullable TradeMessage message, String source) {
         log.info("TaskRunner successfully completed. Triggered from {}, tradeId={}", source, trade.getId());
         if (message != null) {
             sendAckMessage(sender, message, true, null);
@@ -629,5 +667,28 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         } else {
             return false;
         }
+    }
+
+    private void sendMessagesOnConfirm() {
+        EasyBind.subscribe(trade.stateProperty(), state -> {
+            if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
+                new Thread(() -> {
+                    synchronized (trade) {
+                        latchTrade();
+                        expect(new Condition(trade))
+                                .setup(tasks(getFirstConfirmationTasks())
+                                .using(new TradeTaskRunner(trade,
+                                        () -> {
+                                            handleTaskRunnerSuccess(null, null);
+                                        },
+                                        (errorMessage) -> {
+                                            handleTaskRunnerFault(null, null, errorMessage);
+                                        })))
+                                .executeTasks(true);
+                        awaitTradeLatch();
+                    }
+                }).start();
+            }
+        });
     }
 }

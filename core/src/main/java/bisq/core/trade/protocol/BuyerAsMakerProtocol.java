@@ -31,7 +31,7 @@ import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
-
+import bisq.common.taskrunner.Task;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
