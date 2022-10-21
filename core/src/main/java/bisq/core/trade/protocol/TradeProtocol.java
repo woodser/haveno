@@ -18,7 +18,8 @@
 package bisq.core.trade.protocol;
 
 import bisq.core.offer.Offer;
-import bisq.core.trade.SellerTrade;
+import bisq.core.trade.ArbitratorTrade;
+import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.TradeUtils;
@@ -62,7 +63,6 @@ import bisq.common.taskrunner.Task;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -99,10 +99,20 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected void onTradeMessage(TradeMessage message, NodeAddress peerNodeAddress) {
         log.info("Received {} as TradeMessage from {} with tradeId {} and uid {}", message.getClass().getSimpleName(), peerNodeAddress, message.getTradeId(), message.getUid());
+        if (message instanceof FirstConfirmationMessage) {
+            handle((FirstConfirmationMessage) message, peerNodeAddress);
+        } else if (message instanceof PaymentReceivedMessage) {
+            handle((PaymentReceivedMessage) message, peerNodeAddress);
+        }
     }
 
     protected void onMailboxMessage(TradeMessage message, NodeAddress peerNodeAddress) {
         log.info("Received {} as MailboxMessage from {} with tradeId {} and uid {}", message.getClass().getSimpleName(), peerNodeAddress, message.getTradeId(), message.getUid());
+        if (message instanceof FirstConfirmationMessage) {
+            handle((FirstConfirmationMessage) message, peerNodeAddress);
+        } else if (message instanceof PaymentReceivedMessage) {
+            handle((PaymentReceivedMessage) message, peerNodeAddress);
+        }
     }
 
 
@@ -400,8 +410,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // received by buyer and arbitrator
     protected void handle(PaymentReceivedMessage message, NodeAddress peer) {
         System.out.println(getClass().getSimpleName() + ".handle(PaymentReceivedMessage)");
-        if (trade instanceof SellerTrade) {
-            log.warn("Ignoring PaymentReceivedMessage as seller");
+        if (!(trade instanceof BuyerTrade || trade instanceof ArbitratorTrade)) {
+            log.warn("Ignoring PaymentReceivedMessage since not buyer or arbitrator");
             return;
         }
         new Thread(() -> {
