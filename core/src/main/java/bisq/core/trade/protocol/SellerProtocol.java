@@ -28,7 +28,7 @@ import bisq.core.trade.protocol.tasks.SellerMaybeSendPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.SellerPreparePaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerProcessPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessage;
-import bisq.core.trade.protocol.tasks.SellerSendPaymentAccountPayloadKey;
+import bisq.core.trade.protocol.tasks.SellerSendFirstConfirmationMessageToBuyer;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
@@ -54,9 +54,9 @@ public abstract class SellerProtocol extends DisputeProtocol {
         
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
-        // send payment account payload key when trade state is confirmed
+        // send first confirmation message when trade state confirmed
         if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
-            scheduleFirstConfirmationMessages(SellerEvent.STARTUP);
+            sendMessagesOnConfirm(SellerEvent.STARTUP);
         }
     }
 
@@ -79,7 +79,7 @@ public abstract class SellerProtocol extends DisputeProtocol {
 
     @Override
     public void handleSignContractResponse(SignContractResponse response, NodeAddress sender) {
-        scheduleFirstConfirmationMessages(SellerEvent.DEPOSIT_TXS_CONFIRMED);
+        sendMessagesOnConfirm(SellerEvent.DEPOSIT_TXS_CONFIRMED);
         super.handleSignContractResponse(response, sender);
     }
 
@@ -168,14 +168,14 @@ public abstract class SellerProtocol extends DisputeProtocol {
         }).start();
     }
 
-    private void scheduleFirstConfirmationMessages(SellerEvent event) {
+    private void sendMessagesOnConfirm(SellerEvent event) {
         EasyBind.subscribe(trade.stateProperty(), state -> {
             if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
                 new Thread(() -> {
                     synchronized (trade) {
                         latchTrade();
                         expect(new Condition(trade))
-                                .setup(tasks(SellerSendPaymentAccountPayloadKey.class)
+                                .setup(tasks(SellerSendFirstConfirmationMessageToBuyer.class)
                                 .using(new TradeTaskRunner(trade,
                                         () -> {
                                             handleTaskRunnerSuccess(event);

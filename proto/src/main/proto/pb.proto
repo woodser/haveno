@@ -353,10 +353,9 @@ message DepositResponse {
 message FirstConfirmationMessage {
     string trade_id = 1;
     NodeAddress sender_node_address = 2;
-    PubKeyRing pub_key_ring = 3;
-    string uid = 4;
-    bytes seller_payment_account_key = 5;
-    string updated_multisig_hex = 6;
+    string uid = 3;
+    bytes seller_payment_account_key = 4;
+    string updated_multisig_hex = 5;
 }
 
 message DelayedPayoutTxSignatureRequest {

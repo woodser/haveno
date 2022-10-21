@@ -21,20 +21,19 @@ import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
-import bisq.common.app.Version;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
 import monero.wallet.MoneroWallet;
 
 /**
- * Allow sender's payment account info to be decrypted when trade state is confirmed.
+ * Send message on first confirmation to decrypt peer payment account and update multisig hex.
  */
 @Slf4j
-public class SellerSendPaymentAccountPayloadKey extends SendMailboxMessageTask {
+public class SellerSendFirstConfirmationMessageToBuyer extends SendMailboxMessageTask {
     private FirstConfirmationMessage message;
 
-    public SellerSendPaymentAccountPayloadKey(TaskRunner<Trade> taskHandler, Trade trade) {
+    public SellerSendFirstConfirmationMessageToBuyer(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 
@@ -52,11 +51,12 @@ public class SellerSendPaymentAccountPayloadKey extends SendMailboxMessageTask {
     protected TradeMailboxMessage getTradeMailboxMessage(String tradeId) {
         if (message == null) {
 
-            // get updated multisig hex
+            // export multisig hex once
             if (trade.getSelf().getUpdatedMultisigHex() == null) {
                 XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                 MoneroWallet multisigWallet = walletService.getMultisigWallet(tradeId);
-                trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex()); // only export multisig hex once
+                trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex()); 
+                walletService.closeMultisigWallet(trade.getId());
             }
 
             // We do not use a real unique ID here as we want to be able to re-send the exact same message in case the
@@ -67,9 +67,7 @@ public class SellerSendPaymentAccountPayloadKey extends SendMailboxMessageTask {
             message = new FirstConfirmationMessage(
                     trade.getOffer().getId(),
                     processModel.getMyNodeAddress(),
-                    processModel.getPubKeyRing(),
                     deterministicId,
-                    Version.getP2PMessageVersion(),
                     trade.getSelf().getPaymentAccountKey(),
                     trade.getSelf().getUpdatedMultisigHex());
         }

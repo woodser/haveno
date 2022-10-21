@@ -9,10 +9,8 @@ import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.TradeMessage;
-import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessDepositRequest;
-import bisq.core.trade.protocol.tasks.ArbitratorProcessPaymentAccountKeyRequest;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessReserveTx;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.ArbitratorSendInitTradeOrMultisigRequests;
@@ -116,33 +114,6 @@ public class ArbitratorProtocol extends DisputeProtocol {
   @Override
   public void handleDepositResponse(DepositResponse response, NodeAddress sender) {
       log.warn("Arbitrator ignoring DepositResponse for trade " + response.getTradeId());
-  }
-  
-  public void handlePaymentAccountKeyRequest(PaymentAccountKeyRequest request, NodeAddress sender) {
-      System.out.println("ArbitratorProtocol.handlePaymentAccountKeyRequest() " + trade.getId());
-      new Thread(() -> {
-          synchronized (trade) {
-              latchTrade();
-              Validator.checkTradeId(processModel.getOfferId(), request);
-              processModel.setTradeMessage(request);
-              expect(new Condition(trade)
-                  .with(request)
-                  .from(sender))
-                  .setup(tasks(
-                          ArbitratorProcessPaymentAccountKeyRequest.class)
-                  .using(new TradeTaskRunner(trade,
-                          () -> {
-                              stopTimeout();
-                              handleTaskRunnerSuccess(sender, request);
-                          },
-                          errorMessage -> {
-                              handleTaskRunnerFault(sender, request, errorMessage);
-                          }))
-                  .withTimeout(TRADE_TIMEOUT))
-                  .executeTasks(true);
-              awaitTradeLatch();
-          }
-      }).start();
   }
   
   protected void handle(PayoutTxPublishedMessage request, NodeAddress peer) {

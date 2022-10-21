@@ -24,6 +24,8 @@ import bisq.network.p2p.NodeAddress;
 import com.google.protobuf.ByteString;
 import java.util.Optional;
 import javax.annotation.Nullable;
+
+import bisq.common.app.Version;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.proto.ProtoUtil;
 import lombok.EqualsAndHashCode;
@@ -33,7 +35,6 @@ import lombok.Value;
 @Value
 public final class FirstConfirmationMessage extends TradeMailboxMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
-    private final PubKeyRing pubKeyRing;
     @Nullable
     private final byte[] sellerPaymentAccountKey;
     @Nullable
@@ -41,14 +42,11 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
 
     public FirstConfirmationMessage(String tradeId,
                                      NodeAddress senderNodeAddress,
-                                     PubKeyRing pubKeyRing,
                                      String uid,
-                                     String messageVersion,
                                      @Nullable byte[] sellerPaymentAccountKey,
                                      @Nullable String updatedMultisigHex) {
-        super(messageVersion, tradeId, uid);
+        super(Version.getP2PMessageVersion(), tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
-        this.pubKeyRing = pubKeyRing;
         this.sellerPaymentAccountKey = sellerPaymentAccountKey;
         this.updatedMultisigHex = updatedMultisigHex;
     }
@@ -63,7 +61,6 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
         protobuf.FirstConfirmationMessage.Builder builder = protobuf.FirstConfirmationMessage.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
-                .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setUid(uid);
         Optional.ofNullable(sellerPaymentAccountKey).ifPresent(e -> builder.setSellerPaymentAccountKey(ByteString.copyFrom(e)));
         Optional.ofNullable(updatedMultisigHex).ifPresent(e -> builder.setUpdatedMultisigHex(updatedMultisigHex));
@@ -75,9 +72,7 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
                                                       String messageVersion) {
         return new FirstConfirmationMessage(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
-                PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
-                messageVersion,
                 ProtoUtil.byteArrayOrNullFromProto(proto.getSellerPaymentAccountKey()),
                 ProtoUtil.stringOrNullFromProto(proto.getUpdatedMultisigHex()));
     }
@@ -86,7 +81,6 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
     public String toString() {
         return "FirstConfirmationMessage {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
-                ",\n     pubKeyRing=" + pubKeyRing +
                 ",\n     sellerPaymentAccountKey=" + sellerPaymentAccountKey +
                 ",\n     updatedMultisigHex=" + (updatedMultisigHex == null ? null : updatedMultisigHex.substring(0, Math.max(updatedMultisigHex.length(), 1000))) +
                 "\n} " + super.toString();
