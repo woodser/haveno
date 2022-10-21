@@ -31,9 +31,10 @@ import monero.wallet.MoneroWallet;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+// TODO: generic processing from buyer or arbitrator
 @Slf4j
-public class BuyerProcessPaymentReceivedMessage extends TradeTask {
-    public BuyerProcessPaymentReceivedMessage(TaskRunner<Trade> taskHandler, Trade trade) {
+public class ProcessPaymentReceivedMessage extends TradeTask {
+    public ProcessPaymentReceivedMessage(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 

@@ -18,6 +18,7 @@
 package bisq.core.trade.protocol;
 
 import bisq.core.offer.Offer;
+import bisq.core.trade.SellerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.TradeUtils;
@@ -26,6 +27,7 @@ import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.InitMultisigRequest;
+import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
@@ -36,6 +38,7 @@ import bisq.core.trade.protocol.tasks.MaybeSendSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
 import bisq.core.trade.protocol.tasks.ProcessFirstConfirmationMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
+import bisq.core.trade.protocol.tasks.ProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessSignContractResponse;
 import bisq.core.util.Validator;
@@ -389,6 +392,36 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                     handleTaskRunnerFault(sender, response, errorMessage);
                                 })))
                         .executeTasks();
+                awaitTradeLatch();
+            }
+        }).start();
+    }
+
+    // received by buyer and arbitrator
+    protected void handle(PaymentReceivedMessage message, NodeAddress peer) {
+        System.out.println(getClass().getSimpleName() + ".handle(PaymentReceivedMessage)");
+        if (trade instanceof SellerTrade) {
+            log.warn("Ignoring PaymentReceivedMessage as seller");
+            return;
+        }
+        new Thread(() -> {
+            synchronized (trade) {
+                latchTrade();
+                Validator.checkTradeId(processModel.getOfferId(), message);
+                processModel.setTradeMessage(message);
+                expect(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED)
+                    .with(message)
+                    .from(peer))
+                    .setup(tasks(
+                        ProcessPaymentReceivedMessage.class)
+                        .using(new TradeTaskRunner(trade,
+                            () -> {
+                                handleTaskRunnerSuccess(peer, message);
+                            },
+                            errorMessage -> {
+                                handleTaskRunnerFault(peer, message, errorMessage);
+                            })))
+                    .executeTasks(true);
                 awaitTradeLatch();
             }
         }).start();

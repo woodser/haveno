@@ -28,7 +28,7 @@ import bisq.core.offer.placeoffer.tasks.MakerReserveOfferFunds;
 import bisq.core.offer.placeoffer.tasks.ValidateOffer;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
-import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
+import bisq.core.trade.protocol.tasks.ProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.MakerSetLockTime;
 import bisq.core.trade.protocol.tasks.RemoveOffer;
@@ -124,7 +124,7 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         BuyerPreparePaymentSentMessage.class,
                         BuyerSendPaymentSentMessage.class,
 
-                        BuyerProcessPaymentReceivedMessage.class
+                        ProcessPaymentReceivedMessage.class
                         )
                 ));
 
@@ -142,7 +142,7 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         BuyerPreparePaymentSentMessage.class,
                         BuyerSendPaymentSentMessage.class,
 
-                        BuyerProcessPaymentReceivedMessage.class)
+                        ProcessPaymentReceivedMessage.class)
                 ));
         addGroup("SellerAsMakerProtocol",
                 FXCollections.observableArrayList(Arrays.asList(

@@ -26,12 +26,9 @@ import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
-import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
-import bisq.core.trade.protocol.tasks.BuyerSendPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToArbitrator;
 import bisq.core.trade.protocol.tasks.TradeTask;
-import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
 
@@ -126,38 +123,6 @@ public abstract class BuyerProtocol extends DisputeProtocol {
             }
         }).start();
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // Incoming message Payout tx
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    protected void handle(PaymentReceivedMessage message, NodeAddress peer) {
-        System.out.println("BuyerProtocol.handle(PaymentReceivedMessage)");
-        new Thread(() -> {
-            synchronized (trade) {
-                latchTrade();
-                Validator.checkTradeId(processModel.getOfferId(), message);
-                processModel.setTradeMessage(message);
-                expect(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED)
-                    .with(message)
-                    .from(peer))
-                    .setup(tasks(
-                        BuyerProcessPaymentReceivedMessage.class,
-                        BuyerSendPayoutTxPublishedMessage.class)
-                        .using(new TradeTaskRunner(trade,
-                            () -> {
-                                handleTaskRunnerSuccess(peer, message);
-                            },
-                            errorMessage -> {
-                                handleTaskRunnerFault(peer, message, errorMessage);
-                            })))
-                    .executeTasks(true);
-                awaitTradeLatch();
-            }
-        }).start();
-    }
-
-
 
     @SuppressWarnings("unchecked")
     @Override
