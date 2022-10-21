@@ -29,6 +29,7 @@ import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPayoutTxPublishedMessage;
+import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToArbitrator;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
@@ -57,9 +58,6 @@ public abstract class BuyerProtocol extends DisputeProtocol {
 
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
-        // request key to decrypt seller's payment account payload after first confirmation
-        sendMessagesOnConfirm(BuyerEvent.STARTUP, false);
-
         // send payment sent message
         given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED) // TODO: remove payment received phase?
                 .anyState(Trade.State.BUYER_STORED_IN_MAILBOX_PAYMENT_SENT_MSG, Trade.State.BUYER_SEND_FAILED_PAYMENT_SENT_MSG)
@@ -87,7 +85,6 @@ public abstract class BuyerProtocol extends DisputeProtocol {
     @Override
     public void handleSignContractResponse(SignContractResponse response, NodeAddress sender) {
         super.handleSignContractResponse(response, sender);
-        sendMessagesOnConfirm(BuyerEvent.DEPOSIT_TXS_CONFIRMED, true);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -160,55 +157,11 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         }).start();
     }
 
-    private void sendMessagesOnConfirm(BuyerEvent event, boolean waitForSellerOnConfirm) {
-        throw new RuntimeException("Not implemented");
-        // EasyBind.subscribe(trade.stateProperty(), state -> {
-        //     if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
-        //         new Thread(() -> {
-        //             synchronized (trade) {
-        //                 latchTrade();
-        //                 expect(new Condition(trade))
-        //                         .setup(tasks(BuyerSendFirstConfirmationMessageToToArbitrator.class)
-        //                         .using(new TradeTaskRunner(trade,
-        //                                 () -> {
-        //                                     handleTaskRunnerSuccess(event);
-        //                                 },
-        //                                 (errorMessage) -> {
-        //                                     handleTaskRunnerFault(event, errorMessage);
-        //                                 })))
-        //                         .executeTasks(true);
-        //                 awaitTradeLatch();
-        //             }
-        //         }).start();
-        //     }
-        // });
-    }
 
-    // private void sendPaymentAccountKeyRequest(BuyerEvent event) {
-    //     new Thread(() -> {
-    //         synchronized (trade) {
-    //             if (paymentAccountPayloadKeyRequestSent) return;
-    //             if (trade.getSeller().getPaymentAccountPayload() != null) return; // skip if initialized
-    //             latchTrade();
-    //             expect(new Condition(trade))
-    //                     .setup(tasks(BuyerSendPaymentAccountKeyRequestToArbitrator.class)
-    //                     .using(new TradeTaskRunner(trade,
-    //                             () -> {
-    //                                 handleTaskRunnerSuccess(event);
-    //                             },
-    //                             (errorMessage) -> {
-    //                                 handleTaskRunnerFault(event, errorMessage);
-    //                             })))
-    //                     .executeTasks(true);
-    //             awaitTradeLatch();
-    //             paymentAccountPayloadKeyRequestSent = true;
-    //         }
-    //     }).start();
-    // }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
-        throw new RuntimeException("Not implemented");
-        //return new Class[] { BuyerSendFirstConfirmationMessageToArbitrator.class };
+        return new Class[] { SendFirstConfirmationMessageToArbitrator.class };
     }
 }

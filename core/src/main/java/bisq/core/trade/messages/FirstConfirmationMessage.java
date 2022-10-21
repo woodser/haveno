@@ -26,7 +26,6 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 import bisq.common.app.Version;
-import bisq.common.crypto.PubKeyRing;
 import bisq.common.proto.ProtoUtil;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
