@@ -30,7 +30,7 @@ import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.RemoveOffer;
-import bisq.core.trade.protocol.tasks.SellerSendFirstConfirmationMessageToBuyer;
+import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.MaybeSendSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
@@ -238,7 +238,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     // Abstract
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public abstract Class<? extends Task<Trade>>[] getFirstConfirmationTasks();
+    public abstract Class<? extends TradeTask>[] getFirstConfirmationTasks();
 
     public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender) {
         System.out.println(getClass().getCanonicalName() + ".handleInitMultisigRequest()");

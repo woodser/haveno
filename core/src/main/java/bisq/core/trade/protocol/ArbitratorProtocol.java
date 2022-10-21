@@ -1,7 +1,6 @@
 package bisq.core.trade.protocol;
 
 import bisq.common.handlers.ErrorMessageHandler;
-import bisq.common.taskrunner.Task;
 import bisq.core.trade.ArbitratorTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DepositRequest;
@@ -16,6 +15,7 @@ import bisq.core.trade.protocol.tasks.ArbitratorProcessReserveTx;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.ArbitratorSendInitTradeOrMultisigRequests;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
+import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
@@ -144,7 +144,8 @@ public class ArbitratorProtocol extends DisputeProtocol {
   }
 
   @Override
-  public Class<? extends Task<Trade>>[] getFirstConfirmationTasks() {
+  public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
     throw new RuntimeException("Not implemented");
+    //return new Class[] { ArbitratorSendFirstConfirmationMessageToBuyer.class, ArbitratorSendFirstConfirmationMessageToSeller.class };
   }
 }

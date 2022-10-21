@@ -19,7 +19,6 @@ package bisq.core.trade.protocol;
 
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
-import bisq.common.taskrunner.Task;
 import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
@@ -30,6 +29,7 @@ import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPayoutTxPublishedMessage;
+import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
@@ -207,7 +207,8 @@ public abstract class BuyerProtocol extends DisputeProtocol {
     // }
 
     @Override
-    public Class<? extends Task<Trade>>[] getFirstConfirmationTasks() {
+    public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
         throw new RuntimeException("Not implemented");
+        //return new Class[] { BuyerSendFirstConfirmationMessageToArbitrator.class };
     }
 }

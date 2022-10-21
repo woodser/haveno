@@ -21,6 +21,8 @@ import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
+import bisq.network.p2p.NodeAddress;
+import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,8 @@ import monero.wallet.MoneroWallet;
 
 /**
  * Send message on first confirmation to decrypt peer payment account and update multisig hex.
+ * 
+ * TODO: distill to SendFirstConfirmationMessageToBuyer, SendFirstConfirmationMessageToSeller, SendFirstConfirmationMessageToArbitrator
  */
 @Slf4j
 public class SellerSendFirstConfirmationMessageToBuyer extends SendMailboxMessageTask {
@@ -46,7 +50,15 @@ public class SellerSendFirstConfirmationMessageToBuyer extends SendMailboxMessag
             failed(t);
         }
     }
-    
+
+    protected NodeAddress getReceiverNodeAddress() {
+        return trade.getBuyer().getNodeAddress();
+    }
+
+    protected PubKeyRing getReceiverPubKeyRing() {
+        return trade.getBuyer().getPubKeyRing();
+    }
+
     @Override
     protected TradeMailboxMessage getTradeMailboxMessage(String tradeId) {
         if (message == null) {
