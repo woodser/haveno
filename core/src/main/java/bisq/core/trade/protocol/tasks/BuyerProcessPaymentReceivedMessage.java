@@ -67,6 +67,8 @@ public class BuyerProcessPaymentReceivedMessage extends TradeTask {
                 log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());
             }
 
+            trade.listenForPayoutTx();
+
             // TODO: remove witness
             SignedWitness signedWitness = message.getSignedWitness();
             if (signedWitness != null) {
