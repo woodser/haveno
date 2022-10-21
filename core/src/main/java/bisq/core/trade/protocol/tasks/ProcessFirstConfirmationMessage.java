@@ -21,6 +21,7 @@ package bisq.core.trade.protocol.tasks;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.FirstConfirmationMessage;
+import bisq.core.trade.protocol.TradingPeer;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -31,28 +32,29 @@ public class ProcessFirstConfirmationMessage extends TradeTask {
         super(taskHandler, trade);
     }
 
-    // TODO: redo this to work from arbitrator and seller
-
     @Override
     protected void run() {
         try {
           runInterceptHook();
-
-          if (true) throw new RuntimeException("Not implemented");
-
+          
           // update peer node address if not from arbitrator
-          if (!processModel.getTempTradingPeerNodeAddress().equals(trade.getArbitrator().getNodeAddress())) {
-              trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
-          }
+          // TODO: update based on pub key ring?
+        //   if (!trade.getArbitrator().getNodeAddress().equals(processModel.getTempTradingPeerNodeAddress())) {
+        //     System.out.println("ProcessFirstConfirmation message 2");
+        //       trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
+        //       System.out.println("ProcessFirstConfirmation message 3");
+        //   }
 
-          // decrypt peer's payment account payload
+          // decrypt seller payment account payload if key given
           FirstConfirmationMessage request = (FirstConfirmationMessage) processModel.getTradeMessage();
-          if (trade.getTradingPeer().getPaymentAccountPayload() == null) {
+          if (request.getSellerPaymentAccountKey() != null && trade.getTradingPeer().getPaymentAccountPayload() == null) {
+              log.info(trade.getClass().getSimpleName() + " decryping using seller payment account key: " + request.getSellerPaymentAccountKey());
               trade.decryptPeersPaymentAccountPayload(request.getSellerPaymentAccountKey());
           }
 
           // store updated multisig hex for processing on payment sent
-          if (request.getUpdatedMultisigHex() != null) trade.getTradingPeer().setUpdatedMultisigHex(request.getUpdatedMultisigHex());
+          TradingPeer sender = trade.getTradingPeer(processModel.getTempTradingPeerNodeAddress());
+          sender.setUpdatedMultisigHex(request.getUpdatedMultisigHex());
 
           // persist and complete
           processModel.getTradeManager().requestPersistence();

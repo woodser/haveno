@@ -63,12 +63,15 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
             MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
 
+            // import multisig hex
+            if (trade.getSeller().getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(trade.getSeller().getUpdatedMultisigHex());
+            if (trade.getArbitrator().getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(trade.getArbitrator().getUpdatedMultisigHex());
+
             // create payout tx if we have seller's updated multisig hex
             if (trade.getSeller().getUpdatedMultisigHex() != null) {
 
-                // create payout tx
+              // create payout tx
                 log.info("Buyer creating unsigned payout tx");
-                multisigWallet.importMultisigHex(trade.getTradingPeer().getUpdatedMultisigHex());
                 MoneroTxWallet payoutTx = trade.createPayoutTx();
                 trade.setPayoutTx(payoutTx);
                 trade.setPayoutTxHex(payoutTx.getTxSet().getMultisigTxHex());
@@ -77,8 +80,7 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
                 trade.listenForPayoutTx();
             }
 
-            // export multisig hex once
-            if (trade.getSelf().getUpdatedMultisigHex() == null) trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
+            // close multisig wallet
             walletService.closeMultisigWallet(trade.getId());
             
             complete();

@@ -722,7 +722,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                 .setup(tasks(getFirstConfirmationTasks())
                                 .using(new TradeTaskRunner(trade,
                                         () -> {
-                                            handleTaskRunnerSuccess(null, null);
+                                            handleTaskRunnerSuccess(null, null, "SendFirstConfirmationMessages");
                                         },
                                         (errorMessage) -> {
                                             handleTaskRunnerFault(null, null, errorMessage);

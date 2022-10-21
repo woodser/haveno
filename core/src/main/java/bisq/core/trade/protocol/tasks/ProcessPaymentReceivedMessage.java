@@ -48,6 +48,8 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             checkNotNull(message);
             checkArgument(message.getPayoutTxHex() != null);
 
+            if (true) throw new RuntimeException("Not implemented");
+
             // update to the latest peer address of our peer if the message is correct
             trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 

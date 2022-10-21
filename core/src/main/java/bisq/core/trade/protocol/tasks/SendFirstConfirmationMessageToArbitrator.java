@@ -35,10 +35,10 @@ public class SendFirstConfirmationMessageToArbitrator extends SendFirstConfirmat
     }
 
     protected NodeAddress getReceiverNodeAddress() {
-        return trade.getBuyer().getNodeAddress();
+        return trade.getArbitrator().getNodeAddress();
     }
 
     protected PubKeyRing getReceiverPubKeyRing() {
-        return trade.getBuyer().getPubKeyRing();
+        return trade.getArbitrator().getPubKeyRing();
     }
 }
