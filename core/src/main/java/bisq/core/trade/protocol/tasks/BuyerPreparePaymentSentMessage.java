@@ -75,9 +75,10 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
 
                 // start listening for published payout tx
                 trade.listenForPayoutTx();
-            } else {
-                if (trade.getSelf().getUpdatedMultisigHex() == null) trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex()); // only export multisig hex once
             }
+
+            // only export multisig hex once
+            if (trade.getSelf().getUpdatedMultisigHex() == null) trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
 
             // close multisig wallet
             walletService.closeMultisigWallet(trade.getId());
