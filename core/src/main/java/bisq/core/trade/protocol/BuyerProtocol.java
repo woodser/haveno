@@ -33,7 +33,7 @@ import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public abstract class BuyerProtocol extends DisputeProtocol {
+public class BuyerProtocol extends DisputeProtocol {
     
     enum BuyerEvent implements FluentProtocol.Event {
         STARTUP,

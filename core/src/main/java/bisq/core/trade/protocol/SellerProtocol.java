@@ -35,7 +35,7 @@ import bisq.common.handlers.ResultHandler;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public abstract class SellerProtocol extends DisputeProtocol {
+public class SellerProtocol extends DisputeProtocol {
     enum SellerEvent implements FluentProtocol.Event {
         STARTUP,
         DEPOSIT_TXS_CONFIRMED,

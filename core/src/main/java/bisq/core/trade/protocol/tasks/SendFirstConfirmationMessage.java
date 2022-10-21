@@ -75,7 +75,7 @@ public abstract class SendFirstConfirmationMessage extends SendMailboxMessageTas
                     trade.getOffer().getId(),
                     processModel.getMyNodeAddress(),
                     deterministicId,
-                    trade instanceof BuyerTrade ? null : trade.getSeller().getPaymentAccountKey(),
+                    trade instanceof BuyerTrade ? null : trade.getSeller().getPaymentAccountKey(), // arbitrator and seller send seller's payment account key on first confirmation
                     trade.getSelf().getUpdatedMultisigHex());
         }
         return message;
