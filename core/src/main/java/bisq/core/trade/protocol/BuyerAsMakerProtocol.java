@@ -22,7 +22,7 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.PaymentAccountKeyResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
@@ -102,7 +102,7 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
     }
 
     @Override
-    public void handle(PaymentAccountKeyResponse request, NodeAddress sender) {
+    public void handle(FirstConfirmationMessage request, NodeAddress sender) {
         super.handle(request, sender);
     }
 

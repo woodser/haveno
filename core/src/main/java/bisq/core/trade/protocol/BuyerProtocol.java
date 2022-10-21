@@ -22,16 +22,15 @@ import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.PaymentAccountKeyResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
-import bisq.core.trade.protocol.tasks.BuyerProcessPaymentAccountKeyResponse;
+import bisq.core.trade.protocol.tasks.BuyerProcessFirstConfirmationMessage;
 import bisq.core.trade.protocol.tasks.BuyerProcessPaymentReceivedMessage;
-import bisq.core.trade.protocol.tasks.BuyerSendPaymentAccountKeyRequestToArbitrator;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPayoutTxPublishedMessage;
 import bisq.core.util.Validator;
@@ -65,7 +64,7 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
         // request key to decrypt seller's payment account payload after first confirmation
-        sendPaymentAccountKeyRequestIfWhenNeeded(BuyerEvent.STARTUP, false);
+        sendMessageOnFirstConfirmation(BuyerEvent.STARTUP, false);
 
         // send payment sent message
         given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED) // TODO: remove payment received phase?
@@ -80,8 +79,8 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         super.onTradeMessage(message, peer);
         if (message instanceof PaymentReceivedMessage) {
             handle((PaymentReceivedMessage) message, peer);
-        } if (message instanceof PaymentAccountKeyResponse) {
-            handle((PaymentAccountKeyResponse) message, peer);
+        } if (message instanceof FirstConfirmationMessage) {
+            handle((FirstConfirmationMessage) message, peer);
         }
     }
 
@@ -90,18 +89,18 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         super.onMailboxMessage(message, peer);
         if (message instanceof PaymentReceivedMessage) {
             handle((PaymentReceivedMessage) message, peer);
-        } else if (message instanceof PaymentAccountKeyResponse) {
-            handle((PaymentAccountKeyResponse) message, peer);
+        } else if (message instanceof FirstConfirmationMessage) {
+            handle((FirstConfirmationMessage) message, peer);
         }
     }
 
     @Override
     public void handleSignContractResponse(SignContractResponse response, NodeAddress sender) {
         super.handleSignContractResponse(response, sender);
-        sendPaymentAccountKeyRequestIfWhenNeeded(BuyerEvent.DEPOSIT_TXS_CONFIRMED, true);
+        sendMessageOnFirstConfirmation(BuyerEvent.DEPOSIT_TXS_CONFIRMED, true);
     }
 
-    public void handle(PaymentAccountKeyResponse response, NodeAddress sender) {
+    public void handle(FirstConfirmationMessage response, NodeAddress sender) {
         System.out.println(getClass().getCanonicalName() + ".handlePaymentAccountKeyResponse()");
         new Thread(() -> {
             synchronized (trade) {
@@ -109,7 +108,7 @@ public abstract class BuyerProtocol extends DisputeProtocol {
                 expect(new Condition(trade)
                         .with(response)
                         .from(sender))
-                        .setup(tasks(BuyerProcessPaymentAccountKeyResponse.class)
+                        .setup(tasks(BuyerProcessFirstConfirmationMessage.class)
                         .using(new TradeTaskRunner(trade,
                                 () -> {
                                     handleTaskRunnerSuccess(sender, response);
@@ -193,54 +192,56 @@ public abstract class BuyerProtocol extends DisputeProtocol {
         }).start();
     }
 
-    private void sendPaymentAccountKeyRequestIfWhenNeeded(BuyerEvent event, boolean waitForSellerOnConfirm) {
+    private void sendMessageOnFirstConfirmation(BuyerEvent event, boolean waitForSellerOnConfirm) {
 
-        // skip if payment account payload already decrypted or not enough progress
-        if (trade.getSeller().getPaymentAccountPayload() != null) return;
-        if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal()) return;
+        if (true) throw new RuntimeException("Not implemented");
 
-        // if confirmed and waiting for seller, recheck later
-        if (trade.getState() == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN && waitForSellerOnConfirm) {
-            UserThread.runAfter(() -> {
-                sendPaymentAccountKeyRequestIfWhenNeeded(event, false);
-            }, TRADE_TIMEOUT);
-            return;
-        }
+        // // skip if payment account payload already decrypted or not enough progress
+        // if (trade.getSeller().getPaymentAccountPayload() != null) return;
+        // if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal()) return;
 
-        // else if confirmed send request and return
-        else if (trade.getState().ordinal() >= Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN.ordinal()) {
-            sendPaymentAccountKeyRequest(event);
-            return;
-        }
+        // // if confirmed and waiting for seller, recheck later
+        // if (trade.getState() == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN && waitForSellerOnConfirm) {
+        //     UserThread.runAfter(() -> {
+        //         sendMessageOnFirstConfirmation(event, false);
+        //     }, TRADE_TIMEOUT);
+        //     return;
+        // }
 
-        // register for state changes once
-        if (!listeningToSendPaymentAccountKey) {
-            listeningToSendPaymentAccountKey = true;
-            EasyBind.subscribe(trade.stateProperty(), state -> {
-                sendPaymentAccountKeyRequestIfWhenNeeded(event, waitForSellerOnConfirm);
-            });
-        }
+        // // else if confirmed send request and return
+        // else if (trade.getState().ordinal() >= Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN.ordinal()) {
+        //     sendPaymentAccountKeyRequest(event);
+        //     return;
+        // }
+
+        // // register for state changes once
+        // if (!listeningToSendPaymentAccountKey) {
+        //     listeningToSendPaymentAccountKey = true;
+        //     EasyBind.subscribe(trade.stateProperty(), state -> {
+        //         sendMessageOnFirstConfirmation(event, waitForSellerOnConfirm);
+        //     });
+        // }
     }
 
-    private void sendPaymentAccountKeyRequest(BuyerEvent event) {
-        new Thread(() -> {
-            synchronized (trade) {
-                if (paymentAccountPayloadKeyRequestSent) return;
-                if (trade.getSeller().getPaymentAccountPayload() != null) return; // skip if initialized
-                latchTrade();
-                expect(new Condition(trade))
-                        .setup(tasks(BuyerSendPaymentAccountKeyRequestToArbitrator.class)
-                        .using(new TradeTaskRunner(trade,
-                                () -> {
-                                    handleTaskRunnerSuccess(event);
-                                },
-                                (errorMessage) -> {
-                                    handleTaskRunnerFault(event, errorMessage);
-                                })))
-                        .executeTasks(true);
-                awaitTradeLatch();
-                paymentAccountPayloadKeyRequestSent = true;
-            }
-        }).start();
-    }
+    // private void sendPaymentAccountKeyRequest(BuyerEvent event) {
+    //     new Thread(() -> {
+    //         synchronized (trade) {
+    //             if (paymentAccountPayloadKeyRequestSent) return;
+    //             if (trade.getSeller().getPaymentAccountPayload() != null) return; // skip if initialized
+    //             latchTrade();
+    //             expect(new Condition(trade))
+    //                     .setup(tasks(BuyerSendPaymentAccountKeyRequestToArbitrator.class)
+    //                     .using(new TradeTaskRunner(trade,
+    //                             () -> {
+    //                                 handleTaskRunnerSuccess(event);
+    //                             },
+    //                             (errorMessage) -> {
+    //                                 handleTaskRunnerFault(event, errorMessage);
+    //                             })))
+    //                     .executeTasks(true);
+    //             awaitTradeLatch();
+    //             paymentAccountPayloadKeyRequestSent = true;
+    //         }
+    //     }).start();
+    // }
 }

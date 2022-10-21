@@ -21,7 +21,7 @@ package bisq.core.trade.protocol.tasks;
 import bisq.common.app.Version;
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.PaymentAccountKeyResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendDirectMessageListener;
 import java.util.UUID;
@@ -47,7 +47,7 @@ public class ArbitratorProcessPaymentAccountKeyRequest extends TradeTask {
           }
 
           // create response for buyer with key to decrypt seller's payment account payload
-          PaymentAccountKeyResponse response = new PaymentAccountKeyResponse(
+          FirstConfirmationMessage response = new FirstConfirmationMessage(
                   trade.getId(),
                   processModel.getMyNodeAddress(),
                   processModel.getPubKeyRing(),
@@ -59,7 +59,7 @@ public class ArbitratorProcessPaymentAccountKeyRequest extends TradeTask {
 
           // send response to buyer
           NodeAddress buyerAddress = trade.getBuyer().getNodeAddress();
-          log.info("Arbitrator sending PaymentAccountKeyResponse to buyer={}; offerId={}", buyerAddress, trade.getId());
+          log.info("Arbitrator sending FirstConfirmationMessage to buyer={}; offerId={}", buyerAddress, trade.getId());
           processModel.getP2PService().sendEncryptedDirectMessage(buyerAddress, trade.getBuyer().getPubKeyRing(), response, new SendDirectMessageListener() {
               @Override
               public void onArrived() {

@@ -20,21 +20,25 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.PaymentAccountKeyResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class BuyerProcessPaymentAccountKeyResponse extends TradeTask {
+public class BuyerProcessFirstConfirmationMessage extends TradeTask {
     
     @SuppressWarnings({"unused"})
-    public BuyerProcessPaymentAccountKeyResponse(TaskRunner taskHandler, Trade trade) {
+    public BuyerProcessFirstConfirmationMessage(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
+
+    // TODO: redo this to work from arbitrator and seller
 
     @Override
     protected void run() {
         try {
           runInterceptHook();
+
+          if (true) throw new RuntimeException("Not implemented");
 
           // update peer node address if not from arbitrator
           if (!processModel.getTempTradingPeerNodeAddress().equals(trade.getArbitrator().getNodeAddress())) {
@@ -42,9 +46,9 @@ public class BuyerProcessPaymentAccountKeyResponse extends TradeTask {
           }
 
           // decrypt peer's payment account payload
-          PaymentAccountKeyResponse request = (PaymentAccountKeyResponse) processModel.getTradeMessage();
+          FirstConfirmationMessage request = (FirstConfirmationMessage) processModel.getTradeMessage();
           if (trade.getTradingPeer().getPaymentAccountPayload() == null) {
-              trade.decryptPeersPaymentAccountPayload(request.getPaymentAccountKey());
+              trade.decryptPeersPaymentAccountPayload(request.getSellerPaymentAccountKey());
           }
 
           // store updated multisig hex for processing on payment sent

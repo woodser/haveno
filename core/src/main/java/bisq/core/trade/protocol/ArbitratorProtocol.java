@@ -6,7 +6,6 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.PaymentAccountKeyRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.PayoutTxPublishedMessage;
 import bisq.core.trade.messages.TradeMessage;

@@ -31,25 +31,25 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class PaymentAccountKeyResponse extends TradeMailboxMessage implements DirectMessage {
+public final class FirstConfirmationMessage extends TradeMailboxMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final PubKeyRing pubKeyRing;
     @Nullable
-    private final byte[] paymentAccountKey;
+    private final byte[] sellerPaymentAccountKey;
     @Nullable
     private final String updatedMultisigHex;
 
-    public PaymentAccountKeyResponse(String tradeId,
+    public FirstConfirmationMessage(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      PubKeyRing pubKeyRing,
                                      String uid,
                                      String messageVersion,
-                                     @Nullable byte[] paymentAccountKey,
+                                     @Nullable byte[] sellerPaymentAccountKey,
                                      @Nullable String updatedMultisigHex) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.pubKeyRing = pubKeyRing;
-        this.paymentAccountKey = paymentAccountKey;
+        this.sellerPaymentAccountKey = sellerPaymentAccountKey;
         this.updatedMultisigHex = updatedMultisigHex;
     }
 
@@ -60,34 +60,35 @@ public final class PaymentAccountKeyResponse extends TradeMailboxMessage impleme
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.PaymentAccountKeyResponse.Builder builder = protobuf.PaymentAccountKeyResponse.newBuilder()
+        protobuf.FirstConfirmationMessage.Builder builder = protobuf.FirstConfirmationMessage.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setPubKeyRing(pubKeyRing.toProtoMessage())
                 .setUid(uid);
-        Optional.ofNullable(paymentAccountKey).ifPresent(e -> builder.setPaymentAccountKey(ByteString.copyFrom(e)));
+        Optional.ofNullable(sellerPaymentAccountKey).ifPresent(e -> builder.setSellerPaymentAccountKey(ByteString.copyFrom(e)));
         Optional.ofNullable(updatedMultisigHex).ifPresent(e -> builder.setUpdatedMultisigHex(updatedMultisigHex));
-        return getNetworkEnvelopeBuilder().setPaymentAccountKeyResponse(builder).build();
+        return getNetworkEnvelopeBuilder().setFirstConfirmationMessage(builder).build();
     }
 
-    public static PaymentAccountKeyResponse fromProto(protobuf.PaymentAccountKeyResponse proto,
+    public static FirstConfirmationMessage fromProto(protobuf.FirstConfirmationMessage proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       String messageVersion) {
-        return new PaymentAccountKeyResponse(proto.getTradeId(),
+        return new FirstConfirmationMessage(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 PubKeyRing.fromProto(proto.getPubKeyRing()),
                 proto.getUid(),
                 messageVersion,
-                ProtoUtil.byteArrayOrNullFromProto(proto.getPaymentAccountKey()),
+                ProtoUtil.byteArrayOrNullFromProto(proto.getSellerPaymentAccountKey()),
                 ProtoUtil.stringOrNullFromProto(proto.getUpdatedMultisigHex()));
     }
 
     @Override
     public String toString() {
-        return "PaymentAccountKeyResponse {" +
+        return "FirstConfirmationMessage {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     pubKeyRing=" + pubKeyRing +
-                ",\n     paymentAccountKey=" + paymentAccountKey +
+                ",\n     sellerPaymentAccountKey=" + sellerPaymentAccountKey +
+                ",\n     updatedMultisigHex=" + (updatedMultisigHex == null ? null : updatedMultisigHex.substring(0, Math.max(updatedMultisigHex.length(), 1000))) +
                 "\n} " + super.toString();
     }
 }

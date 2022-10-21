@@ -41,7 +41,6 @@ import bisq.core.trade.messages.DepositRequest;
 import bisq.core.trade.messages.DepositResponse;
 import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
-import bisq.core.trade.messages.PaymentAccountKeyRequest;
 import bisq.core.trade.messages.SignContractRequest;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.protocol.ArbitratorProtocol;
@@ -243,8 +242,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             handleDepositRequest((DepositRequest) networkEnvelope, peer);
         } else if (networkEnvelope instanceof DepositResponse) {
             handleDepositResponse((DepositResponse) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof PaymentAccountKeyRequest) {
-            handlePaymentAccountKeyRequest((PaymentAccountKeyRequest) networkEnvelope, peer);
         }
     }
 
@@ -652,25 +649,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         }
         Trade trade = tradeOptional.get();
         ((TraderProtocol) getTradeProtocol(trade)).handleDepositResponse(response, peer);
-    }
-
-    private void handlePaymentAccountKeyRequest(PaymentAccountKeyRequest request, NodeAddress peer) {
-        log.info("Received PaymentAccountKeyRequest from {} with tradeId {} and uid {}", peer, request.getTradeId(), request.getUid());
-
-        try {
-            Validator.nonEmptyStringOf(request.getTradeId());
-        } catch (Throwable t) {
-            log.warn("Invalid PaymentAccountKeyRequest message " + request.toString());
-            return;
-        }
-
-        Optional<Trade> tradeOptional = getOpenTrade(request.getTradeId());
-        if (!tradeOptional.isPresent()) {
-            log.warn("No trade with id " + request.getTradeId());
-            return;
-        }
-        Trade trade = tradeOptional.get();
-        ((ArbitratorProtocol) getTradeProtocol(trade)).handlePaymentAccountKeyRequest(request, peer);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

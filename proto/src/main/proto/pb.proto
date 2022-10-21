@@ -74,8 +74,7 @@ message NetworkEnvelope {
         SignContractResponse sign_contract_response = 1006;
         DepositRequest deposit_request = 1007;
         DepositResponse deposit_response = 1008;
-        PaymentAccountKeyRequest payment_account_key_request = 1009;
-        PaymentAccountKeyResponse payment_account_key_response = 1010;
+        FirstConfirmationMessage first_confirmation_message = 1009;
         PaymentSentMessage payment_sent_message = 1011;
         PaymentReceivedMessage payment_received_message = 1012;
         PayoutTxPublishedMessage payout_tx_published_message = 1013;
@@ -351,19 +350,12 @@ message DepositResponse {
     int64 current_date = 5;
 }
 
-message PaymentAccountKeyRequest {
+message FirstConfirmationMessage {
     string trade_id = 1;
     NodeAddress sender_node_address = 2;
     PubKeyRing pub_key_ring = 3;
     string uid = 4;
-}
-
-message PaymentAccountKeyResponse {
-    string trade_id = 1;
-    NodeAddress sender_node_address = 2;
-    PubKeyRing pub_key_ring = 3;
-    string uid = 4;
-    bytes payment_account_key = 5;
+    bytes seller_payment_account_key = 5;
     string updated_multisig_hex = 6;
 }
 

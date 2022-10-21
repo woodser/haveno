@@ -56,7 +56,7 @@ public abstract class SellerProtocol extends DisputeProtocol {
         
         // send payment account payload key when trade state is confirmed
         if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
-            sendPaymentAccountPayloadKeyWhenConfirmed(SellerEvent.STARTUP);
+            scheduleFirstConfirmationMessages(SellerEvent.STARTUP);
         }
     }
 
@@ -79,7 +79,7 @@ public abstract class SellerProtocol extends DisputeProtocol {
 
     @Override
     public void handleSignContractResponse(SignContractResponse response, NodeAddress sender) {
-        sendPaymentAccountPayloadKeyWhenConfirmed(SellerEvent.DEPOSIT_TXS_CONFIRMED);
+        scheduleFirstConfirmationMessages(SellerEvent.DEPOSIT_TXS_CONFIRMED);
         super.handleSignContractResponse(response, sender);
     }
 
@@ -168,7 +168,7 @@ public abstract class SellerProtocol extends DisputeProtocol {
         }).start();
     }
 
-    private void sendPaymentAccountPayloadKeyWhenConfirmed(SellerEvent event) {
+    private void scheduleFirstConfirmationMessages(SellerEvent event) {
         EasyBind.subscribe(trade.stateProperty(), state -> {
             if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
                 new Thread(() -> {

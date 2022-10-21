@@ -19,7 +19,7 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.PaymentAccountKeyResponse;
+import bisq.core.trade.messages.FirstConfirmationMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
 import bisq.common.app.Version;
 import bisq.common.taskrunner.TaskRunner;
@@ -32,7 +32,7 @@ import monero.wallet.MoneroWallet;
  */
 @Slf4j
 public class SellerSendPaymentAccountPayloadKey extends SendMailboxMessageTask {
-    private PaymentAccountKeyResponse message;
+    private FirstConfirmationMessage message;
 
     public SellerSendPaymentAccountPayloadKey(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
@@ -64,7 +64,7 @@ public class SellerSendPaymentAccountPayloadKey extends SendMailboxMessageTask {
             // messages where only the one which gets processed by the peer would be removed we use the same uid. All
             // other data stays the same when we re-send the message at any time later.
             String deterministicId = tradeId + processModel.getMyNodeAddress().getFullAddress();
-            message = new PaymentAccountKeyResponse(
+            message = new FirstConfirmationMessage(
                     trade.getOffer().getId(),
                     processModel.getMyNodeAddress(),
                     processModel.getPubKeyRing(),
