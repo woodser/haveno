@@ -21,6 +21,8 @@ import bisq.core.account.sign.SignedWitness;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
+import bisq.network.p2p.NodeAddress;
+import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.EqualsAndHashCode;
@@ -30,12 +32,16 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 @EqualsAndHashCode(callSuper = true)
 @Slf4j
-public class SellerSendPaymentReceivedMessage extends SendMailboxMessageTask {
+public abstract class SellerSendPaymentReceivedMessage extends SendMailboxMessageTask {
     SignedWitness signedWitness = null;
 
     public SellerSendPaymentReceivedMessage(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
+
+    protected abstract NodeAddress getReceiverNodeAddress();
+
+    protected abstract PubKeyRing getReceiverPubKeyRing();
 
     @Override
     protected void run() {
@@ -68,33 +74,29 @@ public class SellerSendPaymentReceivedMessage extends SendMailboxMessageTask {
 
     @Override
     protected void setStateSent() {
-        trade.setState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
-        log.info("Sent SellerReceivedPaymentMessage: tradeId={} at peer {} SignedWitness {}",
-                trade.getId(), trade.getTradingPeer().getNodeAddress(), signedWitness);
+        trade.setState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG); // TODO: setStateIfProgress()
+        log.info("{} sent: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateArrived() {
         trade.setState(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
-        log.info("Seller's PaymentReceivedMessage arrived: tradeId={} at peer {} SignedWitness {}",
-                trade.getId(), trade.getTradingPeer().getNodeAddress(), signedWitness);
+        log.info("{} arrived: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateStoredInMailbox() {
         trade.setState(Trade.State.SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG);
-        log.info("Seller's PaymentReceivedMessage stored in mailbox: tradeId={} at peer {} SignedWitness {}",
-                trade.getId(), trade.getTradingPeer().getNodeAddress(), signedWitness);
+        log.info("{} stored in mailbox: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateFault() {
         trade.setState(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
-        log.error("SellerReceivedPaymentMessage failed: tradeId={} at peer {} SignedWitness {}",
-                trade.getId(), trade.getTradingPeer().getNodeAddress(), signedWitness);
+        log.error("{} failed: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 }

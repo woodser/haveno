@@ -36,7 +36,7 @@ import bisq.core.trade.protocol.tasks.SellerPreparePaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerProcessPaymentSentMessage;
 import bisq.core.trade.protocol.tasks.SellerPublishDepositTx;
 import bisq.core.trade.protocol.tasks.SellerPublishTradeStatistics;
-import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessage;
+import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessageToBuyer;
 import bisq.core.trade.protocol.tasks.TakerVerifyMakerFeePayment;
 import bisq.core.trade.protocol.tasks.VerifyPeersAccountAgeWitness;
 import bisq.common.taskrunner.Task;
@@ -108,7 +108,7 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         TakerVerifyMakerFeePayment.class,
                         SellerPreparePaymentReceivedMessage.class,
                         //SellerBroadcastPayoutTx.class, // TODO (woodser): removed from main pipeline; debug view?
-                        SellerSendPaymentReceivedMessage.class
+                        SellerSendPaymentReceivedMessageToBuyer.class
 
                         )
                 ));
@@ -163,7 +163,7 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         ApplyFilter.class,
                         SellerPreparePaymentReceivedMessage.class,
                         //SellerBroadcastPayoutTx.class, // TODO (woodser): removed from main pipeline; debug view?
-                        SellerSendPaymentReceivedMessage.class
+                        SellerSendPaymentReceivedMessageToBuyer.class
                         )
                 ));
     }

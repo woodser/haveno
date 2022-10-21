@@ -23,11 +23,11 @@ import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
-import bisq.core.trade.protocol.tasks.SellerMaybeSendPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.SellerPreparePaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.SellerProcessPaymentSentMessage;
+import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessageToArbitrator;
 import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToBuyer;
-import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessage;
+import bisq.core.trade.protocol.tasks.SellerSendPaymentReceivedMessageToBuyer;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.handlers.ErrorMessageHandler;
@@ -138,8 +138,8 @@ public abstract class SellerProtocol extends DisputeProtocol {
                             .setup(tasks(
                                     ApplyFilter.class,
                                     SellerPreparePaymentReceivedMessage.class,
-                                    SellerMaybeSendPayoutTxPublishedMessage.class,
-                                    SellerSendPaymentReceivedMessage.class)
+                                    SellerSendPaymentReceivedMessageToArbitrator.class,
+                                    SellerSendPaymentReceivedMessageToBuyer.class)
                             .using(new TradeTaskRunner(trade, () -> {
                                 this.errorMessageHandler = null;
                                 handleTaskRunnerSuccess(event);
