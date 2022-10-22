@@ -409,7 +409,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     // received by buyer and arbitrator
     protected void handle(PaymentReceivedMessage message, NodeAddress peer) {
-        System.out.println(getClass().getSimpleName() + ".handle(PaymentReceivedMessage)");
+        System.out.println(getClass().getCanonicalName() + ".handle(PaymentReceivedMessage)");
         if (!(trade instanceof BuyerTrade || trade instanceof ArbitratorTrade)) {
             log.warn("Ignoring PaymentReceivedMessage since not buyer or arbitrator");
             return;
@@ -419,7 +419,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                 latchTrade();
                 Validator.checkTradeId(processModel.getOfferId(), message);
                 processModel.setTradeMessage(message);
-                expect(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED)
+                expect(anyPhase(trade instanceof ArbitratorTrade ? new Trade.Phase[] { Trade.Phase.DEPOSITS_PUBLISHED } : new Trade.Phase[] { Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED  })
                     .with(message)
                     .from(peer))
                     .setup(tasks(

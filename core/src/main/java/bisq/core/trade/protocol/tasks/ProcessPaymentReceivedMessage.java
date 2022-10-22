@@ -19,6 +19,8 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.core.account.sign.SignedWitness;
 import bisq.core.btc.wallet.XmrWalletService;
+import bisq.core.trade.ArbitratorTrade;
+import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.util.Validator;
@@ -31,7 +33,6 @@ import monero.wallet.MoneroWallet;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-// TODO: generic processing from buyer or arbitrator
 @Slf4j
 public class ProcessPaymentReceivedMessage extends TradeTask {
     public ProcessPaymentReceivedMessage(TaskRunner<Trade> taskHandler, Trade trade) {
@@ -48,17 +49,14 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             checkNotNull(message);
             checkArgument(message.getPayoutTxHex() != null);
 
-            if (true) throw new RuntimeException("Not implemented");
-
             // update to the latest peer address of our peer if the message is correct
-            trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
+            trade.getSeller().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 
             // get multisig wallet
             XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
             MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
 
             // import multisig hex
-            System.out.println("Buyer needs multisig import: " + multisigWallet.isMultisigImportNeeded());
             if (message.getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(message.getUpdatedMultisigHex());
 
             // listen for payout tx
@@ -66,19 +64,24 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
 
             // handle if payout tx not published
             if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
+                if (trade instanceof BuyerTrade) {
 
-                // verify, sign (if unsigned), and publish payout tx
-                boolean previouslySigned = trade.getPayoutTxHex() != null;
-                if (previouslySigned) {
-                    log.info("Buyer publishing signed payout tx from seller");
-                } else {
-                    log.info("Buyer verifying, signing, and publishing seller's payout tx");
+                    // verify, sign (if unsigned), and publish payout tx
+                    boolean previouslySigned = trade.getPayoutTxHex() != null;
+                    if (previouslySigned) {
+                        log.info("{} publishing signed payout tx from seller", trade.getClass().getSimpleName());
+                    } else {
+                        log.info("{} verifying, signing, and publishing seller's payout tx", trade.getClass().getSimpleName());
+                    }
+                    trade.verifyPayoutTx(message.getPayoutTxHex(), !previouslySigned, true);
+                    // TODO (woodser): send PayoutTxPublishedMessage to seller
+
+                    // mark address entries as available
+                    processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
+                } else if (trade instanceof ArbitratorTrade) { // TODO: handle arbitrator
+                    log.warn("Need to implement arbitrator ProcessPaymentReceivedMessage");
+                    //throw new RuntimeException("Not implemented");
                 }
-                trade.verifyPayoutTx(message.getPayoutTxHex(), !previouslySigned, true);
-                // TODO (woodser): send PayoutTxPublishedMessage to seller
-
-                // mark address entries as available
-                processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
             } else {
                 log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());
             }
@@ -91,7 +94,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                 processModel.getAccountAgeWitnessService().publishOwnSignedWitness(signedWitness);
             }
 
-            trade.setStateIfValidTransitionTo(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
+            trade.setStateIfValidTransitionTo(trade instanceof ArbitratorTrade ? Trade.State.TRADE_COMPLETED : Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
             processModel.getTradeManager().requestPersistence();
             complete();
         } catch (Throwable t) {
