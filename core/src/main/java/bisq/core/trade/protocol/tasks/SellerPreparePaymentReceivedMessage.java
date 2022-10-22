@@ -19,6 +19,10 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +41,17 @@ public class SellerPreparePaymentReceivedMessage extends TradeTask {
     protected void run() {
         try {
             runInterceptHook();
+
+            // import multisig hex
+            List<String> updatedMultisigHexes = new ArrayList<String>();
+            if (trade.getBuyer().getUpdatedMultisigHex() != null) updatedMultisigHexes.add(trade.getBuyer().getUpdatedMultisigHex());
+            if (trade.getArbitrator().getUpdatedMultisigHex() != null) updatedMultisigHexes.add(trade.getArbitrator().getUpdatedMultisigHex());
+            if (!updatedMultisigHexes.isEmpty()) {
+                XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
+                MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId()); // TODO: ensure sync() always called before importMultisigHex()
+                multisigWallet.importMultisigHex(updatedMultisigHexes.toArray(new String[0]));
+                walletService.closeMultisigWallet(trade.getId());
+            }
 
             // verify, sign, and publish payout tx if given. otherwise create payout tx
             if (trade.getPayoutTxHex() != null) {

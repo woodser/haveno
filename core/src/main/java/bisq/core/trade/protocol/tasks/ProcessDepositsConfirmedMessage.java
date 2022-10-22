@@ -36,6 +36,7 @@ public class ProcessDepositsConfirmedMessage extends TradeTask {
     protected void run() {
         try {
           runInterceptHook();
+
           
           // update peer node address if not from arbitrator
           // TODO: update based on pub key ring?

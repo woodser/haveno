@@ -50,8 +50,10 @@ public abstract class SendDepositsConfirmedMessage extends SendMailboxMessageTas
         }
     }
 
+    @Override
     protected abstract NodeAddress getReceiverNodeAddress();
 
+    @Override
     protected abstract PubKeyRing getReceiverPubKeyRing();
 
     @Override
@@ -62,7 +64,7 @@ public abstract class SendDepositsConfirmedMessage extends SendMailboxMessageTas
             if (trade.getSelf().getUpdatedMultisigHex() == null) {
                 XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                 MoneroWallet multisigWallet = walletService.getMultisigWallet(tradeId);
-                trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex()); 
+                trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
                 walletService.closeMultisigWallet(trade.getId());
             }
 

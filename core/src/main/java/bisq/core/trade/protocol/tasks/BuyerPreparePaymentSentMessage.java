@@ -64,8 +64,10 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
             MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
 
             // import multisig hex
-            if (trade.getSeller().getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(trade.getSeller().getUpdatedMultisigHex());
-            if (trade.getArbitrator().getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(trade.getArbitrator().getUpdatedMultisigHex());
+            List<String> updatedMultisigHexes = new ArrayList<String>();
+            if (trade.getSeller().getUpdatedMultisigHex() != null) updatedMultisigHexes.add(trade.getSeller().getUpdatedMultisigHex());
+            if (trade.getArbitrator().getUpdatedMultisigHex() != null) updatedMultisigHexes.add(trade.getArbitrator().getUpdatedMultisigHex());
+            if (!updatedMultisigHexes.isEmpty()) multisigWallet.importMultisigHex(updatedMultisigHexes.toArray(new String[0])); // TODO (monero-project): fails if multisig hex imported individually
 
             // create payout tx if we have seller's updated multisig hex
             if (trade.getSeller().getUpdatedMultisigHex() != null) {

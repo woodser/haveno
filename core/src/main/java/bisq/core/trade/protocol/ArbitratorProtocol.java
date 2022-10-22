@@ -148,6 +148,6 @@ public class ArbitratorProtocol extends DisputeProtocol {
   @SuppressWarnings("unchecked")
   @Override
   public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
-    return new Class[] { SendDepositsConfirmedMessageToBuyer.class, SendDepositsConfirmedMessageToSeller.class };
+      return new Class[] { SendDepositsConfirmedMessageToBuyer.class, SendDepositsConfirmedMessageToSeller.class };
   }
 }

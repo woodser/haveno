@@ -81,6 +81,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     private Timer timeoutTimer;
     protected TradeResultHandler tradeResultHandler;
     protected ErrorMessageHandler errorMessageHandler;
+    private boolean depositsConfirmedMessageSent; // TODO: persist to trade state
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -144,10 +145,9 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
-        // send first confirmation message when trade state confirmed
-        if (trade.getPhase() == Trade.Phase.DEPOSIT_REQUESTED || trade.getPhase() == Trade.Phase.DEPOSITS_PUBLISHED) {
-            sendMessagesOnConfirm();
-        }
+        EasyBind.subscribe(trade.stateProperty(), state -> {
+            if (trade.isDepositConfirmed()) sendDepositsConfirmedMessageOnce();
+        });
     }
 
     public void onWithdrawCompleted() {
@@ -319,7 +319,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     public void handleSignContractResponse(SignContractResponse message, NodeAddress sender) {
         System.out.println(getClass().getSimpleName() + ".handleSignContractResponse() " + trade.getId());
-        sendMessagesOnConfirm(); // send message to peers on first confirmation
         new Thread(() -> {
             synchronized (trade) {
                 Validator.checkTradeId(processModel.getOfferId(), message);
@@ -712,26 +711,27 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    private void sendMessagesOnConfirm() {
-        EasyBind.subscribe(trade.stateProperty(), state -> {
-            if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
-                new Thread(() -> {
-                    synchronized (trade) {
-                        latchTrade();
-                        expect(new Condition(trade))
-                                .setup(tasks(getFirstConfirmationTasks())
-                                .using(new TradeTaskRunner(trade,
-                                        () -> {
-                                            handleTaskRunnerSuccess(null, null, "SendDepositsConfirmedMessages");
-                                        },
-                                        (errorMessage) -> {
-                                            handleTaskRunnerFault(null, null, errorMessage);
-                                        })))
-                                .executeTasks(true);
-                        awaitTradeLatch();
-                    }
-                }).start();
+    private void sendDepositsConfirmedMessageOnce() {
+        if (depositsConfirmedMessageSent) return;
+        depositsConfirmedMessageSent = true;
+        new Thread(() -> {
+            synchronized (trade) {
+                latchTrade();
+                for (int i = 0; i < getFirstConfirmationTasks().length; i++) {
+                    System.out.println("First confirmation task: " + getFirstConfirmationTasks()[i]);
+                }
+                expect(new Condition(trade))
+                        .setup(tasks(getFirstConfirmationTasks())
+                        .using(new TradeTaskRunner(trade,
+                                () -> {
+                                    handleTaskRunnerSuccess(null, null, "SendDepositsConfirmedMessages");
+                                },
+                                (errorMessage) -> {
+                                    handleTaskRunnerFault(null, null, errorMessage);
+                                })))
+                        .executeTasks(true);
+                awaitTradeLatch();
             }
-        });
+        }).start();
     }
 }

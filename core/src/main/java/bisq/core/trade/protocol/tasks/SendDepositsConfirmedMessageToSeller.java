@@ -34,11 +34,13 @@ public class SendDepositsConfirmedMessageToSeller extends SendDepositsConfirmedM
         super(taskHandler, trade);
     }
 
-    protected NodeAddress getReceiverNodeAddress() {
+    @Override
+    public NodeAddress getReceiverNodeAddress() {
         return trade.getSeller().getNodeAddress();
     }
 
-    protected PubKeyRing getReceiverPubKeyRing() {
+    @Override
+    public PubKeyRing getReceiverPubKeyRing() {
         return trade.getSeller().getPubKeyRing();
     }
 }

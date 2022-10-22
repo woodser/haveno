@@ -97,12 +97,12 @@ public class MoneroKeyImagePoller {
     }
 
     /**
-     * Get the key images to listen to.
+     * Get a copy of the key images being listened to.
      * 
      * @return the key images to listen to
      */
     public Collection<String> getKeyImages() {
-        return keyImages;
+        return new ArrayList<String>(keyImages);
     }
 
     /**
@@ -111,9 +111,11 @@ public class MoneroKeyImagePoller {
      * @return the key images to listen to
      */
     public void setKeyImages(String... keyImages) {
-        this.keyImages.clear();
-        this.keyImages.addAll(Arrays.asList(keyImages));
-        refreshPolling();
+        synchronized (keyImages) {
+            this.keyImages.clear();
+            this.keyImages.addAll(Arrays.asList(keyImages));
+            refreshPolling();
+        }
     }
 
     /**
@@ -122,8 +124,10 @@ public class MoneroKeyImagePoller {
      * @param keyImage - the key image to listen to
      */
     public void addKeyImage(String keyImage) {
-        addKeyImages(keyImage);
-        refreshPolling();
+        synchronized (keyImages) {
+            addKeyImages(keyImage);
+            refreshPolling();
+        }
     }
 
     /**
@@ -132,8 +136,10 @@ public class MoneroKeyImagePoller {
      * @param keyImages - key images to listen to
      */
     public void addKeyImages(String... keyImages) {
-        for (String keyImage : keyImages) if (!this.keyImages.contains(keyImage)) this.keyImages.add(keyImage);
-        refreshPolling();
+        synchronized (keyImages) {
+            for (String keyImage : keyImages) if (!this.keyImages.contains(keyImage)) this.keyImages.add(keyImage);
+            refreshPolling();
+        }
     }
 
     /**
@@ -142,8 +148,10 @@ public class MoneroKeyImagePoller {
      * @param keyImage - the key image to unlisten to
      */
     public void removeKeyImage(String keyImage) {
-        removeKeyImages(keyImage);
-        refreshPolling();
+        synchronized (keyImages) {
+            removeKeyImages(keyImage);
+            refreshPolling();
+        }
     }
 
     /**
@@ -152,26 +160,30 @@ public class MoneroKeyImagePoller {
      * @param keyImages - key images to unlisten to
      */
     public void removeKeyImages(String... keyImages) {
-        for (String keyImage : keyImages) if (!this.keyImages.contains(keyImage)) throw new MoneroError("Key image not registered with poller: " + keyImage);
-        this.keyImages.removeAll(Arrays.asList(keyImages));
+        synchronized (keyImages) {
+            for (String keyImage : keyImages) if (!this.keyImages.contains(keyImage)) throw new MoneroError("Key image not registered with poller: " + keyImage);
+            this.keyImages.removeAll(Arrays.asList(keyImages));
+        }
     }
 
     public void poll() {
+        synchronized (keyImages) {
 
-        // fetch spent statuses
-        List<MoneroKeyImageSpentStatus> spentStatuses = keyImages.isEmpty() ? new ArrayList<MoneroKeyImageSpentStatus>() : daemon.getKeyImageSpentStatuses(keyImages);
+            // fetch spent statuses
+            List<MoneroKeyImageSpentStatus> spentStatuses = keyImages.isEmpty() ? new ArrayList<MoneroKeyImageSpentStatus>() : daemon.getKeyImageSpentStatuses(keyImages);
 
-        // collect changed statuses
-        Map<String, MoneroKeyImageSpentStatus> changedStatuses = new HashMap<String, MoneroKeyImageSpentStatus>();
-        for (int i = 0; i < keyImages.size(); i++) {
-            if (lastStatuses.get(keyImages.get(i)) != spentStatuses.get(i)) {
-                lastStatuses.put(keyImages.get(i), spentStatuses.get(i));
-                changedStatuses.put(keyImages.get(i), spentStatuses.get(i));
+            // collect changed statuses
+            Map<String, MoneroKeyImageSpentStatus> changedStatuses = new HashMap<String, MoneroKeyImageSpentStatus>();
+            for (int i = 0; i < keyImages.size(); i++) {
+                if (lastStatuses.get(keyImages.get(i)) != spentStatuses.get(i)) {
+                    lastStatuses.put(keyImages.get(i), spentStatuses.get(i));
+                    changedStatuses.put(keyImages.get(i), spentStatuses.get(i));
+                }
             }
-        }
 
-        // announce changes
-        for (MoneroKeyImageListener listener : new ArrayList<MoneroKeyImageListener>(listeners)) listener.onSpentStatusChanged(changedStatuses);
+            // announce changes
+            for (MoneroKeyImageListener listener : new ArrayList<MoneroKeyImageListener>(listeners)) listener.onSpentStatusChanged(changedStatuses);
+        }
     }
 
     private void refreshPolling() {

@@ -34,11 +34,13 @@ public class SendDepositsConfirmedMessageToArbitrator extends SendDepositsConfir
         super(taskHandler, trade);
     }
 
-    protected NodeAddress getReceiverNodeAddress() {
+    @Override
+    public NodeAddress getReceiverNodeAddress() {
         return trade.getArbitrator().getNodeAddress();
     }
 
-    protected PubKeyRing getReceiverPubKeyRing() {
+    @Override
+    public PubKeyRing getReceiverPubKeyRing() {
         return trade.getArbitrator().getPubKeyRing();
     }
 }
