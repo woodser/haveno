@@ -92,6 +92,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                 processModel.getAccountAgeWitnessService().publishOwnSignedWitness(signedWitness);
             }
 
+            // TODO: if arbitrator trade, complete trade
             trade.setStateIfValidTransitionTo(trade instanceof ArbitratorTrade ? Trade.State.TRADE_COMPLETED : Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
             processModel.getTradeManager().requestPersistence();
             complete();
