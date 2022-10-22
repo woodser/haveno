@@ -75,9 +75,6 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
                 MoneroTxWallet payoutTx = trade.createPayoutTx();
                 trade.setPayoutTx(payoutTx);
                 trade.setPayoutTxHex(payoutTx.getTxSet().getMultisigTxHex());
-
-                // start listening for published payout tx
-                trade.listenForPayoutTx();
             }
 
             // close multisig wallet

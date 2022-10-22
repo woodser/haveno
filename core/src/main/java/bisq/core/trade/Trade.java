@@ -886,7 +886,7 @@ public abstract class Trade implements Tradable, Model {
      * TODO: check and notify if deposits are dropped due to re-org
      */
     public void listenForDepositTxs() {
-        log.info("Listening for deposit txs to unlock for trade {}", getId());
+        log.info("{} listening for deposit txs to unlock for trade {}", getClass().getSimpleName(), getId());
         if (listeningForDepositTxs) return;
         listeningForDepositTxs = true;
 

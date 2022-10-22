@@ -38,9 +38,6 @@ public class SellerPreparePaymentReceivedMessage extends TradeTask {
         try {
             runInterceptHook();
 
-            // start listening to payout state
-            trade.listenForPayoutTx();
-
             // verify, sign, and publish payout tx if given. otherwise create payout tx
             if (trade.getPayoutTxHex() != null) {
                 log.info("Seller verifying, signing, and publishing payout tx");

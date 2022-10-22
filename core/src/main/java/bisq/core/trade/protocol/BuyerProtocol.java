@@ -99,6 +99,7 @@ public class BuyerProtocol extends DisputeProtocol {
                                     BuyerSendPaymentSentMessage.class) // don't latch trade because this blocks and runs in background
                             .using(new TradeTaskRunner(trade,
                                     () -> {
+                                        trade.setState(Trade.State.BUYER_CONFIRMED_IN_UI_PAYMENT_SENT);
                                         this.errorMessageHandler = null;
                                         resultHandler.handleResult();
                                         handleTaskRunnerSuccess(event);
@@ -106,7 +107,6 @@ public class BuyerProtocol extends DisputeProtocol {
                                     (errorMessage) -> {
                                         handleTaskRunnerFault(event, errorMessage);
                                     })))
-                            .run(() -> trade.setState(Trade.State.BUYER_CONFIRMED_IN_UI_PAYMENT_SENT))
                             .executeTasks(true);
                 } catch (Exception e) {
                     errorMessageHandler.handleErrorMessage("Error confirming payment sent: " + e.getMessage());
