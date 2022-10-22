@@ -337,9 +337,6 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
                 multisigWallet.importMultisigHex(openNewDisputeMessage.getUpdatedMultisigHex());
                 log.info("Arbitrator multisig wallet updated on new dispute message for trade " + dispute.getTradeId());
                 
-                // close multisig wallet
-                xmrWalletService.closeMultisigWallet(dispute.getTradeId());
-
                 synchronized (disputeList) {
                     if (!disputeList.contains(dispute)) {
                         Optional<Dispute> storedDisputeOptional = findDispute(dispute);

@@ -50,7 +50,6 @@ import bisq.common.util.Utilities;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
-import common.utils.GenUtils;
 import org.bitcoinj.core.Coin;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
@@ -91,14 +90,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import monero.common.MoneroError;
 import monero.common.TaskLooper;
 import monero.daemon.MoneroDaemon;
-import monero.daemon.model.MoneroKeyImageSpentStatus;
 import monero.daemon.model.MoneroTx;
 import monero.wallet.MoneroWallet;
-import monero.wallet.model.MoneroCheckTx;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
 import monero.wallet.model.MoneroOutputWallet;
-import monero.wallet.model.MoneroTransferQuery;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxQuery;
 import monero.wallet.model.MoneroTxSet;
@@ -371,8 +367,7 @@ public abstract class Trade implements Tradable, Model {
     transient final private StringProperty errorMessageProperty = new SimpleStringProperty();
     transient private Subscription tradePhaseSubscription = null;
     transient private Subscription payoutStateSubscription = null;
-    transient private boolean listeningForDepositTxs = false;
-    transient private TaskLooper payoutLooper;
+    transient private TaskLooper tradeTxsLooper;
     
     //  Mutable
     @Getter
@@ -612,70 +607,108 @@ public abstract class Trade implements Tradable, Model {
 
         isInitialized = true;
 
-        if (!isPaymentReceived()) {
-            
-            // handle deposit phase changes
-            tradePhaseSubscription = EasyBind.subscribe(phaseProperty, newValue -> {
+        // done if payout unlocked
+        if (isPayoutUnlocked()) return;
 
-                // listen for deposit txs
-                if (isDepositPublished() && !isDepositUnlocked()) listenForDepositTxs();
+        // handle trade state events
+        if (isDepositPublished()) listenToTradeTxs();
+        tradePhaseSubscription = EasyBind.subscribe(phaseProperty, newValue -> {
+            if (isDepositPublished()) {
+                listenToTradeTxs();
+                UserThread.execute(() -> {
+                    if (tradePhaseSubscription != null) {
+                        tradePhaseSubscription.unsubscribe();
+                        tradePhaseSubscription = null;
+                    }
+                });
+            }
+        });
 
-                // listen for payout tx
-                boolean listeningToPayout = (isBuyer() && isPaymentSent()) || (isSeller() && isPaymentReceived()) || (isArbitrator() && isDepositUnlocked());
-                if (listeningToPayout) listenForPayoutTx(); // TODO: e.g. 60s for arbitrator, refresh period for traders
+        // handle payout state events
+        payoutStateSubscription = EasyBind.subscribe(payoutStateProperty, newValue -> {
 
-                // complete on payment received
-                if (isPaymentReceived()) {
-                    UserThread.execute(() -> {
-                        if (tradePhaseSubscription != null) {
-                            tradePhaseSubscription.unsubscribe();
-                            tradePhaseSubscription = null;
+            // complete arbitrator trade when payout pubished // TODO: confirmed?
+            if (isPayoutPublished() && isArbitrator() && !isCompleted()) {
+                log.info("Handling payout tx published for {} {}", getClass().getSimpleName(), getId());
+                processModel.getTradeManager().onTradeCompleted(this);
+            }
+
+            // trade completion cleanup
+            if (isPayoutUnlocked()) {
+                // TODO: delete multisig wallet
+                processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
+                if (tradeTxsLooper != null) {
+                    tradeTxsLooper.stop();
+                    tradeTxsLooper = null;
+                }
+                UserThread.execute(() -> {
+                    if (payoutStateSubscription != null) {
+                        payoutStateSubscription.unsubscribe();
+                        payoutStateSubscription = null;
+                    }
+                });
+            }
+        });
+
+
+    }
+
+    // TODO: also use wallet listener for faster notifications?
+    // TODO: stop listening on shut down or if payout unlocked
+    public void listenToTradeTxs() {
+        if (tradeTxsLooper != null) return;
+        log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
+
+        // get multisig trade wallet
+        MoneroWallet wallet = xmrWalletService.getMultisigWallet(getId());
+
+        // query wallet for tx state
+        tradeTxsLooper = new TaskLooper(() -> {
+
+            // done when payout unlocks
+            if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) return;
+
+            // check deposit txs
+            if (getPhase().ordinal() < Trade.Phase.DEPOSITS_UNLOCKED.ordinal()) {
+                List<MoneroTxWallet> txs = wallet.getTxs(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()), new ArrayList<String>());
+                if (txs.size() == 2) {
+                    setStateDepositsPublished();
+                    boolean makerFirst = txs.get(0).getHash().equals(processModel.getMaker().getDepositTxHash());
+                    getMaker().setDepositTx(makerFirst ? txs.get(0) : txs.get(1));
+                    getTaker().setDepositTx(makerFirst ? txs.get(1) : txs.get(0));
+
+                    // check if deposit txs confirmed
+                    if (txs.get(0).isConfirmed() && txs.get(1).isConfirmed()) setStateDepositsConfirmed();
+                    if (!txs.get(0).isLocked() && !txs.get(1).isLocked()) setStateDepositsUnlocked();
+                }
+            }
+
+            // check payout tx
+            if (getPhase().ordinal() >= Trade.Phase.DEPOSITS_UNLOCKED.ordinal()) {
+
+                // check if deposit txs spent (appears on payout published)
+                List<MoneroTxWallet> txs = wallet.getTxs(new MoneroTxQuery()
+                        .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
+                        .setIncludeOutputs(true));
+                for (MoneroTxWallet tx : txs) {
+                    for (MoneroOutputWallet output : tx.getOutputsWallet()) {
+                        if (Boolean.TRUE.equals(output.isSpent()))  {
+                            setPayoutStatePublished();
                         }
-                    });
-                }
-            });
-
-            // listen for deposit txs
-            if (isDepositPublished()) listenForDepositTxs();
-        }
-        
-        if (!isPayoutUnlocked()) {
-
-            // handle payout state changes
-            payoutStateSubscription = EasyBind.subscribe(payoutStateProperty, newValue -> {
-
-                // listen for payout tx
-                if (isPayoutPublished()) listenForPayoutTx(); // TODO: e.g. 60s for arbitrator, refresh period for traders
-
-                // mark arbitrator trade complete on payout unlocked
-                // TODO: change to complete when payout unlocked?
-                if (isPayoutPublished() && isArbitrator() && !isCompleted()) {
-                    log.info("Handling payout tx published for {} {}", getClass().getSimpleName(), getId());
-                    processModel.getTradeManager().onTradeCompleted(this);
+                    }
                 }
 
-                // complete on unlock
-                if (isPayoutUnlocked()) {
-                    log.info("Handling payout tx unlocked for {} {}", getClass().getSimpleName(), getId());
-    
-                    // cleanup on trade completion
-                    // TODO: delete multisig wallet on unlock
-                    processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
-    
-                    // unsubscribe
-                    UserThread.execute(() -> {
-                        if (payoutStateSubscription != null) {
-                            payoutStateSubscription.unsubscribe();
-                            payoutStateSubscription = null;
-                        }
-                    });
+                // check for outgoing txs (appears on payout confirmed)
+                List<MoneroTxWallet> outgoingTxs = wallet.getTxs(new MoneroTxQuery().setIsOutgoing(true));
+                if (!outgoingTxs.isEmpty()) {
+                    MoneroTxWallet payoutTx = outgoingTxs.get(0);
+                    setPayoutStatePublished();
+                    if (payoutTx.isConfirmed()) setPayoutStateConfirmed();
+                    if (!payoutTx.isLocked()) setPayoutStateUnlocked();
                 }
-            });
-            
-            // listen for payout tx
-            boolean listeningToPayout = (isBuyer() && isPaymentSent()) || (isSeller() && isPaymentReceived()) || (isArbitrator() && isDepositUnlocked());
-            if (listeningToPayout) listenForPayoutTx(); // TODO: e.g. 60s for arbitrator, refresh period for traders
-        }
+            }
+        });
+        tradeTxsLooper.start(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs()); // TODO: adjust after payout published
     }
 
 
@@ -848,8 +881,6 @@ public abstract class Trade implements Tradable, Model {
             multisigWallet.submitMultisigTxHex(payoutTxHex);
             setPayoutState(Trade.PayoutState.PUBLISHED);
         }
-
-        walletService.closeMultisigWallet(getId());
     }
 
     /**
@@ -878,201 +909,11 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
-    /**
-     * Listen for deposit transactions to unlock and then apply the transactions.
-     *
-     * TODO: adopt for general purpose scheduling
-     * TODO: check and notify if deposits are dropped due to re-org
-     */
-    public void listenForDepositTxs() {
-        log.info("{} listening for deposit txs to unlock for trade {}", getClass().getSimpleName(), getId());
-        if (listeningForDepositTxs) return;
-        listeningForDepositTxs = true;
-
-        // ignore if already listening
-        if (depositTxListener != null) {
-            log.warn("Trade {} already listening for deposit txs", getId());
-            return;
-        }
-
-        // get daemon and primary wallet
-        MoneroWallet havenoWallet = processModel.getXmrWalletService().getWallet();
-
-        // fetch deposit txs from daemon
-        List<MoneroTx> txs = xmrWalletService.getTxs(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()));
-
-        // handle deposit txs seen
-        if (txs.size() == 2) {
-            setStateDepositsPublished();
-            boolean makerFirst = txs.get(0).getHash().equals(processModel.getMaker().getDepositTxHash());
-            getMaker().setDepositTx(makerFirst ? txs.get(0) : txs.get(1));
-            getTaker().setDepositTx(makerFirst ? txs.get(1) : txs.get(0));
-
-            // check if deposit txs unlocked
-            if (txs.get(0).isConfirmed() && txs.get(1).isConfirmed()) {
-                setStateDepositsConfirmed();
-                long unlockHeight = Math.max(txs.get(0).getHeight(), txs.get(1).getHeight()) + XmrWalletService.NUM_BLOCKS_UNLOCK;
-                if (havenoWallet.getHeight() >= unlockHeight) {
-                    setStateDepositsUnlocked();
-                    return;
-                }
-            }
-        }
-
-        // create block listener
-        depositTxListener = new MoneroWalletListener() {
-            Long unlockHeight = null;
-
-            @Override
-            public void onNewBlock(long height) {
-
-                // skip if no longer listening
-                if (depositTxListener == null) return;
-
-                // get latest height
-                height = havenoWallet.getHeight();
-
-                // skip if confirmed and awaiting unlock
-                if (unlockHeight != null && height < unlockHeight) return;
-
-                // fetch txs from daemon
-                List<MoneroTx> txs = xmrWalletService.getTxs(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()));
-
-                // skip if deposit txs not seen
-                if (txs.size() != 2) return;
-                setStateDepositsPublished();
-
-                // update deposit txs
-                boolean makerFirst = txs.get(0).getHash().equals(processModel.getMaker().getDepositTxHash());
-                getMaker().setDepositTx(makerFirst ? txs.get(0) : txs.get(1));
-                getTaker().setDepositTx(makerFirst ? txs.get(1) : txs.get(0));
-
-                // check if deposit txs confirmed and compute unlock height
-                if (txs.size() == 2 && txs.get(0).isConfirmed() && txs.get(1).isConfirmed() && unlockHeight == null) {
-                    log.info("Multisig deposits confirmed for trade {}", getId());
-                    setStateDepositsConfirmed();
-                    unlockHeight = Math.max(txs.get(0).getHeight(), txs.get(1).getHeight()) + XmrWalletService.NUM_BLOCKS_UNLOCK;
-                }
-
-                // check if deposit txs unlocked
-                if (unlockHeight != null && height >= unlockHeight) {
-                    log.info("Multisig deposits unlocked for trade {}", getId());
-                    xmrWalletService.removeWalletListener(depositTxListener); // remove listener when notified
-                    depositTxListener = null; // prevent re-applying trade state in subsequent requests
-                    setStateDepositsUnlocked();
-                }
-            }
-        };
-
-        // register wallet listener
-        xmrWalletService.addWalletListener(depositTxListener);
-    }
-
-    public void listenForPayoutTx() {
-        log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
-
-        // skip if payout tx already unlocked
-        if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) {
-            //log.warn("We had a payout tx already unlocked. tradeId={}, state={}", getId(), getState());
-            return;
-        }
-
-        // skip if already listening
-        if (payoutLooper != null) return;
-
-        // loop to get key images to listen to
-        payoutLooper = new TaskLooper(() -> {
-
-            // get key images
-            // TODO: store after fetching
-            List<String> keyImages = new ArrayList<String>();
-            MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(getId());
-            for (MoneroOutputWallet output : multisigWallet.getOutputs()) {
-                if (output.getKeyImage() != null) keyImages.add(output.getKeyImage().getHex());
-            }
-
-            if (!keyImages.isEmpty()) {
-                // listen for key images to be spent
-                xmrWalletService.listenToPayoutKeyImages(keyImages, (changedStatuses -> {
-
-                    // get max spent status
-                    MoneroKeyImageSpentStatus maxStatus = null;
-                    for (MoneroKeyImageSpentStatus status : changedStatuses.values()) {
-                        if (maxStatus == null || status.ordinal() > maxStatus.ordinal()) maxStatus = status;
-                    }
-
-                    // handle spent status
-                    switch (maxStatus) {
-                        case NOT_SPENT:
-                        if (getPayoutState() != PayoutState.UNPUBLISHED) setPayoutState(PayoutState.UNPUBLISHED);
-                        break;
-                        case TX_POOL:
-                        if (getPayoutState() != PayoutState.PUBLISHED) setPayoutState(PayoutState.PUBLISHED);
-                        break;
-                        case CONFIRMED:
-                        if (getPayoutState().ordinal() < PayoutState.CONFIRMED.ordinal()) {
-                            setPayoutState(PayoutState.CONFIRMED);
-                            // TODO: detect payout tx unlock, unregister listener
-                        }
-                        break;
-                    }
-                }));
-                payoutLooper.stop();
-            }
-        });
-        payoutLooper.start(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs());
-    }
-
-    public void listenForPayoutTx2() {
-        log.info("Listening for payout tx for trade {}", getId());
-
-        // check if payout tx already seen
-        if (getPayoutState().ordinal() >= Trade.PayoutState.PUBLISHED.ordinal()) {
-          log.warn("We had a payout tx already set. tradeId={}, state={}", getId(), getState());
-          return;
-        }
-
-        // get payout address entry
-        Optional<XmrAddressEntry> optionalPayoutEntry = xmrWalletService.getAddressEntry(getId(), XmrAddressEntry.Context.TRADE_PAYOUT);
-        if (!optionalPayoutEntry.isPresent()) throw new RuntimeException("Trade does not have address entry for payout");
-        XmrAddressEntry payoutEntry = optionalPayoutEntry.get();
-
-        // watch for payout tx on loop
-        new Thread(() -> { // TODO: use thread manager
-            boolean found = false;
-            while (!found) {
-                if (getPayoutTxKey() != null) {
-
-                    // get txs to payout address
-                    List<MoneroTxWallet> txs = xmrWalletService.getWallet().getTxs(new MoneroTxQuery()
-                            .setTransferQuery(new MoneroTransferQuery()
-                                    .setAccountIndex(0)
-                                    .setSubaddressIndex(payoutEntry.getSubaddressIndex())
-                                    .setIsIncoming(true)));
-
-                    // check for payout tx
-                    for (MoneroTxWallet tx : txs) {
-                        MoneroCheckTx txCheck = xmrWalletService.getWallet().checkTxKey(tx.getHash(), getPayoutTxKey(), payoutEntry.getAddressString());
-                        if (txCheck.isGood() && txCheck.receivedAmount.compareTo(new BigInteger("0")) > 0) {
-                            found = true;
-                            setPayoutTx(tx);
-                            setPayoutStateIfValidTransitionTo(Trade.PayoutState.PUBLISHED);
-                            return;
-                        }
-                    }
-                }
-
-                // wait to loop
-                GenUtils.waitFor(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs());
-            }
-        }).start();
-    }
-
     @Nullable
     public MoneroTx getTakerDepositTx() {
         String depositTxHash = getProcessModel().getTaker().getDepositTxHash();
         try {
-            if (getTaker().getDepositTx() == null) getTaker().setDepositTx(depositTxHash == null ? null : getXmrWalletService().getTxWithCache(depositTxHash));
+            if (getTaker().getDepositTx() == null) getTaker().setDepositTx(depositTxHash == null ? null : xmrWalletService.getMultisigWallet(getId()).getTx(depositTxHash));
             return getTaker().getDepositTx();
         } catch (MoneroError e) {
             log.error("Wallet is missing taker deposit tx " + depositTxHash);
@@ -1084,7 +925,7 @@ public abstract class Trade implements Tradable, Model {
     public MoneroTx getMakerDepositTx() {
         String depositTxHash = getProcessModel().getMaker().getDepositTxHash();
         try {
-            if (getMaker().getDepositTx() == null) getMaker().setDepositTx(depositTxHash == null ? null : getXmrWalletService().getTxWithCache(depositTxHash));
+            if (getMaker().getDepositTx() == null) getMaker().setDepositTx(depositTxHash == null ? null : xmrWalletService.getMultisigWallet(getId()).getTx(depositTxHash));
             return getMaker().getDepositTx();
         } catch (MoneroError e) {
             log.error("Wallet is missing maker deposit tx " + depositTxHash);
@@ -1628,6 +1469,18 @@ public abstract class Trade implements Tradable, Model {
         if (!isDepositUnlocked()) setState(State.DEPOSIT_TXS_UNLOCKED_IN_BLOCKCHAIN);
     }
 
+    private void setPayoutStatePublished() {
+        if (!isPayoutPublished()) setPayoutState(PayoutState.PUBLISHED);
+    }
+
+    private void setPayoutStateConfirmed() {
+        if (!isPayoutConfirmed()) setPayoutState(PayoutState.CONFIRMED);
+    }
+
+    private void setPayoutStateUnlocked() {
+        if (!isPayoutUnlocked()) setPayoutState(PayoutState.UNLOCKED);
+    }
+
     @Override
     public String toString() {
         return "Trade{" +
@@ -1640,6 +1493,7 @@ public abstract class Trade implements Tradable, Model {
                 ",\n     tradeAmountAsLong=" + amountAsLong +
                 ",\n     tradePrice=" + price +
                 ",\n     state=" + state +
+                ",\n     payoutState=" + payoutState +
                 ",\n     disputeState=" + disputeState +
                 ",\n     tradePeriodState=" + periodState +
                 ",\n     contract=" + contract +

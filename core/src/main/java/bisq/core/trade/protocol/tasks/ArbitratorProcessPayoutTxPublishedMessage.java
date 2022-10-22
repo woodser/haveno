@@ -43,9 +43,6 @@ public class ArbitratorProcessPayoutTxPublishedMessage extends TradeTask {
           MoneroWallet multisigWallet = trade.getXmrWalletService().getMultisigWallet(trade.getId());
           multisigWallet.importMultisigHex(request.getUpdatedMultisigHex());
 
-          // start listening for payout tx
-          trade.listenForPayoutTx(); // TODO: support custom refresh period for passive listening, e.g. once every hour for arbitrator
-
           // verify and publish payout tx
           trade.verifyPayoutTx(request.getSignedPayoutTxHex(), false, true);
 

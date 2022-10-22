@@ -79,9 +79,6 @@ public class BuyerPreparePaymentSentMessage extends TradeTask {
                 trade.setPayoutTxHex(payoutTx.getTxSet().getMultisigTxHex());
             }
 
-            // close multisig wallet
-            walletService.closeMultisigWallet(trade.getId());
-            
             complete();
         } catch (Throwable t) {
             failed(t);

@@ -22,6 +22,8 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.TradeUtils;
 import bisq.core.util.ParsingUtils;
+
+import com.google.common.collect.TreeMultimap;
 import com.google.common.util.concurrent.Service.State;
 import com.google.inject.name.Named;
 import common.utils.JsonUtils;
@@ -198,14 +200,13 @@ public class XmrWalletService {
         }
     }
 
-    // TODO: synchronize on multisigWalletLocks before inserting
     public MoneroWallet createMultisigWallet(String tradeId) {
         addWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             log.info("{}.createMultisigWallet({})", getClass().getSimpleName(), tradeId);
             if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
             String path = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
-            MoneroWallet multisigWallet = createWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null, false); // auto-assign port
+            MoneroWallet multisigWallet = createWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null, true); // auto-assign port
             multisigWallets.put(tradeId, multisigWallet);
             return multisigWallet;
         }

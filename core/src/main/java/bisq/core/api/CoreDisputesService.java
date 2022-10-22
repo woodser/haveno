@@ -105,9 +105,6 @@ public class CoreDisputesService {
             String updatedMultisigHex = multisigWallet.exportMultisigHex();
             disputeManager.sendOpenNewDisputeMessage(dispute, false, updatedMultisigHex, resultHandler, faultHandler);
             tradeManager.requestPersistence();
-
-            // close multisig wallet
-            xmrWalletService.closeMultisigWallet(trade.getId());
         }
     }
 
@@ -284,9 +281,6 @@ public class CoreDisputesService {
 
                     // send arbitrator's updated multisig hex with dispute result
                     disputeResult.setArbitratorUpdatedMultisigHex(multisigWallet.exportMultisigHex());
-                    
-                    // close multisig wallet
-                    xmrWalletService.closeMultisigWallet(dispute.getTradeId());
                 }
             } catch (AddressFormatException e2) {
                 log.error("Error at close dispute", e2);

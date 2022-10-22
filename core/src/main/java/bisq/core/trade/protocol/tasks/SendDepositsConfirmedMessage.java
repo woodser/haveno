@@ -65,7 +65,6 @@ public abstract class SendDepositsConfirmedMessage extends SendMailboxMessageTas
                 XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                 MoneroWallet multisigWallet = walletService.getMultisigWallet(tradeId);
                 trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
-                walletService.closeMultisigWallet(trade.getId());
             }
 
             // We do not use a real unique ID here as we want to be able to re-send the exact same message in case the

@@ -50,7 +50,6 @@ public class SellerPreparePaymentReceivedMessage extends TradeTask {
                 XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                 MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId()); // TODO: ensure sync() always called before importMultisigHex()
                 multisigWallet.importMultisigHex(updatedMultisigHexes.toArray(new String[0]));
-                walletService.closeMultisigWallet(trade.getId());
             }
 
             // verify, sign, and publish payout tx if given. otherwise create payout tx
@@ -76,7 +75,6 @@ public class SellerPreparePaymentReceivedMessage extends TradeTask {
                     XmrWalletService walletService = processModel.getProvider().getXmrWalletService();
                     MoneroWallet multisigWallet = walletService.getMultisigWallet(trade.getId());
                     trade.getSelf().setUpdatedMultisigHex(multisigWallet.exportMultisigHex());
-                    walletService.closeMultisigWallet(trade.getId());
                 } else{
                     System.out.println("Keeping multisig info!" + trade.getSelf().getUpdatedMultisigHex());
                 }

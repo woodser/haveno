@@ -338,7 +338,6 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
                 synchronized (trade) {
                     MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(tradeId); // TODO (woodser): this is closed after sending ArbitratorPayoutTxRequest to arbitrator which opens and syncs multisig and responds with signed dispute tx. more efficient way is to include with arbitrator-signed dispute tx with dispute result?
                     sendArbitratorPayoutTxRequest(multisigWallet.exportMultisigHex(), dispute, contract);
-                    xmrWalletService.closeMultisigWallet(tradeId);
                 }
             }
         }
@@ -381,7 +380,6 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
                 MoneroWallet multisigWallet = xmrWalletService.getMultisigWallet(dispute.getTradeId());
                 multisigWallet.importMultisigHex(peerPublishedDisputePayoutTxMessage.getUpdatedMultisigHex());
                 MoneroTxWallet parsedPayoutTx = multisigWallet.describeTxSet(new MoneroTxSet().setMultisigTxHex(peerPublishedDisputePayoutTxMessage.getPayoutTxHex())).getTxs().get(0);
-                xmrWalletService.closeMultisigWallet(tradeId);
                 dispute.setDisputePayoutTxId(parsedPayoutTx.getHash());
                 XmrWalletService.printTxs("Disputed payoutTx received from peer", parsedPayoutTx);
             }
@@ -440,9 +438,6 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
           System.out.println("Arbitrator created updated payout tx for co-signer!!!");
           System.out.println(payoutTx);
           
-          // close multisig wallet
-          xmrWalletService.closeMultisigWallet(tradeId);
-
           // send updated payout tx to sender
           PubKeyRing senderPubKeyRing = contract.getBuyerNodeAddress().equals(request.getSenderNodeAddress()) ? contract.getBuyerPubKeyRing() : contract.getSellerPubKeyRing();
           ArbitratorPayoutTxResponse response = new ArbitratorPayoutTxResponse(
