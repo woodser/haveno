@@ -37,24 +37,25 @@ public class ProcessDepositsConfirmedMessage extends TradeTask {
         try {
           runInterceptHook();
 
+          // get sender based on the pub key
+          // TODO: trade.getTradingPeer(PubKeyRing)
+          DepositsConfirmedMessage request = (DepositsConfirmedMessage) processModel.getTradeMessage();
+          TradingPeer sender;
+          if (trade.getArbitrator().getPubKeyRing().equals(request.getPubKeyRing())) sender = trade.getArbitrator();
+          else if (trade.getBuyer().getPubKeyRing().equals(request.getPubKeyRing())) sender = trade.getBuyer();
+          else if (trade.getSeller().getPubKeyRing().equals(request.getPubKeyRing())) sender = trade.getSeller();
+          else throw new RuntimeException("Pub key ring is not from arbitrator, buyer, or seller");
           
-          // update peer node address if not from arbitrator
-          // TODO: update based on pub key ring?
-        //   if (!trade.getArbitrator().getNodeAddress().equals(processModel.getTempTradingPeerNodeAddress())) {
-        //     System.out.println("ProcessFirstConfirmation message 2");
-        //       trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
-        //       System.out.println("ProcessFirstConfirmation message 3");
-        //   }
+          // update peer node address
+          sender.setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 
           // decrypt seller payment account payload if key given
-          DepositsConfirmedMessage request = (DepositsConfirmedMessage) processModel.getTradeMessage();
           if (request.getSellerPaymentAccountKey() != null && trade.getTradingPeer().getPaymentAccountPayload() == null) {
               log.info(trade.getClass().getSimpleName() + " decryping using seller payment account key: " + request.getSellerPaymentAccountKey());
               trade.decryptPeersPaymentAccountPayload(request.getSellerPaymentAccountKey());
           }
 
           // store updated multisig hex for processing on payment sent
-          TradingPeer sender = trade.getTradingPeer(processModel.getTempTradingPeerNodeAddress());
           sender.setUpdatedMultisigHex(request.getUpdatedMultisigHex());
 
           // persist and complete

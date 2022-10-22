@@ -612,7 +612,7 @@ public abstract class Trade implements Tradable, Model {
 
         isInitialized = true;
 
-        if (!isPaymentSent()) {
+        if (!isPaymentReceived()) {
             
             // handle deposit phase changes
             tradePhaseSubscription = EasyBind.subscribe(phaseProperty, newValue -> {
@@ -624,9 +624,8 @@ public abstract class Trade implements Tradable, Model {
                 boolean listeningToPayout = (isBuyer() && isPaymentSent()) || (isSeller() && isPaymentReceived()) || (isArbitrator() && isDepositUnlocked());
                 if (listeningToPayout) listenForPayoutTx(); // TODO: e.g. 60s for arbitrator, refresh period for traders
 
-                // complete on payment sent
-                if (isPaymentSent()) {
-                    log.info("Handling phase change to payment sent for {} {}", getClass().getSimpleName(), getId());
+                // complete on payment received
+                if (isPaymentReceived()) {
                     UserThread.execute(() -> {
                         if (tradePhaseSubscription != null) {
                             tradePhaseSubscription.unsubscribe();
