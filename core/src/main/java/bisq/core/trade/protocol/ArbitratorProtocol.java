@@ -15,8 +15,8 @@ import bisq.core.trade.protocol.tasks.ArbitratorProcessReserveTx;
 import bisq.core.trade.protocol.tasks.ArbitratorProcessPayoutTxPublishedMessage;
 import bisq.core.trade.protocol.tasks.ArbitratorSendInitTradeOrMultisigRequests;
 import bisq.core.trade.protocol.tasks.ProcessInitTradeRequest;
-import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToBuyer;
-import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToSeller;
+import bisq.core.trade.protocol.tasks.SendDepositsConfirmedMessageToBuyer;
+import bisq.core.trade.protocol.tasks.SendDepositsConfirmedMessageToSeller;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.util.Validator;
 import bisq.network.p2p.NodeAddress;
@@ -148,6 +148,6 @@ public class ArbitratorProtocol extends DisputeProtocol {
   @SuppressWarnings("unchecked")
   @Override
   public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
-    return new Class[] { SendFirstConfirmationMessageToBuyer.class, SendFirstConfirmationMessageToSeller.class };
+    return new Class[] { SendDepositsConfirmedMessageToBuyer.class, SendDepositsConfirmedMessageToSeller.class };
   }
 }

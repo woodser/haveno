@@ -46,7 +46,7 @@ import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.InitTradeRequest;
 import bisq.core.trade.messages.MediatedPayoutTxPublishedMessage;
 import bisq.core.trade.messages.MediatedPayoutTxSignatureMessage;
-import bisq.core.trade.messages.FirstConfirmationMessage;
+import bisq.core.trade.messages.DepositsConfirmedMessage;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.RefreshTradeStateRequest;
 import bisq.core.trade.messages.SignContractRequest;
@@ -155,8 +155,8 @@ public class CoreNetworkProtoResolver extends CoreProtoResolver implements Netwo
                     return DepositRequest.fromProto(proto.getDepositRequest(), this, messageVersion);
                 case DEPOSIT_RESPONSE:
                     return DepositResponse.fromProto(proto.getDepositResponse(), this, messageVersion);
-                case FIRST_CONFIRMATION_MESSAGE:
-                    return FirstConfirmationMessage.fromProto(proto.getFirstConfirmationMessage(), this, messageVersion);
+                case DEPOSITS_CONFIRMED_MESSAGE:
+                    return DepositsConfirmedMessage.fromProto(proto.getDepositsConfirmedMessage(), this, messageVersion);
 
                 case PAYMENT_SENT_MESSAGE:
                     return PaymentSentMessage.fromProto(proto.getPaymentSentMessage(), messageVersion);

@@ -20,7 +20,7 @@ package bisq.core.trade.protocol.tasks;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.FirstConfirmationMessage;
+import bisq.core.trade.messages.DepositsConfirmedMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.crypto.PubKeyRing;
@@ -33,10 +33,10 @@ import monero.wallet.MoneroWallet;
  * Send message on first confirmation to decrypt peer payment account and update multisig hex.
  */
 @Slf4j
-public abstract class SendFirstConfirmationMessage extends SendMailboxMessageTask {
-    private FirstConfirmationMessage message;
+public abstract class SendDepositsConfirmedMessage extends SendMailboxMessageTask {
+    private DepositsConfirmedMessage message;
 
-    public SendFirstConfirmationMessage(TaskRunner<Trade> taskHandler, Trade trade) {
+    public SendDepositsConfirmedMessage(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 
@@ -71,7 +71,7 @@ public abstract class SendFirstConfirmationMessage extends SendMailboxMessageTas
             // messages where only the one which gets processed by the peer would be removed we use the same uid. All
             // other data stays the same when we re-send the message at any time later.
             String deterministicId = tradeId + processModel.getMyNodeAddress().getFullAddress();
-            message = new FirstConfirmationMessage(
+            message = new DepositsConfirmedMessage(
                     trade.getOffer().getId(),
                     processModel.getMyNodeAddress(),
                     deterministicId,

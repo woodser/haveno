@@ -26,7 +26,7 @@ import bisq.core.trade.TradeUtils;
 import bisq.core.trade.handlers.TradeResultHandler;
 import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.trade.messages.DepositResponse;
-import bisq.core.trade.messages.FirstConfirmationMessage;
+import bisq.core.trade.messages.DepositsConfirmedMessage;
 import bisq.core.trade.messages.InitMultisigRequest;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.SignContractRequest;
@@ -37,7 +37,7 @@ import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.protocol.FluentProtocol.Condition;
 import bisq.core.trade.protocol.tasks.MaybeSendSignContractRequest;
 import bisq.core.trade.protocol.tasks.ProcessDepositResponse;
-import bisq.core.trade.protocol.tasks.ProcessFirstConfirmationMessage;
+import bisq.core.trade.protocol.tasks.ProcessDepositsConfirmedMessage;
 import bisq.core.trade.protocol.tasks.ProcessInitMultisigRequest;
 import bisq.core.trade.protocol.tasks.ProcessPaymentReceivedMessage;
 import bisq.core.trade.protocol.tasks.ProcessSignContractRequest;
@@ -99,8 +99,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected void onTradeMessage(TradeMessage message, NodeAddress peerNodeAddress) {
         log.info("Received {} as TradeMessage from {} with tradeId {} and uid {}", message.getClass().getSimpleName(), peerNodeAddress, message.getTradeId(), message.getUid());
-        if (message instanceof FirstConfirmationMessage) {
-            handle((FirstConfirmationMessage) message, peerNodeAddress);
+        if (message instanceof DepositsConfirmedMessage) {
+            handle((DepositsConfirmedMessage) message, peerNodeAddress);
         } else if (message instanceof PaymentReceivedMessage) {
             handle((PaymentReceivedMessage) message, peerNodeAddress);
         }
@@ -108,8 +108,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected void onMailboxMessage(TradeMessage message, NodeAddress peerNodeAddress) {
         log.info("Received {} as MailboxMessage from {} with tradeId {} and uid {}", message.getClass().getSimpleName(), peerNodeAddress, message.getTradeId(), message.getUid());
-        if (message instanceof FirstConfirmationMessage) {
-            handle((FirstConfirmationMessage) message, peerNodeAddress);
+        if (message instanceof DepositsConfirmedMessage) {
+            handle((DepositsConfirmedMessage) message, peerNodeAddress);
         } else if (message instanceof PaymentReceivedMessage) {
             handle((PaymentReceivedMessage) message, peerNodeAddress);
         }
@@ -385,15 +385,15 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }).start();
     }
 
-    public void handle(FirstConfirmationMessage response, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handle(FirstConfirmationMessage)");
+    public void handle(DepositsConfirmedMessage response, NodeAddress sender) {
+        System.out.println(getClass().getCanonicalName() + ".handle(DepositsConfirmedMessage)");
         new Thread(() -> {
             synchronized (trade) {
                 latchTrade();
                 expect(new Condition(trade)
                         .with(response)
                         .from(sender))
-                        .setup(tasks(ProcessFirstConfirmationMessage.class)
+                        .setup(tasks(ProcessDepositsConfirmedMessage.class)
                         .using(new TradeTaskRunner(trade,
                                 () -> {
                                     handleTaskRunnerSuccess(sender, response);
@@ -722,7 +722,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                 .setup(tasks(getFirstConfirmationTasks())
                                 .using(new TradeTaskRunner(trade,
                                         () -> {
-                                            handleTaskRunnerSuccess(null, null, "SendFirstConfirmationMessages");
+                                            handleTaskRunnerSuccess(null, null, "SendDepositsConfirmedMessages");
                                         },
                                         (errorMessage) -> {
                                             handleTaskRunnerFault(null, null, errorMessage);

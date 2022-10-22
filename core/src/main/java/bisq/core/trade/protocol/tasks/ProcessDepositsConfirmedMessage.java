@@ -20,15 +20,15 @@ package bisq.core.trade.protocol.tasks;
 
 import bisq.common.taskrunner.TaskRunner;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.FirstConfirmationMessage;
+import bisq.core.trade.messages.DepositsConfirmedMessage;
 import bisq.core.trade.protocol.TradingPeer;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ProcessFirstConfirmationMessage extends TradeTask {
+public class ProcessDepositsConfirmedMessage extends TradeTask {
     
     @SuppressWarnings({"unused"})
-    public ProcessFirstConfirmationMessage(TaskRunner taskHandler, Trade trade) {
+    public ProcessDepositsConfirmedMessage(TaskRunner taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 
@@ -46,7 +46,7 @@ public class ProcessFirstConfirmationMessage extends TradeTask {
         //   }
 
           // decrypt seller payment account payload if key given
-          FirstConfirmationMessage request = (FirstConfirmationMessage) processModel.getTradeMessage();
+          DepositsConfirmedMessage request = (DepositsConfirmedMessage) processModel.getTradeMessage();
           if (request.getSellerPaymentAccountKey() != null && trade.getTradingPeer().getPaymentAccountPayload() == null) {
               log.info(trade.getClass().getSimpleName() + " decryping using seller payment account key: " + request.getSellerPaymentAccountKey());
               trade.decryptPeersPaymentAccountPayload(request.getSellerPaymentAccountKey());

@@ -26,7 +26,7 @@ import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
 import bisq.core.trade.protocol.tasks.BuyerPreparePaymentSentMessage;
 import bisq.core.trade.protocol.tasks.BuyerSendPaymentSentMessage;
-import bisq.core.trade.protocol.tasks.SendFirstConfirmationMessageToArbitrator;
+import bisq.core.trade.protocol.tasks.SendDepositsConfirmedMessageToArbitrator;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.network.p2p.NodeAddress;
 import lombok.extern.slf4j.Slf4j;
@@ -120,6 +120,6 @@ public class BuyerProtocol extends DisputeProtocol {
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends TradeTask>[] getFirstConfirmationTasks() {
-        return new Class[] { SendFirstConfirmationMessageToArbitrator.class };
+        return new Class[] { SendDepositsConfirmedMessageToArbitrator.class };
     }
 }

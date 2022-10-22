@@ -32,14 +32,14 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class FirstConfirmationMessage extends TradeMailboxMessage implements DirectMessage {
+public final class DepositsConfirmedMessage extends TradeMailboxMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     @Nullable
     private final byte[] sellerPaymentAccountKey;
     @Nullable
     private final String updatedMultisigHex;
 
-    public FirstConfirmationMessage(String tradeId,
+    public DepositsConfirmedMessage(String tradeId,
                                      NodeAddress senderNodeAddress,
                                      String uid,
                                      @Nullable byte[] sellerPaymentAccountKey,
@@ -57,19 +57,19 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
 
     @Override
     public protobuf.NetworkEnvelope toProtoNetworkEnvelope() {
-        protobuf.FirstConfirmationMessage.Builder builder = protobuf.FirstConfirmationMessage.newBuilder()
+        protobuf.DepositsConfirmedMessage.Builder builder = protobuf.DepositsConfirmedMessage.newBuilder()
                 .setTradeId(tradeId)
                 .setSenderNodeAddress(senderNodeAddress.toProtoMessage())
                 .setUid(uid);
         Optional.ofNullable(sellerPaymentAccountKey).ifPresent(e -> builder.setSellerPaymentAccountKey(ByteString.copyFrom(e)));
         Optional.ofNullable(updatedMultisigHex).ifPresent(e -> builder.setUpdatedMultisigHex(updatedMultisigHex));
-        return getNetworkEnvelopeBuilder().setFirstConfirmationMessage(builder).build();
+        return getNetworkEnvelopeBuilder().setDepositsConfirmedMessage(builder).build();
     }
 
-    public static FirstConfirmationMessage fromProto(protobuf.FirstConfirmationMessage proto,
+    public static DepositsConfirmedMessage fromProto(protobuf.DepositsConfirmedMessage proto,
                                                       CoreProtoResolver coreProtoResolver,
                                                       String messageVersion) {
-        return new FirstConfirmationMessage(proto.getTradeId(),
+        return new DepositsConfirmedMessage(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 proto.getUid(),
                 ProtoUtil.byteArrayOrNullFromProto(proto.getSellerPaymentAccountKey()),
@@ -78,7 +78,7 @@ public final class FirstConfirmationMessage extends TradeMailboxMessage implemen
 
     @Override
     public String toString() {
-        return "FirstConfirmationMessage {" +
+        return "DepositsConfirmedMessage {" +
                 "\n     senderNodeAddress=" + senderNodeAddress +
                 ",\n     sellerPaymentAccountKey=" + sellerPaymentAccountKey +
                 ",\n     updatedMultisigHex=" + (updatedMultisigHex == null ? null : updatedMultisigHex.substring(0, Math.max(updatedMultisigHex.length(), 1000))) +

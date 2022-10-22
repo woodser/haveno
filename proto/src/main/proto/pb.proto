@@ -74,7 +74,7 @@ message NetworkEnvelope {
         SignContractResponse sign_contract_response = 1006;
         DepositRequest deposit_request = 1007;
         DepositResponse deposit_response = 1008;
-        FirstConfirmationMessage first_confirmation_message = 1009;
+        DepositsConfirmedMessage deposits_confirmed_message = 1009;
         PaymentSentMessage payment_sent_message = 1011;
         PaymentReceivedMessage payment_received_message = 1012;
         PayoutTxPublishedMessage payout_tx_published_message = 1013;
@@ -350,7 +350,7 @@ message DepositResponse {
     int64 current_date = 5;
 }
 
-message FirstConfirmationMessage {
+message DepositsConfirmedMessage {
     string trade_id = 1;
     NodeAddress sender_node_address = 2;
     string uid = 3;

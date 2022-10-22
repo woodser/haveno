@@ -28,17 +28,17 @@ import lombok.extern.slf4j.Slf4j;
  * Send message on first confirmation to decrypt peer payment account and update multisig hex.
  */
 @Slf4j
-public class SendFirstConfirmationMessageToBuyer extends SendFirstConfirmationMessage {
+public class SendDepositsConfirmedMessageToArbitrator extends SendDepositsConfirmedMessage {
 
-    public SendFirstConfirmationMessageToBuyer(TaskRunner<Trade> taskHandler, Trade trade) {
+    public SendDepositsConfirmedMessageToArbitrator(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
 
     protected NodeAddress getReceiverNodeAddress() {
-        return trade.getBuyer().getNodeAddress();
+        return trade.getArbitrator().getNodeAddress();
     }
 
     protected PubKeyRing getReceiverPubKeyRing() {
-        return trade.getBuyer().getPubKeyRing();
+        return trade.getArbitrator().getPubKeyRing();
     }
 }
