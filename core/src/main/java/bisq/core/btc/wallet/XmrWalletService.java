@@ -100,6 +100,7 @@ public class XmrWalletService {
     private TradeManager tradeManager;
     private MoneroWalletRpc wallet;
     private Map<String, MoneroWallet> multisigWallets;
+    private Map<String, Object> multisigWalletLocks = new HashMap<String, Object>();
     private final Map<String, Optional<MoneroTx>> txCache = new HashMap<String, Optional<MoneroTx>>();
 
     @Inject
@@ -187,28 +188,36 @@ public class XmrWalletService {
     }
 
     public boolean multisigWalletExists(String tradeId) {
-        return walletExists(MONERO_MULTISIG_WALLET_PREFIX + tradeId);
+        if (!multisigWalletLocks.containsKey(tradeId)) multisigWalletLocks.put(tradeId, new Object());
+        synchronized(multisigWalletLocks.get(tradeId)) {
+            return walletExists(MONERO_MULTISIG_WALLET_PREFIX + tradeId);
+        }
     }
 
-    // TODO (woodser): test retaking failed trade. create new multisig wallet or replace? cannot reuse
     public MoneroWallet createMultisigWallet(String tradeId) {
-        log.info("{}.createMultisigWallet({})", getClass().getSimpleName(), tradeId);
-        if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
-        String path = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
-        MoneroWallet multisigWallet = createWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null, false); // auto-assign port
-        multisigWallets.put(tradeId, multisigWallet);
-        return multisigWallet;
+        if (!multisigWalletLocks.containsKey(tradeId)) multisigWalletLocks.put(tradeId, new Object());
+        synchronized(multisigWalletLocks.get(tradeId)) {
+            log.info("{}.createMultisigWallet({})", getClass().getSimpleName(), tradeId);
+            if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
+            String path = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
+            MoneroWallet multisigWallet = createWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null, false); // auto-assign port
+            multisigWallets.put(tradeId, multisigWallet);
+            return multisigWallet;
+        }
     }
 
     // TODO (woodser): provide progress notifications during open?
     public MoneroWallet getMultisigWallet(String tradeId) {
-        log.info("{}.getMultisigWallet({})", getClass().getSimpleName(), tradeId);
-        if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
-        String path = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
-        if (!walletExists(path)) throw new RuntimeException("Multisig wallet does not exist for trade " + tradeId);
-        MoneroWallet multisigWallet = openWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null);
-        multisigWallets.put(tradeId, multisigWallet);
-        return multisigWallet;
+        if (!multisigWalletLocks.containsKey(tradeId)) multisigWalletLocks.put(tradeId, new Object());
+        synchronized(multisigWalletLocks.get(tradeId)) {
+            log.info("{}.getMultisigWallet({})", getClass().getSimpleName(), tradeId);
+            if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
+            String path = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
+            if (!walletExists(path)) throw new RuntimeException("Multisig wallet does not exist for trade " + tradeId);
+            MoneroWallet multisigWallet = openWallet(new MoneroWalletConfig().setPath(path).setPassword(getWalletPassword()), null);
+            multisigWallets.put(tradeId, multisigWallet);
+            return multisigWallet;
+        }
     }
 
     public void saveWallet(MoneroWallet wallet) {
@@ -217,19 +226,25 @@ public class XmrWalletService {
     }
 
     public void closeMultisigWallet(String tradeId) {
-        log.info("{}.closeMultisigWallet({})", getClass().getSimpleName(), tradeId);
-        if (!multisigWallets.containsKey(tradeId)) throw new RuntimeException("Multisig wallet to close was not previously opened for trade " + tradeId);
-        MoneroWallet wallet = multisigWallets.remove(tradeId);
-        closeWallet(wallet, true);
+        if (!multisigWalletLocks.containsKey(tradeId)) multisigWalletLocks.put(tradeId, new Object());
+        synchronized(multisigWalletLocks.get(tradeId)) {
+            log.info("{}.closeMultisigWallet({})", getClass().getSimpleName(), tradeId);
+            if (!multisigWallets.containsKey(tradeId)) throw new RuntimeException("Multisig wallet to close was not previously opened for trade " + tradeId);
+            MoneroWallet wallet = multisigWallets.remove(tradeId);
+            closeWallet(wallet, true);
+        }
     }
 
     public boolean deleteMultisigWallet(String tradeId) {
-        log.info("{}.deleteMultisigWallet({})", getClass().getSimpleName(), tradeId);
-        String walletName = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
-        if (!walletExists(walletName)) return false;
-        if (multisigWallets.containsKey(tradeId)) closeMultisigWallet(tradeId); // TODO: synchronize
-        deleteWallet(walletName);
-        return true;
+        if (!multisigWalletLocks.containsKey(tradeId)) multisigWalletLocks.put(tradeId, new Object());
+        synchronized(multisigWalletLocks.get(tradeId)) {
+            log.info("{}.deleteMultisigWallet({})", getClass().getSimpleName(), tradeId);
+            String walletName = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
+            if (!walletExists(walletName)) return false;
+            if (multisigWallets.containsKey(tradeId)) closeMultisigWallet(tradeId);
+            deleteWallet(walletName);
+            return true;
+        }
     }
 
     public MoneroTxWallet createTx(List<MoneroDestination> destinations) {
