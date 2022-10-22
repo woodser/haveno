@@ -21,7 +21,6 @@ import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.SignContractResponse;
 import bisq.core.trade.messages.TradeMessage;
 import bisq.core.trade.protocol.tasks.ApplyFilter;
@@ -66,17 +65,11 @@ public class BuyerProtocol extends DisputeProtocol {
     @Override
     protected void onTradeMessage(TradeMessage message, NodeAddress peer) {
         super.onTradeMessage(message, peer);
-        if (message instanceof PaymentReceivedMessage) {
-            handle((PaymentReceivedMessage) message, peer);
-        }
     }
 
     @Override
     public void onMailboxMessage(TradeMessage message, NodeAddress peer) {
         super.onMailboxMessage(message, peer);
-        if (message instanceof PaymentReceivedMessage) {
-            handle((PaymentReceivedMessage) message, peer);
-        }
     }
 
     @Override

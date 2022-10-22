@@ -618,6 +618,7 @@ public abstract class Trade implements Tradable, Model {
 
         // listen for payout tx
         // TODO: listen until payout tx unlocked
+        // TODO: arbitrator listens after deposit published
         if (getPhase().ordinal() >= Trade.Phase.PAYMENT_SENT.ordinal() && !isPayoutPublished()) {
             listenForPayoutTx();
             payoutStateSubscription = EasyBind.subscribe(payoutStateProperty, newValue -> {

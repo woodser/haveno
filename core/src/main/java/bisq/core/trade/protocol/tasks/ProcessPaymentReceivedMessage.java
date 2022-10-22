@@ -59,9 +59,6 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             // import multisig hex
             if (message.getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(message.getUpdatedMultisigHex());
 
-            // listen for payout tx
-            trade.listenForPayoutTx();
-
             // handle if payout tx not published
             if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
                 if (trade instanceof BuyerTrade) {
@@ -80,6 +77,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                     processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
                 } else if (trade instanceof ArbitratorTrade) { // TODO: handle arbitrator
                     log.warn("Need to implement arbitrator ProcessPaymentReceivedMessage");
+                    trade.listenForPayoutTx();
                     //throw new RuntimeException("Not implemented");
                 }
             } else {
