@@ -76,8 +76,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                     // mark address entries as available
                     processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
                 } else if (trade instanceof ArbitratorTrade) { // TODO: handle arbitrator
-                    log.warn("Need to implement arbitrator ProcessPaymentReceivedMessage");
-                    trade.listenForPayoutTx();
+                    log.warn("Need to verify, (sign), and publish payout tx as arbitrator in ProcessPaymentReceivedMessage");
                     //throw new RuntimeException("Not implemented");
                 }
             } else {
@@ -92,8 +91,8 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                 processModel.getAccountAgeWitnessService().publishOwnSignedWitness(signedWitness);
             }
 
-            // TODO: if arbitrator trade, complete trade
-            trade.setStateIfValidTransitionTo(trade instanceof ArbitratorTrade ? Trade.State.TRADE_COMPLETED : Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
+            // complete
+            if (!trade.isArbitrator()) trade.setStateIfValidTransitionTo(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG); // arbitrator trade completes on payout published
             processModel.getTradeManager().requestPersistence();
             complete();
         } catch (Throwable t) {

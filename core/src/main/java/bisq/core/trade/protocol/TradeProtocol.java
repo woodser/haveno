@@ -254,7 +254,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     public abstract Class<? extends TradeTask>[] getFirstConfirmationTasks();
 
     public void handleInitMultisigRequest(InitMultisigRequest request, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handleInitMultisigRequest()");
+        System.out.println(getClass().getSimpleName() + ".handleInitMultisigRequest()");
         new Thread(() -> {
             synchronized (trade) {
                 latchTrade();
@@ -282,7 +282,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     public void handleSignContractRequest(SignContractRequest message, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handleSignContractRequest() " + trade.getId());
+        System.out.println(getClass().getSimpleName() + ".handleSignContractRequest() " + trade.getId());
         new Thread(() -> {
             synchronized (trade) {
                 Validator.checkTradeId(processModel.getOfferId(), message);
@@ -318,7 +318,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     public void handleSignContractResponse(SignContractResponse message, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handleSignContractResponse() " + trade.getId());
+        System.out.println(getClass().getSimpleName() + ".handleSignContractResponse() " + trade.getId());
         sendMessagesOnConfirm(); // send message to peers on first confirmation
         new Thread(() -> {
             synchronized (trade) {
@@ -356,7 +356,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     public void handleDepositResponse(DepositResponse response, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handleDepositResponse()");
+        System.out.println(getClass().getSimpleName() + ".handleDepositResponse()");
         new Thread(() -> {
             synchronized (trade) {
                 latchTrade();
@@ -386,7 +386,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     public void handle(DepositsConfirmedMessage response, NodeAddress sender) {
-        System.out.println(getClass().getCanonicalName() + ".handle(DepositsConfirmedMessage)");
+        System.out.println(getClass().getSimpleName() + ".handle(DepositsConfirmedMessage)");
         new Thread(() -> {
             synchronized (trade) {
                 latchTrade();
@@ -409,7 +409,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     // received by buyer and arbitrator
     protected void handle(PaymentReceivedMessage message, NodeAddress peer) {
-        System.out.println(getClass().getCanonicalName() + ".handle(PaymentReceivedMessage)");
+        System.out.println(getClass().getSimpleName() + ".handle(PaymentReceivedMessage)");
         if (!(trade instanceof BuyerTrade || trade instanceof ArbitratorTrade)) {
             log.warn("Ignoring PaymentReceivedMessage since not buyer or arbitrator");
             return;
@@ -419,7 +419,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                 latchTrade();
                 Validator.checkTradeId(processModel.getOfferId(), message);
                 processModel.setTradeMessage(message);
-                expect(anyPhase(trade instanceof ArbitratorTrade ? new Trade.Phase[] { Trade.Phase.DEPOSITS_PUBLISHED } : new Trade.Phase[] { Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED  })
+                expect(anyPhase(trade instanceof ArbitratorTrade ? new Trade.Phase[] { Trade.Phase.DEPOSITS_UNLOCKED } : new Trade.Phase[] { Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED  })
                     .with(message)
                     .from(peer))
                     .setup(tasks(
