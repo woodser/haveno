@@ -1055,6 +1055,10 @@ public abstract class Trade implements Tradable, Model {
         });
     }
 
+    public void setStateIfProgress(State state) {
+        if (state.ordinal() > getState().ordinal()) setState(state);
+    }
+
     public void setPayoutStateIfValidTransitionTo(PayoutState newPayoutState) {
         if (payoutState.isValidTransitionTo(newPayoutState)) {
             setPayoutState(newPayoutState);

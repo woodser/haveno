@@ -20,11 +20,10 @@ package bisq.core.trade.protocol.tasks;
 import bisq.core.account.sign.SignedWitness;
 import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.ArbitratorTrade;
-import bisq.core.trade.BuyerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.util.Validator;
-
+import common.utils.GenUtils;
 import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
@@ -60,24 +59,24 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             if (message.getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(message.getUpdatedMultisigHex());
 
             // handle if payout tx not published
-            if (trade.isPayoutPublished()) {
-                if (trade instanceof BuyerTrade) {
+            if (!trade.isPayoutPublished()) {
 
-                    // verify, sign (if unsigned), and publish payout tx
-                    boolean previouslySigned = trade.getPayoutTxHex() != null;
-                    if (previouslySigned) {
-                        log.info("{} publishing signed payout tx from seller", trade.getClass().getSimpleName());
-                    } else {
-                        log.info("{} verifying, signing, and publishing seller's payout tx", trade.getClass().getSimpleName());
-                    }
-                    trade.verifyPayoutTx(message.getPayoutTxHex(), !previouslySigned, true);
-                    // TODO (woodser): send PayoutTxPublishedMessage to seller
+                // TODO: implement these
+                boolean isSigned = true;
+                boolean sawArrivedBuyer = true;
 
-                    // mark address entries as available
-                    processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(trade.getId());
-                } else if (trade instanceof ArbitratorTrade) { // TODO: handle arbitrator
-                    log.warn("Need to verify, (sign), and publish payout tx as arbitrator in ProcessPaymentReceivedMessage");
-                    //throw new RuntimeException("Not implemented");
+                // arbitrator waits for buyer to sign and broadcast payout tx if saw arrived
+                if (trade instanceof ArbitratorTrade && !isSigned && sawArrivedBuyer) {
+                    log.info("{} waiting for buyer to sign and broadcast payout tx", trade.getClass().getSimpleName());
+                    GenUtils.waitFor(30000);
+                    multisigWallet.rescanSpent();
+                }
+
+                // verify and publish payout tx
+                if (!trade.isPayoutPublished()) {
+                    if (isSigned) log.info("{} publishing signed payout tx from seller", trade.getClass().getSimpleName());
+                    else log.info("{} verifying, signing, and publishing seller's payout tx", trade.getClass().getSimpleName());
+                    trade.verifyPayoutTx(message.getPayoutTxHex(), !isSigned, true);
                 }
             } else {
                 log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());

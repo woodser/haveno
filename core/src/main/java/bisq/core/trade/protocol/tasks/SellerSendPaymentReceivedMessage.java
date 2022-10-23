@@ -18,7 +18,6 @@
 package bisq.core.trade.protocol.tasks;
 
 import bisq.core.account.sign.SignedWitness;
-import bisq.core.account.witness.AccountAgeWitnessService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentReceivedMessage;
 import bisq.core.trade.messages.TradeMailboxMessage;
@@ -83,28 +82,28 @@ public abstract class SellerSendPaymentReceivedMessage extends SendMailboxMessag
 
     @Override
     protected void setStateSent() {
-        trade.setState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG); // TODO: setStateIfProgress()
+        trade.setStateIfProgress(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
         log.info("{} sent: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateArrived() {
-        trade.setState(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfProgress(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
         log.info("{} arrived: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateStoredInMailbox() {
-        trade.setState(Trade.State.SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfProgress(Trade.State.SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG);
         log.info("{} stored in mailbox: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
     @Override
     protected void setStateFault() {
-        trade.setState(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfProgress(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
         log.error("{} failed: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }

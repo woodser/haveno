@@ -138,8 +138,8 @@ public class SellerProtocol extends DisputeProtocol {
                             .setup(tasks(
                                     ApplyFilter.class,
                                     SellerPreparePaymentReceivedMessage.class,
-                                    SellerSendPaymentReceivedMessageToArbitrator.class,
-                                    SellerSendPaymentReceivedMessageToBuyer.class)
+                                    SellerSendPaymentReceivedMessageToBuyer.class,
+                                    SellerSendPaymentReceivedMessageToArbitrator.class)
                             .using(new TradeTaskRunner(trade, () -> {
                                 this.errorMessageHandler = null;
                                 handleTaskRunnerSuccess(event);

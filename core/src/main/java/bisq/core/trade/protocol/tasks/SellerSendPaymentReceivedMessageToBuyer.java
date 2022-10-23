@@ -18,6 +18,7 @@
 package bisq.core.trade.protocol.tasks;
 
 import bisq.core.trade.Trade;
+import bisq.core.trade.messages.TradeMessage;
 import bisq.network.p2p.NodeAddress;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.taskrunner.TaskRunner;
@@ -39,5 +40,13 @@ public class SellerSendPaymentReceivedMessageToBuyer extends SellerSendPaymentRe
 
     protected PubKeyRing getReceiverPubKeyRing() {
         return trade.getBuyer().getPubKeyRing();
+    }
+
+    // continue execution on fault so payment received message is sent to arbitrator
+    @Override
+    protected void onFault(String errorMessage, TradeMessage message) {
+        setStateFault();
+        appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+        complete();
     }
 }
