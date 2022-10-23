@@ -629,13 +629,14 @@ public abstract class Trade implements Tradable, Model {
 
             // complete arbitrator trade when payout pubished // TODO: confirmed?
             if (isPayoutPublished() && isArbitrator() && !isCompleted()) {
-                log.info("Handling payout tx published for {} {}", getClass().getSimpleName(), getId());
+                log.info("Payout published for {} {}", getClass().getSimpleName(), getId());
                 processModel.getTradeManager().onTradeCompleted(this);
             }
 
-            // trade completion cleanup
+            // cleanup when payout unlocks
             if (isPayoutUnlocked()) {
-                // TODO: delete multisig wallet
+                log.info("Payout unlocked for {} {}, deleting multisig wallet", getClass().getSimpleName(), getId()); // TODO: retain backup for some time?
+                deleteWallet();
                 processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
                 if (tradeTxsLooper != null) {
                     tradeTxsLooper.stop();
@@ -649,8 +650,6 @@ public abstract class Trade implements Tradable, Model {
                 });
             }
         });
-
-
     }
 
     // TODO: also use wallet listener for faster notifications?
@@ -976,6 +975,11 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
+    public void deleteWallet() {
+        if (xmrWalletService.multisigWalletExists(getId())) xmrWalletService.deleteMultisigWallet(getId());
+        else log.warn("Multisig wallet to delete for trade {} does not exist", getId());
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Model implementation
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1282,7 +1286,7 @@ public abstract class Trade implements Tradable, Model {
         return getState().getPhase().ordinal() == Phase.INIT.ordinal();
     }
 
-    public boolean isTakerFeePublished() {
+    public boolean isDepositRequested() {
         return getState().getPhase().ordinal() >= Phase.DEPOSIT_REQUESTED.ordinal();
     }
 

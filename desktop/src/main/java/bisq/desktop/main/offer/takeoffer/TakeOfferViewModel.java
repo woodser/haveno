@@ -443,7 +443,7 @@ class TakeOfferViewModel extends ActivatableWithDataModel<TakeOfferDataModel> im
     }
 
     private void applyTradeState() {
-        if (trade.isTakerFeePublished()) {
+        if (trade.isDepositRequested()) {
             if (takeOfferResultHandler != null)
                 takeOfferResultHandler.run();
 

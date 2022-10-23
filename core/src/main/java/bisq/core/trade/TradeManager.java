@@ -463,7 +463,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
           ((ArbitratorProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request, sender, errorMessage -> {
               log.warn("Arbitrator error during trade initialization for trade {}: {}", trade.getId(), errorMessage);
-              maybeRemoveTrade(trade);
+              removeTrade(trade);
           });
 
           requestPersistence();
@@ -548,7 +548,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
           ((MakerProtocol) getTradeProtocol(trade)).handleInitTradeRequest(request, sender, errorMessage -> {
               log.warn("Maker error during trade initialization: " + errorMessage);
               openOfferManager.unreserveOpenOffer(openOffer); // offer remains available // TODO: only unreserve if funds not deposited to multisig
-              maybeRemoveTrade(trade);
+              removeTrade(trade);
               if (takeOfferRequestErrorMessageHandler != null) takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
           });
 
@@ -731,7 +731,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         }, errorMessage -> {
                             log.warn("Taker error during trade initialization: " + errorMessage);
                             errorMessageHandler.handleErrorMessage(errorMessage);
-                            maybeRemoveTrade(trade);
+                            removeTrade(trade);
                         });
                         requestPersistence();
                     }
@@ -785,7 +785,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     public void onTradeCompleted(Trade trade) {
         closedTradableManager.add(trade);
         trade.setState(Trade.State.TRADE_COMPLETED);
-        maybeRemoveTrade(trade);
+        removeTrade(trade);
 
         // TODO The address entry should have been removed already. Check and if its the case remove that.
         xmrWalletService.resetAddressEntriesForPendingTrade(trade.getId());
@@ -853,7 +853,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     // If trade is in already in critical state (if taker role: taker fee; both roles: after deposit published)
     // we move the trade to failedTradesManager
     public void onMoveInvalidTradeToFailedTrades(Trade trade) {
-        maybeRemoveTrade(trade);
+        removeTrade(trade);
         failedTradesManager.add(trade);
     }
 
@@ -1004,34 +1004,29 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         return closedTradableManager.getClosedTrades().stream().filter(e -> e.getId().equals(tradeId)).findFirst();
     }
 
-    private synchronized void maybeRemoveTrade(Trade trade) {
-        log.info("TradeManager.maybeRemoveTrade()");
+    private synchronized void removeTrade(Trade trade) {
+        log.info("TradeManager.removeTrade()");
         synchronized(tradableList) {
             if (!tradableList.contains(trade)) return;
 
-            // delete trade if not possibly funded
-            if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal() || trade.getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) {
+            // remove trade
+            tradableList.remove(trade);
 
-                // remove trade
-                tradableList.remove(trade);
-
-                // unreserve trade key images
-                if (trade instanceof TakerTrade && trade.getSelf().getReserveTxKeyImages() != null) {
-                    for (String keyImage : trade.getSelf().getReserveTxKeyImages()) {
-                        xmrWalletService.getWallet().thawOutput(keyImage);
-                    }
+            // unreserve trade key images
+            if (trade instanceof TakerTrade && trade.getSelf().getReserveTxKeyImages() != null) {
+                for (String keyImage : trade.getSelf().getReserveTxKeyImages()) {
+                    xmrWalletService.getWallet().thawOutput(keyImage);
                 }
-
-                // delete multisig wallet
-                deleteTradeWallet(trade);
-
-                // unregister and persist
-                p2PService.removeDecryptedDirectMessageListener(getTradeProtocol(trade));
-                requestPersistence();
-            } else {
-                log.warn("Not deleting trade " + trade.getId() + " because its trade wallet might be funded");
-                // TODO: schedule wallet for deletion after unlock
             }
+
+            // delete trade wallet if before funded
+            if (!trade.isDepositRequested()) {
+                trade.deleteWallet();
+            }
+
+            // unregister and persist
+            p2PService.removeDecryptedDirectMessageListener(getTradeProtocol(trade));
+            requestPersistence();
         }
     }
 
@@ -1047,10 +1042,5 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     //  (part of the persistence refactor PR)
     private void onTradesChanged() {
         this.numPendingTrades.set(getObservableList().size());
-    }
-
-    private void deleteTradeWallet(Trade trade) {
-        if (xmrWalletService.multisigWalletExists(trade.getId())) xmrWalletService.deleteMultisigWallet(trade.getId());
-        else log.warn("Multisig wallet to delete for trade {} does not exist", trade.getId());
     }
 }

@@ -189,19 +189,19 @@ public class XmrWalletService {
         return accountService.getPassword() == null ? MONERO_WALLET_RPC_DEFAULT_PASSWORD : accountService.getPassword();
     }
 
-    private synchronized void addWalletLock(String id) {
+    private synchronized void initWalletLock(String id) {
         if (!walletLocks.containsKey(id)) walletLocks.put(id, new Object());
     }
 
     public boolean multisigWalletExists(String tradeId) {
-        addWalletLock(tradeId);
+        initWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             return walletExists(MONERO_MULTISIG_WALLET_PREFIX + tradeId);
         }
     }
 
     public MoneroWallet createMultisigWallet(String tradeId) {
-        addWalletLock(tradeId);
+        initWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             log.info("{}.createMultisigWallet({})", getClass().getSimpleName(), tradeId);
             if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
@@ -214,7 +214,7 @@ public class XmrWalletService {
 
     // TODO (woodser): provide progress notifications during open?
     public MoneroWallet getMultisigWallet(String tradeId) {
-        addWalletLock(tradeId);
+        initWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             log.info("{}.getMultisigWallet({})", getClass().getSimpleName(), tradeId);
             if (multisigWallets.containsKey(tradeId)) return multisigWallets.get(tradeId);
@@ -232,7 +232,7 @@ public class XmrWalletService {
     }
 
     public void closeMultisigWallet(String tradeId) {
-        addWalletLock(tradeId);
+        initWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             log.info("{}.closeMultisigWallet({})", getClass().getSimpleName(), tradeId);
             if (!multisigWallets.containsKey(tradeId)) throw new RuntimeException("Multisig wallet to close was not previously opened for trade " + tradeId);
@@ -242,7 +242,7 @@ public class XmrWalletService {
     }
 
     public boolean deleteMultisigWallet(String tradeId) {
-        addWalletLock(tradeId);
+        initWalletLock(tradeId);
         synchronized(walletLocks.get(tradeId)) {
             log.info("{}.deleteMultisigWallet({})", getClass().getSimpleName(), tradeId);
             String walletName = MONERO_MULTISIG_WALLET_PREFIX + tradeId;
