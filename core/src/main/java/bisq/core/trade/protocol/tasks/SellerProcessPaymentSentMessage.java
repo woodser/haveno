@@ -19,16 +19,11 @@ package bisq.core.trade.protocol.tasks;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import bisq.common.taskrunner.TaskRunner;
-import bisq.core.btc.wallet.XmrWalletService;
 import bisq.core.trade.Trade;
 import bisq.core.trade.messages.PaymentSentMessage;
 import bisq.core.util.Validator;
 import lombok.extern.slf4j.Slf4j;
-import monero.wallet.MoneroWallet;
 
 @Slf4j
 public class SellerProcessPaymentSentMessage extends TradeTask {
@@ -53,7 +48,7 @@ public class SellerProcessPaymentSentMessage extends TradeTask {
             trade.decryptPeersPaymentAccountPayload(message.getPaymentAccountKey());
 
             // update latest peer address
-            trade.getTradingPeer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
+            trade.getBuyer().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
 
             String counterCurrencyTxId = message.getCounterCurrencyTxId();
             if (counterCurrencyTxId != null && counterCurrencyTxId.length() < 100) {

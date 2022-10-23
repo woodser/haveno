@@ -55,7 +55,7 @@ public class BuyerProtocol extends DisputeProtocol {
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
         // send payment sent message
-        given(anyPhase(Trade.Phase.PAYMENT_SENT, Trade.Phase.PAYMENT_RECEIVED) // TODO: remove payment received phase?
+        given(anyPhase(Trade.Phase.PAYMENT_SENT)
                 .anyState(Trade.State.BUYER_STORED_IN_MAILBOX_PAYMENT_SENT_MSG, Trade.State.BUYER_SEND_FAILED_PAYMENT_SENT_MSG)
                 .with(BuyerEvent.STARTUP))
                 .setup(tasks(BuyerSendPaymentSentMessage.class))
