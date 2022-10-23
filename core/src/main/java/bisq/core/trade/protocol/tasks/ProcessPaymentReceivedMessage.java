@@ -46,7 +46,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             PaymentReceivedMessage message = (PaymentReceivedMessage) processModel.getTradeMessage();
             Validator.checkTradeId(processModel.getOfferId(), message);
             checkNotNull(message);
-            checkArgument(message.getPayoutTxHex() != null);
+            checkArgument(message.getUnsignedPayoutTxHex() != null || message.getSignedPayoutTxHex() != null, "No payout tx hex provided");
 
             // update to the latest peer address of our peer if the message is correct
             trade.getSeller().setNodeAddress(processModel.getTempTradingPeerNodeAddress());
@@ -61,12 +61,9 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             // handle if payout tx not published
             if (!trade.isPayoutPublished()) {
 
-                // TODO: implement these
-                boolean isSigned = true;
-                boolean sawArrivedBuyer = true;
-
-                // arbitrator waits for buyer to sign and broadcast payout tx if saw arrived
-                if (trade instanceof ArbitratorTrade && !isSigned && sawArrivedBuyer) {
+                // arbitrator waits for buyer to sign and broadcast payout tx if message arrived
+                boolean isSigned = message.getSignedPayoutTxHex() != null;
+                if (trade instanceof ArbitratorTrade && !isSigned && message.isSawArrivedPaymentReceivedMsg()) {
                     log.info("{} waiting for buyer to sign and broadcast payout tx", trade.getClass().getSimpleName());
                     GenUtils.waitFor(30000);
                     multisigWallet.rescanSpent();
@@ -74,9 +71,13 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
 
                 // verify and publish payout tx
                 if (!trade.isPayoutPublished()) {
-                    if (isSigned) log.info("{} publishing signed payout tx from seller", trade.getClass().getSimpleName());
-                    else log.info("{} verifying, signing, and publishing seller's payout tx", trade.getClass().getSimpleName());
-                    trade.verifyPayoutTx(message.getPayoutTxHex(), !isSigned, true);
+                    if (isSigned) {
+                        log.info("{} publishing signed payout tx from seller", trade.getClass().getSimpleName());
+                        trade.verifyPayoutTx(message.getSignedPayoutTxHex(), false, true);
+                    } else {
+                        log.info("{} verifying, signing, and publishing seller's payout tx", trade.getClass().getSimpleName());
+                        trade.verifyPayoutTx(message.getUnsignedPayoutTxHex(), true, true);
+                    }
                 }
             } else {
                 log.info("We got the payout tx already set from the payout listener and do nothing here. trade ID={}", trade.getId());

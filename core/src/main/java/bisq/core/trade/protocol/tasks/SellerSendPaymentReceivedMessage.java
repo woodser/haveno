@@ -75,8 +75,10 @@ public abstract class SellerSendPaymentReceivedMessage extends SendMailboxMessag
                 id,
                 processModel.getMyNodeAddress(),
                 signedWitness,
-                trade.getPayoutTxHex(),
-                trade.getSelf().getUpdatedMultisigHex()
+                trade.isPayoutPublished() ? null : trade.getPayoutTxHex(), // unsigned
+                trade.isPayoutPublished() ? trade.getPayoutTxHex() : null, // signed
+                trade.getSelf().getUpdatedMultisigHex(),
+                trade.getState().ordinal() >= Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG.ordinal() // informs to expect payout
         );
     }
 
@@ -88,9 +90,9 @@ public abstract class SellerSendPaymentReceivedMessage extends SendMailboxMessag
     }
 
     @Override
-    protected void setStateArrived() {
-        trade.setStateIfProgress(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
-        log.info("{} arrived: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
+    protected void setStateFault() {
+        trade.setStateIfProgress(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
+        log.error("{} failed: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 
@@ -102,9 +104,9 @@ public abstract class SellerSendPaymentReceivedMessage extends SendMailboxMessag
     }
 
     @Override
-    protected void setStateFault() {
-        trade.setStateIfProgress(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
-        log.error("{} failed: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
+    protected void setStateArrived() {
+        trade.setStateIfProgress(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
+        log.info("{} arrived: tradeId={} at peer {} SignedWitness {}", getClass().getSimpleName(), trade.getId(), getReceiverNodeAddress(), signedWitness);
         processModel.getTradeManager().requestPersistence();
     }
 }

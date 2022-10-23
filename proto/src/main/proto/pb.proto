@@ -424,8 +424,10 @@ message PaymentReceivedMessage {
     NodeAddress sender_node_address = 2;
     string uid = 3;
     SignedWitness signed_witness = 4; // Added in v1.4.0
-    string payout_tx_hex = 5; // TODO: separate into signed and unsigned?
-    string updated_multisig_hex = 6;
+    string unsigned_payout_tx_hex = 5;
+    string signed_payout_tx_hex = 6;
+    string updated_multisig_hex = 7;
+    bool saw_arrived_payment_received_msg = 8;
 }
 
 message PayoutTxPublishedMessage {

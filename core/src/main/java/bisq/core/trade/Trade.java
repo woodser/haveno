@@ -627,17 +627,17 @@ public abstract class Trade implements Tradable, Model {
         // handle payout state events
         payoutStateSubscription = EasyBind.subscribe(payoutStateProperty, newValue -> {
 
-            // complete arbitrator trade when payout pubished // TODO: confirmed?
-            if (isPayoutPublished() && isArbitrator() && !isCompleted()) {
+            // cleanup when payout published
+            if (isPayoutPublished()) {
                 log.info("Payout published for {} {}", getClass().getSimpleName(), getId());
-                processModel.getTradeManager().onTradeCompleted(this);
+                if (isArbitrator() && !isCompleted()) processModel.getTradeManager().onTradeCompleted(this); // complete arbitrator trade when payout published
+                processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
             }
 
             // cleanup when payout unlocks
             if (isPayoutUnlocked()) {
                 log.info("Payout unlocked for {} {}, deleting multisig wallet", getClass().getSimpleName(), getId()); // TODO: retain backup for some time?
                 deleteWallet();
-                processModel.getXmrWalletService().resetAddressEntriesForPendingTrade(getId());
                 if (tradeTxsLooper != null) {
                     tradeTxsLooper.stop();
                     tradeTxsLooper = null;
