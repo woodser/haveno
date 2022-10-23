@@ -654,7 +654,7 @@ public abstract class Trade implements Tradable, Model {
     }
 
     // TODO: also use wallet listener for faster notifications?
-    // TODO: stop listening on shut down or if payout unlocked
+    // TODO: stop listening on shut down
     public void listenToTradeTxs() {
         if (tradeTxsLooper != null) return;
         log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
@@ -664,48 +664,56 @@ public abstract class Trade implements Tradable, Model {
 
         // query wallet for tx state
         tradeTxsLooper = new TaskLooper(() -> {
+            try {
+                
+                // done when payout unlocks
+                if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) return;
 
-            // done when payout unlocks
-            if (getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) return;
+                // rescan spent if deposits unlocked
+                if (isDepositUnlocked()) wallet.rescanSpent();
 
-            // check deposit txs
-            if (getPhase().ordinal() < Trade.Phase.DEPOSITS_UNLOCKED.ordinal()) {
-                List<MoneroTxWallet> txs = wallet.getTxs(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()), new ArrayList<String>());
-                if (txs.size() == 2) {
-                    setStateDepositsPublished();
-                    boolean makerFirst = txs.get(0).getHash().equals(processModel.getMaker().getDepositTxHash());
-                    getMaker().setDepositTx(makerFirst ? txs.get(0) : txs.get(1));
-                    getTaker().setDepositTx(makerFirst ? txs.get(1) : txs.get(0));
-
-                    // check if deposit txs confirmed
-                    if (txs.get(0).isConfirmed() && txs.get(1).isConfirmed()) setStateDepositsConfirmed();
-                    if (!txs.get(0).isLocked() && !txs.get(1).isLocked()) setStateDepositsUnlocked();
-                }
-            }
-
-            // check payout tx
-            if (getPhase().ordinal() >= Trade.Phase.DEPOSITS_UNLOCKED.ordinal()) {
-
-                // check if deposit txs spent (appears on payout published)
+                // get txs with outputs
                 List<MoneroTxWallet> txs = wallet.getTxs(new MoneroTxQuery()
                         .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
                         .setIncludeOutputs(true));
-                for (MoneroTxWallet tx : txs) {
-                    for (MoneroOutputWallet output : tx.getOutputsWallet()) {
-                        if (Boolean.TRUE.equals(output.isSpent()))  {
-                            setPayoutStatePublished();
-                        }
+
+                // check deposit txs
+                if (!isDepositUnlocked()) {
+                    if (txs.size() == 2) {
+                        setStateDepositsPublished();
+                        boolean makerFirst = txs.get(0).getHash().equals(processModel.getMaker().getDepositTxHash());
+                        getMaker().setDepositTx(makerFirst ? txs.get(0) : txs.get(1));
+                        getTaker().setDepositTx(makerFirst ? txs.get(1) : txs.get(0));
+
+                        // check if deposit txs confirmed
+                        if (txs.get(0).isConfirmed() && txs.get(1).isConfirmed()) setStateDepositsConfirmed();
+                        if (!txs.get(0).isLocked() && !txs.get(1).isLocked()) setStateDepositsUnlocked();
                     }
                 }
 
-                // check for outgoing txs (appears on payout confirmed)
-                List<MoneroTxWallet> outgoingTxs = wallet.getTxs(new MoneroTxQuery().setIsOutgoing(true));
-                if (!outgoingTxs.isEmpty()) {
-                    MoneroTxWallet payoutTx = outgoingTxs.get(0);
-                    setPayoutStatePublished();
-                    if (payoutTx.isConfirmed()) setPayoutStateConfirmed();
-                    if (!payoutTx.isLocked()) setPayoutStateUnlocked();
+                // check payout tx
+                else {
+
+                    // check if deposit txs spent (appears on payout published)
+                    for (MoneroTxWallet tx : txs) {
+                        for (MoneroOutputWallet output : tx.getOutputsWallet()) {
+                            if (Boolean.TRUE.equals(output.isSpent()))  {
+                                setPayoutStatePublished();
+                            }
+                        }
+                    }
+
+                    // check for outgoing txs (appears on payout confirmed)
+                    List<MoneroTxWallet> outgoingTxs = wallet.getTxs(new MoneroTxQuery().setIsOutgoing(true));
+                    if (!outgoingTxs.isEmpty()) {
+                        MoneroTxWallet payoutTx = outgoingTxs.get(0);
+                        setPayoutStatePublished();
+                        if (payoutTx.isConfirmed()) setPayoutStateConfirmed();
+                        if (!payoutTx.isLocked()) setPayoutStateUnlocked();
+                    }
                 }
+            } catch (Exception e) {
+                log.warn("Error checking trade txs in background: " + e.getMessage()); // TODO: ignore if connection refused and shutting down
             }
         });
         tradeTxsLooper.start(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs()); // TODO: adjust after payout published
