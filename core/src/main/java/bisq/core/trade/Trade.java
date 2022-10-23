@@ -715,7 +715,7 @@ public abstract class Trade implements Tradable, Model {
                 log.warn("Error checking trade txs in background: " + e.getMessage()); // TODO: ignore if connection refused and shutting down
             }
         });
-        tradeTxsLooper.start(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs()); // TODO: adjust after payout published
+        tradeTxsLooper.start(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs()); // TODO: slow down after payout published, especially arbitrator
     }
 
 

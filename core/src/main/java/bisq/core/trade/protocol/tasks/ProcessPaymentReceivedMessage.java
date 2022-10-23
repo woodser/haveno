@@ -60,7 +60,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
             if (message.getUpdatedMultisigHex() != null) multisigWallet.importMultisigHex(message.getUpdatedMultisigHex());
 
             // handle if payout tx not published
-            if (trade.getPayoutState().ordinal() < Trade.PayoutState.PUBLISHED.ordinal()) {
+            if (trade.isPayoutPublished()) {
                 if (trade instanceof BuyerTrade) {
 
                     // verify, sign (if unsigned), and publish payout tx
