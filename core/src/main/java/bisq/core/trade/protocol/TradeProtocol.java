@@ -81,7 +81,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     private Timer timeoutTimer;
     protected TradeResultHandler tradeResultHandler;
     protected ErrorMessageHandler errorMessageHandler;
-    private boolean depositsConfirmedMessageSent; // TODO: persist to trade state
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +145,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         // TODO: run with trade lock and latch, otherwise getting invalid transition warnings on startup after offline trades
         
         EasyBind.subscribe(trade.stateProperty(), state -> {
-            if (trade.isDepositConfirmed()) sendDepositsConfirmedMessageOnce();
+            if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) sendDepositsConfirmedMessage();
         });
     }
 
@@ -711,9 +710,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    private void sendDepositsConfirmedMessageOnce() {
-        if (depositsConfirmedMessageSent) return;
-        depositsConfirmedMessageSent = true;
+    private void sendDepositsConfirmedMessage() {
         new Thread(() -> {
             synchronized (trade) {
                 latchTrade();

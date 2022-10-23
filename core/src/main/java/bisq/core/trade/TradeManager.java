@@ -1010,7 +1010,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             if (!tradableList.contains(trade)) return;
 
             // delete trade if not possibly funded
-            if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal() || trade.getPayoutState().ordinal() >= Trade.PayoutState.CONFIRMED.ordinal()) { // TODO: delete after payout unlocked
+            if (trade.getPhase().ordinal() < Trade.Phase.DEPOSIT_REQUESTED.ordinal() || trade.getPayoutState().ordinal() >= Trade.PayoutState.UNLOCKED.ordinal()) {
 
                 // remove trade
                 tradableList.remove(trade);
