@@ -104,8 +104,7 @@ public class ProvidersRepository {
             if (useLocalhostForP2P) {
                 // If we run in localhost mode we don't have the tor node running, so we need a clearnet host
                 // Use localhost for using a locally running provider
-                // providerAsString = Collections.singletonList("http://localhost:8080/");
-                providers = Collections.singletonList("https://price.haveno.network/"); // Haveno
+                providers = Arrays.asList("http://localhost:8078/");
             } else {
                 providers = DEFAULT_NODES;
             }

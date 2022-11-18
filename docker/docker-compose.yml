@@ -1,0 +1,122 @@
+version: '3'
+
+services:
+    node1:
+        build: haveno/
+        container_name: node1
+        entrypoint: [ "./.localnet/monerod" ]
+        command: [
+            "--testnet",
+            "--no-igd",
+            "--hide-my-port",
+            "--data-dir=./.localnet/xmr_local/node1",
+            "--p2p-bind-ip=127.0.0.1",
+            "--p2p-bind-port=48080",
+            "--rpc-bind-port=48081",
+            "--no-zmq",
+            "--add-exclusive-node=127.0.0.1:28080",
+            "--rpc-access-control-origins=http://localhost:8080",
+            "--fixed-difficulty=800",
+            "--non-interactive",
+            "--offline"
+        ]
+
+    node2:
+        build: haveno/
+        container_name: node2
+        entrypoint: [ "./.localnet/monerod" ]
+        command: [
+            "--testnet",
+            "--no-igd",
+            "--hide-my-port",
+            "--data-dir=./.localnet/xmr_local/node2",
+            "--rpc-bind-ip=0.0.0.0",
+            "--rpc-bind-port=28081",
+            "--no-zmq",
+            "--confirm-external-bind",
+            "--add-exclusive-node=127.0.0.1:48080",
+            "--rpc-access-control-origins=http://localhost:8080",
+            "--fixed-difficulty=800",
+            "--non-interactive",
+            "--offline"
+        ]
+        network_mode: "host"
+        depends_on:
+            - node1
+
+    seed:
+        build: haveno/
+        container_name: seed
+        entrypoint: [ "./haveno-seednode" ]
+        command: [
+            "--baseCurrencyNetwork=XMR_LOCAL",
+            "--useLocalhostForP2P=true",
+            "--useDevPrivilegeKeys=true",
+            "--nodePort=2002",
+            "--appName=haveno-XMR_LOCAL_Seed_2002",
+        ]
+        network_mode: "host"
+        depends_on:
+            - node2
+
+    arbitrator:
+        build: haveno/
+        container_name: arbitrator
+        entrypoint: [ "./haveno-daemon" ]
+        command: [
+            "--baseCurrencyNetwork=XMR_LOCAL",
+            "--useLocalhostForP2P=true",
+            "--useDevPrivilegeKeys=true",
+            "--nodePort=4444",
+            "--appName=haveno-XMR_LOCAL_arbitrator",
+            "--apiPassword=apitest",
+            "--apiPort=9998",
+            "--walletRpcBindPort=38090",
+            "--passwordRequired=false",
+        ]
+        network_mode: "host"
+        depends_on:
+            - seed
+
+    alice:
+        build: haveno/
+        container_name: alice
+        entrypoint: [ "./haveno-daemon" ]
+        command: [
+            "--baseCurrencyNetwork=XMR_LOCAL",
+            "--useLocalhostForP2P=true",
+            "--useDevPrivilegeKeys=true",
+            "--nodePort=5555",
+            "--appName=haveno_alice",
+            "--apiPassword=apitest",
+            "--apiPort=9999",
+            "--walletRpcBindPort=38091",
+            "--passwordRequired=false",
+        ]
+        network_mode: "host"
+        depends_on:
+            - seed
+
+    bob:
+        build: haveno/
+        container_name: bob
+        entrypoint: [ "./haveno-daemon" ]
+        command: [
+            "--baseCurrencyNetwork=XMR_LOCAL",
+            "--useLocalhostForP2P=true",
+            "--useDevPrivilegeKeys=true",
+            "--nodePort=6666",
+            "--appName=haveno_bob",
+            "--apiPassword=apitest",
+            "--apiPort=10000",
+            "--walletRpcBindPort=38092",
+        ]
+        network_mode: "host"
+        depends_on:
+            - seed
+
+    pricenode:
+        build: haveno/
+        container_name: pricenode
+        entrypoint: [ "./haveno-pricenode" ]
+        network_mode: "host"
