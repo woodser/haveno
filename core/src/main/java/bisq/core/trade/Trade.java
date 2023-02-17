@@ -752,6 +752,7 @@ public abstract class Trade implements Tradable, Model {
     public void syncWallet() {
         if (getWallet() == null) throw new RuntimeException("Cannot sync trade wallet because it doesn't exist for " + getClass().getSimpleName() + ", " + getId());
         if (getWallet().getDaemonConnection() == null) throw new RuntimeException("Cannot sync trade wallet because it's not connected to a Monero daemon for " + getClass().getSimpleName() + ", " + getId());
+        if (isShutDown) throw new RuntimeException("Cannot sync trade wallet because trade is shut down");
         log.info("Syncing wallet for {} {}", getClass().getSimpleName(), getId());
         getWallet().sync();
         pollWallet();
@@ -1114,6 +1115,7 @@ public abstract class Trade implements Tradable, Model {
             isInitialized = false;
             isShutDown = true;
             if (wallet != null) closeWallet();
+            wallet = null;
             if (txPollLooper != null) {
                 txPollLooper.stop();
                 txPollLooper = null;
