@@ -21,7 +21,6 @@ import bisq.core.api.AccountServiceListener;
 import bisq.core.app.ConsoleInput;
 import bisq.core.app.CoreModule;
 import bisq.core.app.HavenoHeadlessAppMain;
-import bisq.core.app.HavenoSetup;
 
 import bisq.common.UserThread;
 import bisq.common.app.AppModule;
@@ -43,12 +42,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
-
-
 import bisq.daemon.grpc.GrpcServer;
 
 @Slf4j
-public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSetup.HavenoSetupListener {
+public class HavenoDaemonMain extends HavenoHeadlessAppMain {
 
     private GrpcServer grpcServer;
 
@@ -150,6 +147,7 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
         // Start rpc server in case login is coming in from rpc
         grpcServer = injector.getInstance(GrpcServer.class);
 
+        CompletableFuture<Boolean> inputResult = new CompletableFuture<Boolean>();
         try {
             if (!opened.get()) {
                 // Nonblocking, we need to stop if the login occurred through rpc.
@@ -186,16 +184,15 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain implements HavenoSet
                 }
 
                 accountService.removeListener(accountListener);
-    //            opened = accountService.isAccountOpen();
+                inputResult.complete(accountService.isAccountOpen());
             } else {
                 grpcServer.start();
             }
         } catch (InterruptedException | ExecutionException e) {
-            log.error("Problem with loginAccount: {}", e.getMessage());
-            e.printStackTrace();
+            inputResult.completeExceptionally(e);
         }
 
-        return opened;
+        return inputResult;
     }
 
     /**
