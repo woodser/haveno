@@ -149,7 +149,11 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain {
 
         CompletableFuture<Boolean> inputResult = new CompletableFuture<Boolean>();
         try {
-            if (!opened.get()) {
+            if (opened.get()) {
+                grpcServer.start();
+                return opened;
+            } else {
+
                 // Nonblocking, we need to stop if the login occurred through rpc.
                 // TODO: add a mode to mask password
                 ConsoleInput reader = new ConsoleInput(Integer.MAX_VALUE, Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
@@ -185,8 +189,6 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain {
 
                 accountService.removeListener(accountListener);
                 inputResult.complete(accountService.isAccountOpen());
-            } else {
-                grpcServer.start();
             }
         } catch (InterruptedException | ExecutionException e) {
             inputResult.completeExceptionally(e);

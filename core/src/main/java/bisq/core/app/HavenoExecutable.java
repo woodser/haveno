@@ -231,7 +231,8 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             accountService.createAccount(null);
             result.complete(accountService.isAccountOpen());
         } else {
-            result.completeExceptionally(new IllegalStateException("Account does not exist and password is required"));
+            log.info("Account does not exist and password is required");
+            result.complete(false);
         }
         return result;
     }
