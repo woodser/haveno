@@ -135,12 +135,13 @@ public class TxIdTextField extends AnchorPane {
         };
         xmrWalletService.addWalletListener(txUpdater);
 
-        updateConfidence(txId, true, null);
-
         textField.setText(txId);
         textField.setOnMouseClicked(mouseEvent -> openBlockExplorer(txId));
         blockExplorerIcon.setOnMouseClicked(mouseEvent -> openBlockExplorer(txId));
         copyIcon.setOnMouseClicked(e -> Utilities.copyToClipboard(txId));
+
+        // update off main thread
+        new Thread(() -> updateConfidence(txId, true, null)).start();
     }
 
     public void cleanup() {
@@ -165,7 +166,7 @@ public class TxIdTextField extends AnchorPane {
         }
     }
 
-    private void updateConfidence(String txId, boolean useCache, Long height) {
+    private synchronized void updateConfidence(String txId, boolean useCache, Long height) {
         MoneroTx tx = null;
         try {
             tx = useCache ? xmrWalletService.getTxWithCache(txId) : xmrWalletService.getTx(txId);
