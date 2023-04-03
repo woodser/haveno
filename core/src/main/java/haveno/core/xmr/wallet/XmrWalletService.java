@@ -393,7 +393,9 @@ public class XmrWalletService {
                 // submit tx to pool
                 MoneroSubmitTxResult result = daemon.submitTxHex(txHex, true); // TODO (woodser): invert doNotRelay flag to relay for library consistency?
                 if (!result.isGood()) throw new RuntimeException("Failed to submit tx to daemon: " + JsonUtils.serialize(result));
-                tx = getTx(txHash);
+
+                // get pool tx which has weight and size
+                for (MoneroTx poolTx : daemon.getTxPool()) if (poolTx.getHash().equals(txHash)) tx = poolTx;
 
                 // verify key images
                 if (keyImages != null) {
