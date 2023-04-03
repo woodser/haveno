@@ -392,7 +392,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         } else {
             log.info("Initializing persisted trades");
             HavenoUtils.executeTasks(tasks, threadPoolSize);
-            log.warn("Done initializing trades");
+            log.info("Done initializing trades");
         }
 
         // reset any available address entries
