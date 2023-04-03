@@ -988,10 +988,21 @@ public abstract class Trade implements Tradable, Model {
         if (sign) {
 
             // sign tx
-            MoneroMultisigSignResult result = wallet.signMultisigTxHex(payoutTxHex);
-            if (result.getSignedMultisigTxHex() == null) throw new RuntimeException("Error signing payout tx");
-            payoutTxHex = result.getSignedMultisigTxHex();
-            describedTxSet = wallet.describeMultisigTxSet(payoutTxHex); // update described set
+            try {
+                MoneroMultisigSignResult result = wallet.signMultisigTxHex(payoutTxHex);
+                if (result.getSignedMultisigTxHex() == null) throw new RuntimeException("Error signing payout tx");
+                payoutTxHex = result.getSignedMultisigTxHex();
+            } catch (Exception e) {
+                if (getPayoutTxHex() != null) {
+                    log.info("Reusing previous payout tx for {} {} because signing failed with error \"{}\"", getClass().getSimpleName(), getId(), e.getMessage()); // in case previous message with signed tx failed to send
+                    payoutTxHex = getPayoutTxHex();
+                } else {
+                    throw e;
+                }
+            }
+
+            // describe result
+            describedTxSet = wallet.describeMultisigTxSet(payoutTxHex);
             payoutTx = describedTxSet.getTxs().get(0);
 
             // verify fee is within tolerance by recreating payout tx
