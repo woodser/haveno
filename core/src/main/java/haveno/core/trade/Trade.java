@@ -1695,7 +1695,8 @@ public abstract class Trade implements Tradable, Model {
             try {
                 txs = getWallet().getTxs(new MoneroTxQuery()
                         .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
-                        .setIncludeOutputs(true));
+                        .setIncludeOutputs(true)
+                        .setInTxPool(!isDepositsConfirmed())); // skip checking pool after confirmed
             } catch (Exception e) {
                 return;
             }
@@ -1739,7 +1740,9 @@ public abstract class Trade implements Tradable, Model {
                 }
 
                 // check for outgoing txs (appears after wallet submits payout tx or on payout confirmed)
-                List<MoneroTxWallet> outgoingTxs = getWallet().getTxs(new MoneroTxQuery().setIsOutgoing(true));
+                List<MoneroTxWallet> outgoingTxs = getWallet().getTxs(new MoneroTxQuery()
+                        .setIsOutgoing(true)
+                        .setInTxPool(false));
                 if (!outgoingTxs.isEmpty()) {
                     MoneroTxWallet payoutTx = outgoingTxs.get(0);
                     setPayoutTx(payoutTx);
