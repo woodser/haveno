@@ -746,7 +746,6 @@ public abstract class Trade implements Tradable, Model {
         } catch (Exception e) {
             if (!isShutDown) {
                 log.warn("Error syncing trade wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage());
-                e.printStackTrace();
             }
         }
     }
