@@ -691,7 +691,13 @@ public class XmrWalletService {
             wallet.setDaemonConnection(connection);
             if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
                 wallet.startSyncing(connectionsService.getDefaultRefreshPeriodMs());
-                new Thread(() -> wallet.sync()).start();
+                new Thread(() -> {
+                    try {
+                        wallet.sync();
+                    } catch (Exception e) {
+                        log.warn("Failed to sync main wallet after setting daemon connection: " + e.getMessage());
+                    }
+                }).start();
             }
         }
     }
