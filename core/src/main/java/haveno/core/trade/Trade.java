@@ -1643,6 +1643,7 @@ public abstract class Trade implements Tradable, Model {
     }
 
     private void setDaemonConnection(MoneroRpcConnection connection) {
+        if (isShutDown) return;
         MoneroWallet wallet = getWallet();
         if (wallet == null) return;
         log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
@@ -1721,6 +1722,7 @@ public abstract class Trade implements Tradable, Model {
                         .setIncludeOutputs(true)
                         .setInTxPool(isDepositsConfirmed() ? false : null)); // skip checking pool after confirmed
             } catch (Exception e) {
+                log.info("Deposit txs not fetched from the wallet: {}", e.getMessage());
                 return;
             }
 
