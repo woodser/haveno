@@ -1686,17 +1686,21 @@ public abstract class Trade implements Tradable, Model {
         startPolling();
     }
 
-    private synchronized void startPolling() {
-        if (txPollLooper != null) return;
-        log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
-        txPollLooper = new TaskLooper(() -> { pollWallet(); });
-        txPollLooper.start(walletRefreshPeriod);
+    private void startPolling() {
+        synchronized (walletLock) {
+            if (txPollLooper != null) return;
+            log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
+            txPollLooper = new TaskLooper(() -> { pollWallet(); });
+            txPollLooper.start(walletRefreshPeriod);
+        }
     }
 
-    private synchronized void stopPolling() {
-        if (txPollLooper != null) {
-            txPollLooper.stop();
-            txPollLooper = null;
+    private void stopPolling() {
+        synchronized (walletLock) {
+            if (txPollLooper != null) {
+                txPollLooper.stop();
+                txPollLooper = null;
+            }
         }
     }
 
