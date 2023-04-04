@@ -317,6 +317,7 @@ public abstract class Trade implements Tradable, Model {
     @Getter
     private final Offer offer;
     private final long takerFee;
+    private final long totalTxFee;
 
     // Added in 1.5.1
     @Getter
@@ -361,8 +362,6 @@ public abstract class Trade implements Tradable, Model {
 
     // Transient
     // Immutable
-    @Getter
-    transient final private BigInteger totalTxFee;
     @Getter
     transient final private XmrWalletService xmrWalletService;
 
@@ -465,7 +464,7 @@ public abstract class Trade implements Tradable, Model {
         this.offer = offer;
         this.amount = tradeAmount.longValueExact();
         this.takerFee = takerFee.longValueExact();
-        this.totalTxFee = BigInteger.valueOf(0); // TODO: sum tx fees
+        this.totalTxFee = 0l; // TODO: sum tx fees
         this.price = tradePrice;
         this.xmrWalletService = xmrWalletService;
         this.processModel = processModel;
@@ -1573,6 +1572,10 @@ public abstract class Trade implements Tradable, Model {
         return BigInteger.valueOf(takerFee);
     }
 
+    public BigInteger getTotalTxFee() {
+        return BigInteger.valueOf(totalTxFee);
+    }
+
     public BigInteger getBuyerSecurityDeposit() {
         if (getBuyer().getDepositTxHash() == null) return null;
         return getBuyer().getSecurityDeposit();
@@ -1872,6 +1875,7 @@ public abstract class Trade implements Tradable, Model {
         protobuf.Trade.Builder builder = protobuf.Trade.newBuilder()
                 .setOffer(offer.toProtoMessage())
                 .setTakerFee(takerFee)
+                .setTotalTxFee(totalTxFee)
                 .setTakeOfferDate(takeOfferDate)
                 .setProcessModel(processModel.toProtoMessage())
                 .setAmount(amount)
@@ -1896,7 +1900,7 @@ public abstract class Trade implements Tradable, Model {
         Optional.ofNullable(mediationResultState).ifPresent(e -> builder.setMediationResultState(MediationResultState.toProtoMessage(mediationResultState)));
         Optional.ofNullable(refundResultState).ifPresent(e -> builder.setRefundResultState(RefundResultState.toProtoMessage(refundResultState)));
         Optional.ofNullable(payoutTxHex).ifPresent(e -> builder.setPayoutTxHex(payoutTxHex));
-        Optional.ofNullable(payoutTxKey).ifPresent(e -> builder.setPayoutTxHex(payoutTxKey));
+        Optional.ofNullable(payoutTxKey).ifPresent(e -> builder.setPayoutTxKey(payoutTxKey));
         Optional.ofNullable(counterCurrencyExtraData).ifPresent(e -> builder.setCounterCurrencyExtraData(counterCurrencyExtraData));
         Optional.ofNullable(assetTxProofResult).ifPresent(e -> builder.setAssetTxProofResult(assetTxProofResult.name()));
         return builder.build();
@@ -1941,6 +1945,7 @@ public abstract class Trade implements Tradable, Model {
         return "Trade{" +
                 "\n     offer=" + offer +
                 ",\n     takerFee=" + takerFee +
+                ",\n     totalTxFee=" + totalTxFee +
                 ",\n     takeOfferDate=" + takeOfferDate +
                 ",\n     processModel=" + processModel +
                 ",\n     payoutTxId='" + payoutTxId + '\'' +
