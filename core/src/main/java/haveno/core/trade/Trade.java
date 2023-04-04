@@ -1645,6 +1645,7 @@ public abstract class Trade implements Tradable, Model {
         if (wallet == null) return;
         log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
         wallet.setDaemonConnection(connection);
+        updateWalletRefreshPeriod();
 
         // sync and reprocess messages on new thread
         if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
@@ -1661,8 +1662,8 @@ public abstract class Trade implements Tradable, Model {
     private void updateSyncing() {
         if (isShutDown) return;
         if (!isIdling()) {
-            trySyncWallet();
             updateWalletRefreshPeriod();
+            trySyncWallet();
         }  else {
             long startSyncingInMs = ThreadLocalRandom.current().nextLong(0, getWalletRefreshPeriod()); // random time to start syncing
             UserThread.runAfter(() -> {
