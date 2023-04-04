@@ -1719,7 +1719,7 @@ public abstract class Trade implements Tradable, Model {
                 txs = getWallet().getTxs(new MoneroTxQuery()
                         .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
                         .setIncludeOutputs(true)
-                        .setInTxPool(!isDepositsConfirmed())); // skip checking pool after confirmed
+                        .setInTxPool(isDepositsConfirmed() ? false : null)); // skip checking pool after confirmed
             } catch (Exception e) {
                 return;
             }
