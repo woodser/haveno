@@ -384,6 +384,7 @@ public abstract class Trade implements Tradable, Model {
     //  Mutable
     @Getter
     transient private boolean isInitialized;
+    @Getter
     transient private boolean isShutDown;
 
     // Added in v1.2.0
