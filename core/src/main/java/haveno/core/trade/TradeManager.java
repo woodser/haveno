@@ -468,7 +468,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
               }
           }
           if (offer == null) {
-              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because no offer is on the books", sender, request.getTradeId());
+              log.warn("Ignoring InitTradeRequest from {} with tradeId {} because offer is not on the books", sender, request.getTradeId());
               return;
           }
 

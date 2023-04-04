@@ -1168,9 +1168,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             OfferAvailabilityResponse offerAvailabilityResponse = new OfferAvailabilityResponse(request.offerId,
                     availabilityResult,
                     makerSignature);
-            log.info("Send {} with offerId {} and uid {} to peer {}",
+            log.info("Send {} with offerId {}, uid {}, and result {} to peer {}",
                     offerAvailabilityResponse.getClass().getSimpleName(), offerAvailabilityResponse.getOfferId(),
-                    offerAvailabilityResponse.getUid(), peer);
+                    offerAvailabilityResponse.getUid(),
+                    availabilityResult,
+                    peer);
             p2PService.sendEncryptedDirectMessage(peer,
                     request.getPubKeyRing(),
                     offerAvailabilityResponse,

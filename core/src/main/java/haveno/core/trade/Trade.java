@@ -1125,15 +1125,17 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void shutDown() {
-        log.info("Shutting down {} {}", getClass().getSimpleName(), getId());
-        isInitialized = false;
-        isShutDown = true;
-        if (wallet != null) closeWallet();
-        if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
-        if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
-        if (idlePayoutSyncer != null) {
-            xmrWalletService.removeWalletListener(idlePayoutSyncer);
-            idlePayoutSyncer = null;
+        synchronized (this) {
+            log.info("Shutting down {} {}", getClass().getSimpleName(), getId());
+            isInitialized = false;
+            isShutDown = true;
+            if (wallet != null) closeWallet();
+            if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
+            if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
+            if (idlePayoutSyncer != null) {
+                xmrWalletService.removeWalletListener(idlePayoutSyncer);
+                idlePayoutSyncer = null;
+            }
         }
     }
 
@@ -1720,7 +1722,7 @@ public abstract class Trade implements Tradable, Model {
                         .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
                         .setIncludeOutputs(true));
             } catch (Exception e) {
-                log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
+                if (!isShutDown) log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
                 return;
             }
 

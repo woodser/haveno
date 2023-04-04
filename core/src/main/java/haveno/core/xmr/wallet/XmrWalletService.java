@@ -549,7 +549,7 @@ public class XmrWalletService {
     private void maybeInitMainWallet() {
         if (wallet != null) throw new RuntimeException("Main wallet is already initialized");
         MoneroDaemonRpc daemon = connectionsService.getDaemon();
-        log.info("Initializing main wallet with " + (daemon == null ? "daemon: null" : "monerod uri=" + daemon.getRpcConnection().getUri() + ", height=" + connectionsService.getLastInfo().getHeight()));
+        log.info("Initializing main wallet with " + (daemon == null ? "daemon: null" : "monerod uri=" + daemon.getRpcConnection().getUri()));
 
         // open or create wallet
         MoneroWalletConfig walletConfig = new MoneroWalletConfig().setPath(MONERO_WALLET_NAME).setPassword(getWalletPassword());
