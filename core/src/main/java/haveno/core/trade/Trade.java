@@ -633,10 +633,6 @@ public abstract class Trade implements Tradable, Model {
                 if (!isInitialized) return;
                 log.info("Payout unlocked for {} {}, deleting multisig wallet", getClass().getSimpleName(), getId());
                 deleteWallet();
-                if (txPollLooper != null) {
-                    txPollLooper.stop();
-                    txPollLooper = null;
-                }
                 if (idlePayoutSyncer != null) {
                     xmrWalletService.removeWalletListener(idlePayoutSyncer);
                     idlePayoutSyncer = null;
@@ -795,6 +791,7 @@ public abstract class Trade implements Tradable, Model {
     private void closeWallet() {
         synchronized (walletLock) {
             if (wallet == null) throw new RuntimeException("Trade wallet to close was not previously opened for trade " + getId());
+            stopPolling();
             xmrWalletService.closeWallet(wallet, true);
             wallet = null;
         }
@@ -1128,21 +1125,15 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void shutDown() {
-        synchronized (walletLock) {
-            log.info("Shutting down {} {}", getClass().getSimpleName(), getId());
-            isInitialized = false;
-            isShutDown = true;
-            if (wallet != null) closeWallet();
-            if (txPollLooper != null) {
-                txPollLooper.stop();
-                txPollLooper = null;
-            }
-            if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
-            if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
-            if (idlePayoutSyncer != null) {
-                xmrWalletService.removeWalletListener(idlePayoutSyncer);
-                idlePayoutSyncer = null;
-            }
+        log.info("Shutting down {} {}", getClass().getSimpleName(), getId());
+        isInitialized = false;
+        isShutDown = true;
+        if (wallet != null) closeWallet();
+        if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
+        if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
+        if (idlePayoutSyncer != null) {
+            xmrWalletService.removeWalletListener(idlePayoutSyncer);
+            idlePayoutSyncer = null;
         }
     }
 
@@ -1690,19 +1681,23 @@ public abstract class Trade implements Tradable, Model {
                 log.info("Setting wallet refresh rate for {} {} to {}", getClass().getSimpleName(), getId(), walletRefreshPeriod);
                 getWallet().startSyncing(getWalletRefreshPeriod()); // TODO (monero-project): wallet rpc waits until last sync period finishes before starting new sync period
             }
-            if (txPollLooper != null) {
-                txPollLooper.stop();
-                txPollLooper = null;
-            }
+            stopPolling();
         }
         startPolling();
     }
 
-    private void startPolling() {
+    private synchronized void startPolling() {
         if (txPollLooper != null) return;
         log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
         txPollLooper = new TaskLooper(() -> { pollWallet(); });
         txPollLooper.start(walletRefreshPeriod);
+    }
+
+    private synchronized void stopPolling() {
+        if (txPollLooper != null) {
+            txPollLooper.stop();
+            txPollLooper = null;
+        }
     }
 
     private void pollWallet() {
@@ -1722,7 +1717,7 @@ public abstract class Trade implements Tradable, Model {
                         .setIncludeOutputs(true)
                         .setInTxPool(isDepositsConfirmed() ? false : null)); // skip checking pool after confirmed
             } catch (Exception e) {
-                log.info("Deposit txs not fetched from the wallet: {}", e.getMessage());
+                log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
                 return;
             }
 
@@ -1777,7 +1772,10 @@ public abstract class Trade implements Tradable, Model {
                 }
             }
         } catch (Exception e) {
-            if (!isShutDown && getWallet() != null && isWalletConnected()) log.warn("Error polling trade wallet {}: {}", getId(), e.getMessage());
+            if (!isShutDown && getWallet() != null && isWalletConnected()) {
+                log.warn("Error polling trade wallet {}: {}", getId(), e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 
