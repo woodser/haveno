@@ -1068,6 +1068,7 @@ public abstract class Trade implements Tradable, Model {
 
     private MoneroTx getDepositTx(TradePeer trader) {
         String depositId = trader.getDepositTxHash();
+        if (depositId == null) return null;
         try {
             if (trader.getDepositTx() == null || !trader.getDepositTx().isConfirmed()) {
                 trader.setDepositTx(getTxFromWalletOrDaemon(depositId));
@@ -1136,6 +1137,7 @@ public abstract class Trade implements Tradable, Model {
                 xmrWalletService.removeWalletListener(idlePayoutSyncer);
                 idlePayoutSyncer = null;
             }
+            log.info("Done shutting down {} {}", getClass().getSimpleName(), getId());
         }
     }
 
@@ -1640,22 +1642,24 @@ public abstract class Trade implements Tradable, Model {
     }
 
     private void setDaemonConnection(MoneroRpcConnection connection) {
-        if (isShutDown) return;
-        MoneroWallet wallet = getWallet();
-        if (wallet == null) return;
-        log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
-        wallet.setDaemonConnection(connection);
-        updateWalletRefreshPeriod();
-
-        // sync and reprocess messages on new thread
-        if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
-            HavenoUtils.submitTask(() -> {
-                updateSyncing();
-
-                // reprocess pending payout messages
-                this.getProtocol().maybeReprocessPaymentReceivedMessage(false);
-                HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(this, false);
-            });
+        synchronized (walletLock) {
+            if (isShutDown) return;
+            MoneroWallet wallet = getWallet();
+            if (wallet == null) return;
+            log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
+            wallet.setDaemonConnection(connection);
+            updateWalletRefreshPeriod();
+    
+            // sync and reprocess messages on new thread
+            if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
+                HavenoUtils.submitTask(() -> {
+                    updateSyncing();
+    
+                    // reprocess pending payout messages
+                    this.getProtocol().maybeReprocessPaymentReceivedMessage(false);
+                    HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(this, false);
+                });
+            }
         }
     }
 
@@ -1668,8 +1672,8 @@ public abstract class Trade implements Tradable, Model {
             long startSyncingInMs = ThreadLocalRandom.current().nextLong(0, getWalletRefreshPeriod()); // random time to start syncing
             UserThread.runAfter(() -> {
                 if (!isShutDown) {
-                    trySyncWallet();
                     updateWalletRefreshPeriod();
+                    trySyncWallet();
                 }
             }, startSyncingInMs / 1000l);
         }
@@ -1680,10 +1684,10 @@ public abstract class Trade implements Tradable, Model {
     }
 
     private void setWalletRefreshPeriod(long walletRefreshPeriod) {
-        if (this.isShutDown) return;
-        if (this.walletRefreshPeriod != null && this.walletRefreshPeriod == walletRefreshPeriod) return;
-        this.walletRefreshPeriod = walletRefreshPeriod;
         synchronized (walletLock) {
+            if (this.isShutDown) return;
+            if (this.walletRefreshPeriod != null && this.walletRefreshPeriod == walletRefreshPeriod) return;
+            this.walletRefreshPeriod = walletRefreshPeriod;
             if (getWallet() != null) {
                 log.info("Setting wallet refresh rate for {} {} to {}", getClass().getSimpleName(), getId(), walletRefreshPeriod);
                 getWallet().startSyncing(getWalletRefreshPeriod()); // TODO (monero-project): wallet rpc waits until last sync period finishes before starting new sync period
@@ -1696,7 +1700,7 @@ public abstract class Trade implements Tradable, Model {
     private void startPolling() {
         synchronized (walletLock) {
             if (txPollLooper != null) return;
-            log.info("Listening for payout tx for {} {}", getClass().getSimpleName(), getId());
+            log.info("Starting to poll wallet for {} {}", getClass().getSimpleName(), getId());
             txPollLooper = new TaskLooper(() -> { pollWallet(); });
             txPollLooper.start(walletRefreshPeriod);
         }
