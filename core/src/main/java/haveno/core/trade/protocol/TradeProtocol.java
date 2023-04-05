@@ -162,7 +162,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     // TODO (woodser): this method only necessary because isPubKeyValid not called with sender argument, so it's validated before
     private void handleMailboxCollectionSkipValidation(Collection<DecryptedMessageWithPubKey> collection) {
-        log.warn("TradeProtocol.handleMailboxCollectionSkipValidation");
         collection.stream()
                 .map(DecryptedMessageWithPubKey::getNetworkEnvelope)
                 .filter(this::isMyMessage)
