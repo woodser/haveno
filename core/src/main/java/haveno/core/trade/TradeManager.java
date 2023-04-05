@@ -811,11 +811,14 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                             if (takeOfferRequestErrorMessageHandler != null) takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
                         });
                         requestPersistence();
+                    } else {
+                        log.warn("Cannot take offer {} because it's not available, state={}", offer.getId(), offer.getState());
                     }
                 },
                 errorMessage -> {
                     log.warn("Taker error during check offer availability: " + errorMessage);
                     errorMessageHandler.handleErrorMessage(errorMessage);
+                    if (takeOfferRequestErrorMessageHandler != null) takeOfferRequestErrorMessageHandler.handleErrorMessage(errorMessage);
                 });
 
         requestPersistence();
