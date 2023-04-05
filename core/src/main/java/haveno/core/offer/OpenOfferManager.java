@@ -984,6 +984,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             BigInteger sendAmount =  offer.getDirection() == OfferDirection.BUY ? BigInteger.valueOf(0) : offer.getAmount();
             BigInteger securityDeposit = offer.getDirection() == OfferDirection.BUY ? offer.getBuyerSecurityDeposit() : offer.getSellerSecurityDeposit();
             Tuple2<MoneroTx, BigInteger> txResult = xmrWalletService.verifyTradeTx(
+                    offer.getId(),
                     tradeFee,
                     sendAmount,
                     securityDeposit,

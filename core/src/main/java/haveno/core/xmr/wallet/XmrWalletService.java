@@ -378,7 +378,7 @@ public class XmrWalletService {
      * @param keyImages expected key images of inputs, ignored if null
      * @return tuple with the verified tx and its actual security deposit
      */
-    public Tuple2<MoneroTx, BigInteger> verifyTradeTx(BigInteger tradeFee, BigInteger sendAmount, BigInteger securityDeposit, String address, String txHash, String txHex, String txKey, List<String> keyImages, boolean isReserveTx) {
+    public Tuple2<MoneroTx, BigInteger> verifyTradeTx(String offerId, BigInteger tradeFee, BigInteger sendAmount, BigInteger securityDeposit, String address, String txHash, String txHex, String txKey, List<String> keyImages, boolean isReserveTx) {
         MoneroDaemonRpc daemon = getDaemon();
         MoneroWallet wallet = getWallet();
         MoneroTx tx = null;
@@ -429,7 +429,7 @@ public class XmrWalletService {
                 BigInteger actualSendAmount = returnCheck.getReceivedAmount().subtract(isReserveTx ? actualTradeFee : actualSecurityDeposit);
 
                 // verify trade fee
-                if (!tradeFee.equals(actualTradeFee)) throw new RuntimeException("Trade fee is incorrect amount, expected " + tradeFee + " but was " + actualTradeFee);
+                if (!tradeFee.equals(actualTradeFee)) throw new RuntimeException("Trade fee is incorrect amount, expected=" + tradeFee + ", actual=" + actualTradeFee);
 
                 // verify sufficient security deposit
                 BigInteger minSecurityDeposit = new BigDecimal(securityDeposit).multiply(new BigDecimal(1.0 - SECURITY_DEPOSIT_TOLERANCE)).toBigInteger();
@@ -439,6 +439,9 @@ public class XmrWalletService {
                 BigInteger minDepositAndFee = sendAmount.add(securityDeposit).subtract(new BigDecimal(tx.getFee()).multiply(new BigDecimal(1.0 - DUST_TOLERANCE)).toBigInteger());
                 BigInteger actualDepositAndFee = actualSendAmount.add(actualSecurityDeposit).add(tx.getFee());
                 if (actualDepositAndFee.compareTo(minDepositAndFee) < 0) throw new RuntimeException("Deposit amount + fee is not enough, needed " + minDepositAndFee + " but was " + actualDepositAndFee);
+            } catch (Exception e) {
+                log.warn("Error verifying trade tx with offer id=" + offerId + (tx == null ? "" : ", tx=" + tx) + ": " + e.getMessage());
+                throw e;
             } finally {
                 try {
                     daemon.flushTxPool(txHash); // flush tx from pool
