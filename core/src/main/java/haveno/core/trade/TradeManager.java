@@ -424,7 +424,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     private void initPersistedTrade(Trade trade) {
         if (isShutDown) return;
-        initTradeAndProtocol(trade, getTradeProtocol(trade));
+        initTradeAndProtocol(trade, createTradeProtocol(trade));
         requestPersistence();
         scheduleDeletionIfUnfunded(trade);
     }
