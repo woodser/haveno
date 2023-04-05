@@ -19,6 +19,7 @@ package haveno.core.trade.protocol.tasks;
 
 
 import haveno.common.taskrunner.TaskRunner;
+import haveno.core.trade.MakerTrade;
 import haveno.core.trade.Trade;
 import haveno.core.trade.messages.DepositsConfirmedMessage;
 import haveno.core.trade.protocol.TradePeer;
@@ -26,6 +27,8 @@ import haveno.core.util.Validator;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+
+import common.utils.GenUtils;
 
 @Slf4j
 public class ProcessDepositsConfirmedMessage extends TradeTask {
@@ -55,7 +58,6 @@ public class ProcessDepositsConfirmedMessage extends TradeTask {
 
             // update multisig hex
             sender.setUpdatedMultisigHex(request.getUpdatedMultisigHex());
-            trade.importMultisigHex();
 
             // decrypt seller payment account payload if key given
             if (request.getSellerPaymentAccountKey() != null && trade.getTradePeer().getPaymentAccountPayload() == null) {

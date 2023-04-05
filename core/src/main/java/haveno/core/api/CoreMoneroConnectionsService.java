@@ -158,6 +158,10 @@ public final class CoreMoneroConnectionsService {
         }
     }
 
+    public boolean isConnected() {
+        return connectionManager.isConnected();
+    }
+
     public void addConnection(MoneroRpcConnection connection) {
         synchronized (lock) {
             accountService.checkAccountOpen();
