@@ -396,6 +396,7 @@ public class XmrWalletService {
 
                 // get pool tx which has weight and size
                 for (MoneroTx poolTx : daemon.getTxPool()) if (poolTx.getHash().equals(txHash)) tx = poolTx;
+                if (tx == null) throw new RuntimeException("Tx is not in pool after being submitted");
 
                 // verify key images
                 if (keyImages != null) {
