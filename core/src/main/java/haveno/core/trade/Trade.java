@@ -1128,7 +1128,8 @@ public abstract class Trade implements Tradable, Model {
 
     public void shutDown() {
         synchronized (this) {
-            if (wallet != null) log.info("Shutting down {} {}", getClass().getSimpleName(), getId()); // only print for active trades
+            boolean isActive = wallet != null;
+            if (isActive) log.info("Shutting down {} {}", getClass().getSimpleName(), getId()); // only print for active trades
             isInitialized = false;
             isShutDown = true;
             if (wallet != null) closeWallet();
@@ -1138,7 +1139,7 @@ public abstract class Trade implements Tradable, Model {
                 xmrWalletService.removeWalletListener(idlePayoutSyncer);
                 idlePayoutSyncer = null;
             }
-            log.info("Done shutting down {} {}", getClass().getSimpleName(), getId());
+            if (isActive) log.info("Done shutting down {} {}", getClass().getSimpleName(), getId());
         }
     }
 
@@ -1656,6 +1657,7 @@ public abstract class Trade implements Tradable, Model {
             MoneroWallet wallet = getWallet();
             log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
             wallet.setDaemonConnection(connection);
+            if (connection != null) connection.setPrintStackTrace(true);
             updateWalletRefreshPeriod();
     
             // sync and reprocess messages on new thread

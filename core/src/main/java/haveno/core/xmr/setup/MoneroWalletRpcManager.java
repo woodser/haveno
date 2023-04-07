@@ -107,7 +107,7 @@ public class MoneroWalletRpcManager {
    *
    * @param walletRpc the client connected to the monero-wallet-rpc instance to stop
    */
-  public void stopInstance(MoneroWalletRpc walletRpc) {
+  public void stopInstance(MoneroWalletRpc walletRpc, String path) {
 
       // unregister port
       int port = -1;
@@ -130,7 +130,7 @@ public class MoneroWalletRpcManager {
 
       // stop process
       String pid = walletRpc.getProcess() == null ? null : String.valueOf(walletRpc.getProcess().pid());
-      log.info("Stopping MoneroWalletRpc path={}, port={}, pid={}", walletRpc.getPath(), port, pid);
+      log.info("Stopping MoneroWalletRpc path={}, port={}, pid={}", path, port, pid);
       walletRpc.stopProcess();
   }
 

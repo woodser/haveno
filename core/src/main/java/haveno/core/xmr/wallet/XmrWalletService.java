@@ -234,14 +234,14 @@ public class XmrWalletService {
     public void closeWallet(MoneroWallet wallet, boolean save) {
         log.info("{}.closeWallet({}, {})", getClass().getSimpleName(), wallet.getPath(), save);
         MoneroError err = null;
+        String path = wallet.getPath();
         try {
-            String path = wallet.getPath();
             wallet.close(save);
             if (save) backupWallet(path);
         } catch (MoneroError e) {
             err = e;
         }
-        MONERO_WALLET_RPC_MANAGER.stopInstance((MoneroWalletRpc) wallet);
+        MONERO_WALLET_RPC_MANAGER.stopInstance((MoneroWalletRpc) wallet, path);
         if (err != null) throw err;
     }
 
@@ -568,6 +568,9 @@ public class XmrWalletService {
             wallet = createWalletRpc(walletConfig, rpcBindPort);
         }
 
+        System.out.println("monero-java version: " + MoneroUtils.getVersion());
+        if (connectionsService.getConnection() != null) connectionsService.getConnection().setPrintStackTrace(true);
+
         // handle when wallet initialized and synced
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
@@ -622,7 +625,7 @@ public class XmrWalletService {
             return walletRpc;
         } catch (Exception e) {
             e.printStackTrace();
-            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc);
+            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc, config.getPath());
             throw e;
         }
     }
@@ -645,7 +648,7 @@ public class XmrWalletService {
             return walletRpc;
         } catch (Exception e) {
             e.printStackTrace();
-            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc);
+            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc, config.getPath());
             throw e;
         }
     }
@@ -690,7 +693,7 @@ public class XmrWalletService {
         return MONERO_WALLET_RPC_MANAGER.startInstance(cmd);
     }
 
-    // TODO: monero-wallet-rpc needs restarted if applying tor proxy
+    // TODO: monero-wallet-rpc needs restarted if applying tor proxy since it's a startup flag
     private void onConnectionChanged(MoneroRpcConnection connection) {
         if (isShutDown) return;
         if (HavenoUtils.connectionsEqual(connection, wallet.getDaemonConnection())) return;
