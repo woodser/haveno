@@ -93,7 +93,7 @@ public final class CoreMoneroConnectionsService {
     private MoneroDaemonRpc daemon;
     @Getter
     private MoneroDaemonInfo lastInfo;
-    private TaskLooper updateDaemonLooper;
+    private TaskLooper daemonPollLooper;
     private boolean isShutDown;
 
     @Inject
@@ -147,7 +147,7 @@ public final class CoreMoneroConnectionsService {
             log.info("Shutting down {}", getClass().getSimpleName());
             isShutDown = true;
             isInitialized = false;
-            if (updateDaemonLooper != null) updateDaemonLooper.stop();
+            if (daemonPollLooper != null) daemonPollLooper.stop();
             connectionManager.stopCheckingConnection();
             daemon = null;
         }
@@ -237,8 +237,8 @@ public final class CoreMoneroConnectionsService {
     public void startCheckingConnection(Long refreshPeriod) {
         synchronized (lock) {
             accountService.checkAccountOpen();
-            connectionManager.startCheckingConnection(refreshPeriod == null ? getDefaultRefreshPeriodMs() : refreshPeriod);
             connectionList.setRefreshPeriod(refreshPeriod);
+            updatePollingDaemonInfo();
         }
     }
 
@@ -267,6 +267,15 @@ public final class CoreMoneroConnectionsService {
 
     public boolean isConnectionLocal() {
         return getConnection() != null && HavenoUtils.isLocalHost(getConnection().getUri());
+    }
+
+    public long getRefreshPeriod() {
+        if (connectionList.getRefreshPeriod() < 0 || connectionList.getRefreshPeriod() > 0) {
+            log.warn("Using configured refresh period of {} ms", connectionList.getRefreshPeriod());
+            return connectionList.getRefreshPeriod();
+        } else {
+            return getDefaultRefreshPeriodMs();
+        }
     }
 
     public long getDefaultRefreshPeriodMs() {
@@ -377,12 +386,11 @@ public final class CoreMoneroConnectionsService {
                 currentConnectionUri = Optional.of(connection.getUri());
             }
 
-            // restore configuration and check connection
+            // restore configuration
             if ("".equals(config.xmrNode)) connectionManager.setAutoSwitch(connectionList.getAutoSwitch());
-            long refreshPeriod = connectionList.getRefreshPeriod();
-            if (refreshPeriod > 0) connectionManager.startCheckingConnection(refreshPeriod);
-            else if (refreshPeriod == 0) connectionManager.startCheckingConnection();
-            else checkConnection();
+
+            // check connection
+            checkConnection();
 
             // run once
             if (!isInitialized) {
@@ -408,6 +416,7 @@ public final class CoreMoneroConnectionsService {
             currentConnectionUri.ifPresent(uri -> {
                 try {
                     if (!connectionManager.isConnected() && HavenoUtils.isLocalHost(uri) && !nodeService.isOnline()) {
+                        log.info("Starting local node");
                         nodeService.startMoneroNode();
                     }
                 } catch (Exception e) {
@@ -417,8 +426,8 @@ public final class CoreMoneroConnectionsService {
 
             // prefer to connect to local node unless prevented by configuration
             if ("".equals(config.xmrNode) &&
-                (!connectionManager.isConnected() || connectionManager.getAutoSwitch()) &&
-                nodeService.isConnected()) {
+                    (!connectionManager.isConnected() || connectionManager.getAutoSwitch()) &&
+                    nodeService.isConnected()) {
                 MoneroRpcConnection connection = connectionManager.getConnectionByUri(nodeService.getDaemon().getRpcConnection().getUri());
                 if (connection != null) {
                     connection.checkConnection(connectionManager.getTimeout());
@@ -429,7 +438,9 @@ public final class CoreMoneroConnectionsService {
             // if using legacy desktop app, connect to best available connection
             if (!coreContext.isApiUser() && "".equals(config.xmrNode)) {
                 connectionManager.setAutoSwitch(true);
-                connectionManager.setConnection(connectionManager.getBestAvailableConnection());
+                MoneroRpcConnection bestConnection = connectionManager.getBestAvailableConnection();
+                log.warn("Setting best available connection: " + (bestConnection == null ? null : bestConnection.getUri()));
+                connectionManager.setConnection(bestConnection);
             }
 
             // register connection change listener
@@ -438,51 +449,56 @@ public final class CoreMoneroConnectionsService {
                 isInitialized = true;
             }
 
-            // announce connection
+            // update connection state
             onConnectionChanged(connectionManager.getConnection());
         }
     }
 
     private void onConnectionChanged(MoneroRpcConnection currentConnection) {
         synchronized (lock) {
-            if (daemon != null && HavenoUtils.connectionsEqual(daemon.getRpcConnection(), currentConnection)) return;
             if (isShutDown) return;
+            if (daemon != null && HavenoUtils.connectionConfigsEqual(daemon.getRpcConnection(), currentConnection)) return;
             if (currentConnection == null) {
                 daemon = null;
                 connectionList.setCurrentConnectionUri(null);
             } else {
-                currentConnection.setPrintStackTrace(true);
+                //currentConnection.setPrintStackTrace(true);
                 daemon = new MoneroDaemonRpc(connectionManager.getConnection());
                 connectionList.removeConnection(currentConnection.getUri());
                 connectionList.addConnection(currentConnection);
                 connectionList.setCurrentConnectionUri(currentConnection.getUri());
             }
-            startPollingDaemon();
         }
+        updatePollingDaemonInfo();
     }
 
-    private void startPollingDaemon() {
+    private void updatePollingDaemonInfo() {
+        new Thread(() -> {
+            stopPollingDaemonInfo();
+            if (getRefreshPeriod() > 0) startDaemonPoller();
+        }).start();
+    }
+
+    private void startDaemonPoller() {
         synchronized (lock) {
-            updateDaemonInfo();
-            if (updateDaemonLooper != null) updateDaemonLooper.stop();
-            UserThread.runAfter(() -> {
-                synchronized (lock) {
-                    if (updateDaemonLooper != null) updateDaemonLooper.stop();
-                    updateDaemonLooper = new TaskLooper(() -> updateDaemonInfo());
-                    updateDaemonLooper.start(getDefaultRefreshPeriodMs());
-                }
-            }, getDefaultRefreshPeriodMs() / 1000);
+            if (daemonPollLooper != null) daemonPollLooper.stop();
+            daemonPollLooper = new TaskLooper(() -> pollDaemonInfo());
+            daemonPollLooper.start(getRefreshPeriod());
         }
     }
 
-    private void updateDaemonInfo() {
+    private void stopPollingDaemonInfo() {
+        synchronized (lock) {
+            if (daemonPollLooper != null) daemonPollLooper.stop();
+        }
+    }
+
+    private void pollDaemonInfo() {
         if (isShutDown) return;
         try {
-            log.trace("Updating daemon info");
+            log.debug("Polling daemon info");
             if (daemon == null) throw new RuntimeException("No daemon connection");
             lastInfo = daemon.getInfo();
-            //System.out.println(JsonUtils.serialize(lastInfo));
-            //System.out.println(JsonUtils.serialize(daemon.getSyncInfo()));
             chainHeight.set(lastInfo.getTargetHeight() == 0 ? lastInfo.getHeight() : lastInfo.getTargetHeight());
 
             // set peer connections
@@ -496,11 +512,19 @@ public final class CoreMoneroConnectionsService {
             numPeers.set(lastInfo.getNumOutgoingConnections() + lastInfo.getNumIncomingConnections());
             peers.set(new ArrayList<MoneroPeer>());
             
+            // log recovery message
             if (lastErrorTimestamp != null) {
                 log.info("Successfully fetched daemon info after previous error");
                 lastErrorTimestamp = null;
             }
+
+            // update and notify connected state
+            if (!Boolean.TRUE.equals(connectionManager.getConnection().isConnected())) {
+                connectionManager.checkConnection();
+            }
         } catch (Exception e) {
+
+            // log error message periodically
             if (lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS) {
                 lastErrorTimestamp = System.currentTimeMillis();
                 if (!isShutDown) {
@@ -508,7 +532,10 @@ public final class CoreMoneroConnectionsService {
                     if (DevEnv.isDevMode()) e.printStackTrace();
                 }
             }
+
+            // check connection which notifies of changes
             if (connectionManager.getAutoSwitch()) connectionManager.setConnection(connectionManager.getBestAvailableConnection());
+            else connectionManager.checkConnection();
         }
     }
 

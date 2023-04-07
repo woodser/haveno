@@ -505,7 +505,7 @@ public class HavenoUtils {
         return CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, underscore);
     }
 
-    public static boolean connectionsEqual(MoneroRpcConnection c1, MoneroRpcConnection c2) {
+    public static boolean connectionConfigsEqual(MoneroRpcConnection c1, MoneroRpcConnection c2) {
         if (c1 == c2) return true;
         if (c1 == null) return false;
         return c1.equals(c2); // equality considers uri, username, and password

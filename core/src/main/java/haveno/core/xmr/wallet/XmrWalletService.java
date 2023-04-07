@@ -568,9 +568,6 @@ public class XmrWalletService {
             wallet = createWalletRpc(walletConfig, rpcBindPort);
         }
 
-        System.out.println("monero-java version: " + MoneroUtils.getVersion());
-        if (connectionsService.getConnection() != null) connectionsService.getConnection().setPrintStackTrace(true);
-
         // handle when wallet initialized and synced
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
@@ -593,13 +590,14 @@ public class XmrWalletService {
                 log.warn("Error syncing main wallet: {}", e.getMessage());
             }
             
-            // notify setup that main wallet is initialized
-            // TODO: move to try..catch? refactor startup to call this and sync off main thread?
-            havenoSetup.getWalletInitialized().set(true); // TODO: change to listener pattern
-
             // register internal listener to notify external listeners
             wallet.addListener(new XmrWalletListener());
         }
+
+        // notify setup that main wallet is done trying to initialize
+        // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
+        // refactor startup to call this and sync off main thread?
+        havenoSetup.getWalletInitialized().set(true);
     }
 
     private MoneroWalletRpc createWalletRpc(MoneroWalletConfig config, Integer port) {
@@ -696,9 +694,9 @@ public class XmrWalletService {
     // TODO: monero-wallet-rpc needs restarted if applying tor proxy since it's a startup flag
     private void onConnectionChanged(MoneroRpcConnection connection) {
         if (isShutDown) return;
-        if (HavenoUtils.connectionsEqual(connection, wallet.getDaemonConnection())) return;
+        if (wallet != null && HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
-        log.info("Setting wallet daemon connection: " + (connection == null ? null : connection.getUri()));
+        log.info("Setting main wallet daemon connection: " + (connection == null ? null : connection.getUri()));
         if (wallet == null) maybeInitMainWallet();
         else {
             wallet.setDaemonConnection(connection);

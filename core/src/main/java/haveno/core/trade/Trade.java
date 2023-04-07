@@ -1648,13 +1648,12 @@ public abstract class Trade implements Tradable, Model {
             // check to ignore
             if (isShutDown) return;
             if (wallet == null) return;
-            if (HavenoUtils.connectionsEqual(connection, wallet.getDaemonConnection())) return;
+            if (HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
             // set daemon connection
             MoneroWallet wallet = getWallet();
             log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
             wallet.setDaemonConnection(connection);
-            if (connection != null) connection.setPrintStackTrace(true);
             updateWalletRefreshPeriod();
     
             // sync and reprocess messages on new thread
