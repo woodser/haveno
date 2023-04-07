@@ -1,6 +1,5 @@
 package haveno.core.api;
 
-import haveno.common.UserThread;
 import haveno.common.app.DevEnv;
 import haveno.common.config.BaseCurrencyNetwork;
 import haveno.common.config.Config;
@@ -439,7 +438,7 @@ public final class CoreMoneroConnectionsService {
             if (!coreContext.isApiUser() && "".equals(config.xmrNode)) {
                 connectionManager.setAutoSwitch(true);
                 MoneroRpcConnection bestConnection = connectionManager.getBestAvailableConnection();
-                log.warn("Setting best available connection: " + (bestConnection == null ? null : bestConnection.getUri()));
+                log.info("Setting best available connection for monerod: " + (bestConnection == null ? null : bestConnection.getUri()));
                 connectionManager.setConnection(bestConnection);
             }
 
@@ -457,12 +456,10 @@ public final class CoreMoneroConnectionsService {
     private void onConnectionChanged(MoneroRpcConnection currentConnection) {
         synchronized (lock) {
             if (isShutDown) return;
-            if (daemon != null && HavenoUtils.connectionConfigsEqual(daemon.getRpcConnection(), currentConnection)) return;
             if (currentConnection == null) {
                 daemon = null;
                 connectionList.setCurrentConnectionUri(null);
             } else {
-                //currentConnection.setPrintStackTrace(true);
                 daemon = new MoneroDaemonRpc(connectionManager.getConnection());
                 connectionList.removeConnection(currentConnection.getUri());
                 connectionList.addConnection(currentConnection);
@@ -474,8 +471,10 @@ public final class CoreMoneroConnectionsService {
 
     private void updatePollingDaemonInfo() {
         new Thread(() -> {
-            stopPollingDaemonInfo();
-            if (getRefreshPeriod() > 0) startDaemonPoller();
+            synchronized (lock) {
+                stopPollingDaemonInfo();
+                if (getRefreshPeriod() > 0) startDaemonPoller();
+            }
         }).start();
     }
 
