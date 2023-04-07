@@ -506,7 +506,7 @@ public class XmrWalletService {
                 synchronized (txCache) {
                     for (MoneroTx tx : txs) txCache.remove(tx.getHash());
                 }
-            }, connectionsService.getDefaultRefreshPeriodMs() / 1000);
+            }, connectionsService.getRefreshPeriodMs() / 1000);
             return txs;
         }
     }
@@ -578,7 +578,7 @@ public class XmrWalletService {
                 long time = System.currentTimeMillis();
                 wallet.sync(); // blocking
                 log.info("Done syncing main wallet in " + (System.currentTimeMillis() - time) + " ms");
-                wallet.startSyncing(connectionsService.getDefaultRefreshPeriodMs());
+                wallet.startSyncing(connectionsService.getRefreshPeriodMs());
                 if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) log.info("Monero wallet balance={}, unlocked balance={}", wallet.getBalance(0), wallet.getUnlockedBalance(0));
                 
                 // TODO: using this to signify both daemon and wallet synced, refactor sync handling of both
@@ -701,7 +701,7 @@ public class XmrWalletService {
         else {
             wallet.setDaemonConnection(connection);
             if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
-                wallet.startSyncing(connectionsService.getDefaultRefreshPeriodMs());
+                wallet.startSyncing(connectionsService.getRefreshPeriodMs());
                 new Thread(() -> {
                     try {
                         wallet.sync();

@@ -268,26 +268,12 @@ public final class CoreMoneroConnectionsService {
         return getConnection() != null && HavenoUtils.isLocalHost(getConnection().getUri());
     }
 
-    public long getRefreshPeriod() {
+    public long getRefreshPeriodMs() {
         if (connectionList.getRefreshPeriod() < 0 || connectionList.getRefreshPeriod() > 0) {
             log.warn("Using configured refresh period of {} ms", connectionList.getRefreshPeriod());
             return connectionList.getRefreshPeriod();
         } else {
             return getDefaultRefreshPeriodMs();
-        }
-    }
-
-    public long getDefaultRefreshPeriodMs() {
-        if (daemon == null) return REFRESH_PERIOD_LOCAL_MS;
-        else {
-            if (isConnectionLocal()) {
-                if (lastInfo != null && (lastInfo.isBusySyncing() || (lastInfo.getHeightWithoutBootstrap() != null && lastInfo.getHeightWithoutBootstrap() > 0 && lastInfo.getHeightWithoutBootstrap() < lastInfo.getHeight()))) return REFRESH_PERIOD_HTTP_MS; // refresh slower if syncing or bootstrapped
-                else return REFRESH_PERIOD_LOCAL_MS; // TODO: announce faster refresh after done syncing
-            } else if (getConnection().isOnion()) {
-                return REFRESH_PERIOD_ONION_MS;
-            } else {
-                return REFRESH_PERIOD_HTTP_MS;
-            }
         }
     }
 
@@ -348,6 +334,20 @@ public final class CoreMoneroConnectionsService {
     }
 
     // ------------------------------- HELPERS --------------------------------
+
+    private long getDefaultRefreshPeriodMs() {
+        if (daemon == null) return REFRESH_PERIOD_LOCAL_MS;
+        else {
+            if (isConnectionLocal()) {
+                if (lastInfo != null && (lastInfo.isBusySyncing() || (lastInfo.getHeightWithoutBootstrap() != null && lastInfo.getHeightWithoutBootstrap() > 0 && lastInfo.getHeightWithoutBootstrap() < lastInfo.getHeight()))) return REFRESH_PERIOD_HTTP_MS; // refresh slower if syncing or bootstrapped
+                else return REFRESH_PERIOD_LOCAL_MS; // TODO: announce faster refresh after done syncing
+            } else if (getConnection().isOnion()) {
+                return REFRESH_PERIOD_ONION_MS;
+            } else {
+                return REFRESH_PERIOD_HTTP_MS;
+            }
+        }
+    }
 
     private void initialize() {
         synchronized (lock) {
@@ -473,7 +473,7 @@ public final class CoreMoneroConnectionsService {
         new Thread(() -> {
             synchronized (lock) {
                 stopPollingDaemonInfo();
-                if (getRefreshPeriod() > 0) startDaemonPoller();
+                if (getRefreshPeriodMs() > 0) startDaemonPoller();
             }
         }).start();
     }
@@ -482,7 +482,7 @@ public final class CoreMoneroConnectionsService {
         synchronized (lock) {
             if (daemonPollLooper != null) daemonPollLooper.stop();
             daemonPollLooper = new TaskLooper(() -> pollDaemonInfo());
-            daemonPollLooper.start(getRefreshPeriod());
+            daemonPollLooper.start(getRefreshPeriodMs());
         }
     }
 

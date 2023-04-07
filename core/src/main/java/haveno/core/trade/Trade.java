@@ -761,7 +761,7 @@ public abstract class Trade implements Tradable, Model {
 
     public void syncWalletNormallyForMs(long syncNormalDuration) {
         syncNormalStartTime = System.currentTimeMillis();
-        setWalletRefreshPeriod(xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs());
+        setWalletRefreshPeriod(xmrWalletService.getConnectionsService().getRefreshPeriodMs());
         UserThread.runAfter(() -> {
             if (!isShutDown && System.currentTimeMillis() >= syncNormalStartTime + syncNormalDuration) updateWalletRefreshPeriod();
         }, syncNormalDuration);
@@ -1616,7 +1616,7 @@ public abstract class Trade implements Tradable, Model {
      */
     public long getReprocessDelayInSeconds(int reprocessCount) {
         int retryCycles = 3; // reprocess on next refresh periods for first few attempts (app might auto switch to a good connection)
-        if (reprocessCount < retryCycles) return xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs() / 1000;
+        if (reprocessCount < retryCycles) return xmrWalletService.getConnectionsService().getRefreshPeriodMs() / 1000;
         long delay = 60;
         for (int i = retryCycles; i < reprocessCount; i++) delay *= 2;
         return Math.min(MAX_REPROCESS_DELAY_SECONDS, delay);
@@ -1800,7 +1800,7 @@ public abstract class Trade implements Tradable, Model {
 
     private long getWalletRefreshPeriod() {
         if (isIdling()) return IDLE_SYNC_PERIOD_MS;
-        return xmrWalletService.getConnectionsService().getDefaultRefreshPeriodMs();
+        return xmrWalletService.getConnectionsService().getRefreshPeriodMs();
     }
 
     private void setStateDepositsPublished() {
