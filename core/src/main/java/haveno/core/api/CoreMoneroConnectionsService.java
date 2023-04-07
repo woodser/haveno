@@ -169,7 +169,7 @@ public final class CoreMoneroConnectionsService {
         }
     }
 
-    public boolean isConnected() {
+    public Boolean isConnected() {
         return connectionManager.isConnected();
     }
 
@@ -518,7 +518,7 @@ public final class CoreMoneroConnectionsService {
             }
 
             // update and notify connected state
-            if (!Boolean.TRUE.equals(connectionManager.getConnection().isConnected())) {
+            if (!Boolean.TRUE.equals(connectionManager.isConnected())) {
                 connectionManager.checkConnection();
             }
         } catch (Exception e) {
