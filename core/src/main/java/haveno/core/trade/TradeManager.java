@@ -295,6 +295,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     public void shutDown() {
+        log.info("Shutting down {}", getClass().getSimpleName());
         isShutDown = true;
         closeAllTrades();
     }

@@ -34,13 +34,12 @@ import haveno.common.setup.UncaughtExceptionHandler;
 import haveno.common.util.Utilities;
 import haveno.core.api.AccountServiceListener;
 import haveno.core.api.CoreAccountService;
+import haveno.core.api.CoreMoneroConnectionsService;
 import haveno.core.offer.OpenOfferManager;
 import haveno.core.provider.price.PriceFeedService;
 import haveno.core.setup.CorePersistedDataHost;
 import haveno.core.setup.CoreSetup;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
-import haveno.core.trade.HavenoUtils;
-import haveno.core.trade.TradeManager;
 import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.core.trade.txproof.xmr.XmrTxProofService;
 import haveno.core.xmr.setup.WalletsSetup;
@@ -51,7 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
 import java.io.Console;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -303,7 +301,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     // This might need to be overwritten in case the application is not using all modules
     @Override
     public void gracefulShutDown(ResultHandler onShutdown, boolean systemExit) {
-        log.info("Start graceful shutDown");
+        log.info("Starting graceful shut down of {}", getClass().getSimpleName());
         if (isShutdownInProgress) {
             log.info("Ignoring call to gracefulShutDown, already in progress");
             return;
@@ -330,13 +328,11 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         try {
             injector.getInstance(PriceFeedService.class).shutDown();
             injector.getInstance(ArbitratorManager.class).shutDown();
+            injector.getInstance(XmrWalletService.class).shutDown();
+            injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
             injector.getInstance(TradeStatisticsManager.class).shutDown();
             injector.getInstance(XmrTxProofService.class).shutDown();
             injector.getInstance(AvoidStandbyModeService.class).shutDown();
-            log.info("TradeManager and XmrWalletService shutdown started");
-            HavenoUtils.executeTasks(Arrays.asList( // shut down trade and main wallets at same time
-                    () -> injector.getInstance(TradeManager.class).shutDown(),
-                    () -> injector.getInstance(XmrWalletService.class).shutDown(!isReadOnly)));
             log.info("OpenOfferManager shutdown started");
             injector.getInstance(OpenOfferManager.class).shutDown(() -> {
                 log.info("OpenOfferManager shutdown completed");

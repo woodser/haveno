@@ -532,9 +532,16 @@ public class XmrWalletService {
         }
     }
 
-    public void shutDown(boolean save) {
+    public void shutDown() {
+        log.info("Shutting down {}", getClass().getSimpleName());
         this.isShutDown = true;
-        closeMainWallet(save);
+
+        // shut down trade and main wallets at same time
+        List<Runnable> tasks = new ArrayList<Runnable>();
+        if (tradeManager != null) tasks.add(() -> tradeManager.shutDown());
+        tasks.add(() -> closeMainWallet(true));
+        HavenoUtils.executeTasks(tasks);
+        log.info("Done shutting down all wallets");
     }
 
     // ------------------------------ PRIVATE HELPERS -------------------------

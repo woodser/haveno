@@ -26,6 +26,7 @@ import haveno.common.handlers.ResultHandler;
 import haveno.common.persistence.PersistenceManager;
 import haveno.common.setup.GracefulShutDownHandler;
 import haveno.common.util.Profiler;
+import haveno.core.api.CoreMoneroConnectionsService;
 import haveno.core.app.HavenoExecutable;
 import haveno.core.offer.OpenOfferManager;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
@@ -76,16 +77,16 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
     // We don't use the gracefulShutDown implementation of the super class as we have a limited set of modules
     @Override
     public void gracefulShutDown(ResultHandler resultHandler) {
-        log.info("gracefulShutDown");
+        log.info("Starting graceful shut down of {}", getClass().getSimpleName());
         try {
             if (injector != null) {
                 JsonFileManager.shutDownAllInstances();
                 injector.getInstance(ArbitratorManager.class).shutDown();
-                injector.getInstance(XmrWalletService.class).shutDown(true);
+                injector.getInstance(XmrWalletService.class).shutDown();
+                injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
                 injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
                     injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
                         module.close(injector);
-
                         PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
                             resultHandler.handleResult();
                             log.info("Graceful shutdown completed. Exiting now.");

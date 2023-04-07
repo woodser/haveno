@@ -89,11 +89,12 @@ public final class CoreMoneroConnectionsService {
     private final DownloadListener downloadListener = new DownloadListener();
     private Socks5ProxyProvider socks5ProxyProvider;
 
+    private boolean isInitialized;
     private MoneroDaemonRpc daemon;
     @Getter
     private MoneroDaemonInfo lastInfo;
-    private boolean isInitialized = false;
-    private TaskLooper updateDaemonLooper;;
+    private TaskLooper updateDaemonLooper;
+    private boolean isShutDown;
 
     @Inject
     public CoreMoneroConnectionsService(Config config,
@@ -139,6 +140,17 @@ public final class CoreMoneroConnectionsService {
                 }
             });
         });
+    }
+
+    public void shutDown() {
+        synchronized (lock) {
+            log.info("Shutting down {}", getClass().getSimpleName());
+            isShutDown = true;
+            isInitialized = false;
+            if (updateDaemonLooper != null) updateDaemonLooper.stop();
+            connectionManager.stopCheckingConnection();
+            daemon = null;
+        }
     }
 
     // ------------------------ CONNECTION MANAGEMENT -------------------------
@@ -432,8 +444,8 @@ public final class CoreMoneroConnectionsService {
     }
 
     private void onConnectionChanged(MoneroRpcConnection currentConnection) {
-        // TODO: ignore if shutdown
         synchronized (lock) {
+            if (isShutDown) return;
             if (currentConnection == null) {
                 daemon = null;
                 connectionList.setCurrentConnectionUri(null);
@@ -462,6 +474,7 @@ public final class CoreMoneroConnectionsService {
     }
 
     private void updateDaemonInfo() {
+        if (isShutDown) return;
         try {
             log.trace("Updating daemon info");
             if (daemon == null) throw new RuntimeException("No daemon connection");
@@ -488,8 +501,10 @@ public final class CoreMoneroConnectionsService {
         } catch (Exception e) {
             if (lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS) {
                 lastErrorTimestamp = System.currentTimeMillis();
-                log.warn("Could not update daemon info: " + e.getMessage());
-                if (DevEnv.isDevMode()) e.printStackTrace();
+                if (!isShutDown) {
+                    log.warn("Could not update daemon info: " + e.getMessage());
+                    if (DevEnv.isDevMode()) e.printStackTrace();
+                }
             }
             if (connectionManager.getAutoSwitch()) connectionManager.setConnection(connectionManager.getBestAvailableConnection());
         }
