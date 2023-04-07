@@ -577,7 +577,7 @@ public abstract class Trade implements Tradable, Model {
         });
 
         // listen to daemon connection
-        xmrWalletService.getConnectionsService().addListener(newConnection -> setDaemonConnection(newConnection));
+        xmrWalletService.getConnectionsService().addListener(newConnection -> onConnectionChanged(newConnection));
 
         // check if done
         if (isPayoutUnlocked()) {
@@ -1434,6 +1434,8 @@ public abstract class Trade implements Tradable, Model {
         final long tradeTime = getTakeOfferDate().getTime();
         MoneroDaemon daemonRpc = xmrWalletService.getDaemon();
         if (daemonRpc == null) throw new RuntimeException("Cannot set start time for trade " + getId() + " because it has no connection to monerod");
+        if (getMakerDepositTx() == null || getTakerDepositTx() == null) throw new RuntimeException("Cannot set start time for trade " + getId() + " because its unlocked deposit tx is null. Is client connected to a daemon?");
+
         long maxHeight = Math.max(getMakerDepositTx().getHeight(), getTakerDepositTx().getHeight());
         long blockTime = daemonRpc.getBlockByHeight(maxHeight).getTimestamp();
 
@@ -1642,11 +1644,16 @@ public abstract class Trade implements Tradable, Model {
         return tradeVolumeProperty;
     }
 
-    private void setDaemonConnection(MoneroRpcConnection connection) {
+    private void onConnectionChanged(MoneroRpcConnection connection) {
         synchronized (walletLock) {
+
+            // check to ignore
             if (isShutDown) return;
-            MoneroWallet wallet = getWallet();
             if (wallet == null) return;
+            if (HavenoUtils.connectionsEqual(connection, wallet.getDaemonConnection())) return;
+
+            // set daemon connection
+            MoneroWallet wallet = getWallet();
             log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
             wallet.setDaemonConnection(connection);
             updateWalletRefreshPeriod();

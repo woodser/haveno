@@ -532,16 +532,6 @@ public class XmrWalletService {
         }
     }
 
-    private void closeMainWallet(boolean save) {
-        try {
-            closeWallet(wallet, true);
-            wallet = null;
-            walletListeners.clear();
-        } catch (Exception e) {
-            log.warn("Error closing main monero-wallet-rpc subprocess. Was Haveno stopped manually with ctrl+c?");
-        }
-    }
-
     public void shutDown(boolean save) {
         this.isShutDown = true;
         closeMainWallet(save);
@@ -555,7 +545,7 @@ public class XmrWalletService {
         maybeInitMainWallet();
 
         // set and listen to daemon connection
-        connectionsService.addListener(newConnection -> setDaemonConnection(newConnection));
+        connectionsService.addListener(newConnection -> onConnectionChanged(newConnection));
     }
 
     private void maybeInitMainWallet() {
@@ -694,8 +684,10 @@ public class XmrWalletService {
     }
 
     // TODO: monero-wallet-rpc needs restarted if applying tor proxy
-    private void setDaemonConnection(MoneroRpcConnection connection) {
+    private void onConnectionChanged(MoneroRpcConnection connection) {
         if (isShutDown) return;
+        if (HavenoUtils.connectionsEqual(connection, wallet.getDaemonConnection())) return;
+
         log.info("Setting wallet daemon connection: " + (connection == null ? null : connection.getUri()));
         if (wallet == null) maybeInitMainWallet();
         else {
@@ -753,6 +745,16 @@ public class XmrWalletService {
 
         // excute tasks in parallel
         HavenoUtils.executeTasks(tasks, Math.min(10, 1 + trades.size()));
+    }
+
+    private void closeMainWallet(boolean save) {
+        try {
+            closeWallet(wallet, true);
+            wallet = null;
+            walletListeners.clear();
+        } catch (Exception e) {
+            log.warn("Error closing main monero-wallet-rpc subprocess. Was Haveno stopped manually with ctrl+c?");
+        }
     }
 
     // ----------------------------- LEGACY APP -------------------------------
