@@ -1135,10 +1135,7 @@ public abstract class Trade implements Tradable, Model {
             if (wallet != null) closeWallet();
             if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
             if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
-            if (idlePayoutSyncer != null) {
-                xmrWalletService.removeWalletListener(idlePayoutSyncer);
-                idlePayoutSyncer = null;
-            }
+            idlePayoutSyncer = null; // main wallet removes listener itself
             if (isActive) log.info("Done shutting down {} {}", getClass().getSimpleName(), getId());
         }
     }

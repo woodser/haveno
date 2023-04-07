@@ -759,11 +759,11 @@ public class XmrWalletService {
 
     private void closeMainWallet(boolean save) {
         try {
+            walletListeners.clear();
             closeWallet(wallet, true);
             wallet = null;
-            walletListeners.clear();
         } catch (Exception e) {
-            log.warn("Error closing main monero-wallet-rpc subprocess. Was Haveno stopped manually with ctrl+c?");
+            log.warn("Error closing main monero-wallet-rpc subprocess: " + e.getMessage() + ". Was Haveno stopped manually with ctrl+c?");
         }
     }
 
