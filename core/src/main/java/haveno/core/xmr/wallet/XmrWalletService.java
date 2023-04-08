@@ -568,11 +568,6 @@ public class XmrWalletService {
             wallet = createWalletRpc(walletConfig, rpcBindPort);
         }
 
-        // notify setup that main wallet is done trying to initialize
-        // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
-        // refactor startup to call this and sync off main thread?
-        havenoSetup.getWalletInitialized().set(true);
-
         // sync wallet when initialized
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
@@ -586,8 +581,13 @@ public class XmrWalletService {
                 wallet.startSyncing(connectionsService.getRefreshPeriodMs());
                 if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) log.info("Monero wallet balance={}, unlocked balance={}", wallet.getBalance(0), wallet.getUnlockedBalance(0));
                 
-                // TODO: using this to signify both daemon and wallet synced, refactor sync handling of both
+                // TODO: using this to signify both daemon and wallet synced, use separate sync handlers
                 connectionsService.doneDownload();
+
+                // notify setup that main wallet is initialized
+                // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
+                // refactor startup to call this and sync off main thread? but the calls to e.g. getBalance() fail with 'wallet and network is not yet initialized'
+                havenoSetup.getWalletInitialized().set(true);
                 
                 // save but skip backup on initialization
                 saveMainWallet(false);
