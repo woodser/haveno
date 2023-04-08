@@ -344,6 +344,9 @@ public final class CoreMoneroConnectionsService {
 
     private void initialize() {
 
+        // initialize connections
+        initializeConnections();
+
         // listen for account to be opened or password changed
         accountService.addListener(new AccountServiceListener() {
 
@@ -364,9 +367,6 @@ public final class CoreMoneroConnectionsService {
                 connectionList.changePassword(oldPassword, newPassword);
             }
         });
-
-        // initialize connections
-        initializeConnections();
     }
 
     private void initializeConnections() {
