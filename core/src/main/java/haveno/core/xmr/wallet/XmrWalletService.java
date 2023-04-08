@@ -568,7 +568,12 @@ public class XmrWalletService {
             wallet = createWalletRpc(walletConfig, rpcBindPort);
         }
 
-        // handle when wallet initialized and synced
+        // notify setup that main wallet is done trying to initialize
+        // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
+        // refactor startup to call this and sync off main thread?
+        havenoSetup.getWalletInitialized().set(true);
+
+        // sync wallet when initialized
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
             try {
@@ -593,11 +598,6 @@ public class XmrWalletService {
             // register internal listener to notify external listeners
             wallet.addListener(new XmrWalletListener());
         }
-
-        // notify setup that main wallet is done trying to initialize
-        // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
-        // refactor startup to call this and sync off main thread?
-        havenoSetup.getWalletInitialized().set(true);
     }
 
     private MoneroWalletRpc createWalletRpc(MoneroWalletConfig config, Integer port) {
