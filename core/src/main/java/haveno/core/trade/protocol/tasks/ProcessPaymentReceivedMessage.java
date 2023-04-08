@@ -135,6 +135,7 @@ public class ProcessPaymentReceivedMessage extends TradeTask {
                             trade.verifyPayoutTx(trade.getPayoutTxHex(), false, true);
                         }
                     } catch (Exception e) {
+                        trade.syncWallet();
                         if (trade.isPayoutPublished()) log.info("Payout tx already published for {} {}", trade.getClass().getName(), trade.getId());
                         else throw e;
                     }
