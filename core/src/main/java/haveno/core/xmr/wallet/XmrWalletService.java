@@ -2,6 +2,8 @@ package haveno.core.xmr.wallet;
 
 import com.google.common.util.concurrent.Service.State;
 import com.google.inject.name.Named;
+
+import common.utils.GenUtils;
 import common.utils.JsonUtils;
 import haveno.common.UserThread;
 import haveno.common.config.BaseCurrencyNetwork;
@@ -571,28 +573,31 @@ public class XmrWalletService {
         // sync wallet when initialized
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
-            try {
+            while (!havenoSetup.getWalletInitialized().get()) {
+                try {
                 
-                // sync main wallet
-                log.info("Syncing main wallet");
-                long time = System.currentTimeMillis();
-                wallet.sync(); // blocking
-                log.info("Done syncing main wallet in " + (System.currentTimeMillis() - time) + " ms");
-                wallet.startSyncing(connectionsService.getRefreshPeriodMs());
-                if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) log.info("Monero wallet balance={}, unlocked balance={}", wallet.getBalance(0), wallet.getUnlockedBalance(0));
-                
-                // TODO: using this to signify both daemon and wallet synced, use separate sync handlers
-                connectionsService.doneDownload();
-
-                // notify setup that main wallet is initialized
-                // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
-                // refactor startup to call this and sync off main thread? but the calls to e.g. getBalance() fail with 'wallet and network is not yet initialized'
-                havenoSetup.getWalletInitialized().set(true);
-                
-                // save but skip backup on initialization
-                saveMainWallet(false);
-            } catch (Exception e) {
-                log.warn("Error syncing main wallet: {}", e.getMessage());
+                    // sync main wallet
+                    log.info("Syncing main wallet");
+                    long time = System.currentTimeMillis();
+                    wallet.sync(); // blocking
+                    log.info("Done syncing main wallet in " + (System.currentTimeMillis() - time) + " ms");
+                    wallet.startSyncing(connectionsService.getRefreshPeriodMs());
+                    if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) log.info("Monero wallet balance={}, unlocked balance={}", wallet.getBalance(0), wallet.getUnlockedBalance(0));
+                    
+                    // TODO: using this to signify both daemon and wallet synced, use separate sync handlers
+                    connectionsService.doneDownload();
+    
+                    // notify setup that main wallet is initialized
+                    // TODO: app fully initializes after this is set to true, even though wallet might not be initialized if unconnected. wallet will be created when connection detected
+                    // refactor startup to call this and sync off main thread? but the calls to e.g. getBalance() fail with 'wallet and network is not yet initialized'
+                    havenoSetup.getWalletInitialized().set(true);
+                    
+                    // save but skip backup on initialization
+                    saveMainWallet(false);
+                } catch (Exception e) {
+                    log.warn("Error syncing main wallet: {}. Trying again in {} seconds", e.getMessage(), connectionsService.getRefreshPeriodMs() / 1000);
+                    GenUtils.waitFor(connectionsService.getRefreshPeriodMs());
+                }
             }
             
             // register internal listener to notify external listeners
