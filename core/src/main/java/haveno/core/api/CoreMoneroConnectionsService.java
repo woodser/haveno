@@ -8,6 +8,8 @@ import haveno.core.xmr.model.EncryptedConnectionList;
 import haveno.core.xmr.setup.DownloadListener;
 import haveno.core.xmr.setup.WalletsSetup;
 import haveno.network.Socks5ProxyProvider;
+import haveno.network.p2p.P2PService;
+import haveno.network.p2p.P2PServiceListener;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
@@ -96,7 +98,8 @@ public final class CoreMoneroConnectionsService {
     private boolean isShutDown;
 
     @Inject
-    public CoreMoneroConnectionsService(Config config,
+    public CoreMoneroConnectionsService(P2PService p2PService,
+                                        Config config,
                                         CoreContext coreContext,
                                         WalletsSetup walletsSetup,
                                         CoreAccountService accountService,
@@ -112,32 +115,22 @@ public final class CoreMoneroConnectionsService {
         this.connectionList = connectionList;
         this.socks5ProxyProvider = socks5ProxyProvider;
 
-        // initialize after account open and basic setup
-        walletsSetup.addSetupTaskHandler(() -> { // TODO: use something better than legacy WalletSetup for notification to initialize
-
-            // initialize from connections read from disk
-            initialize();
-
-            // listen for account to be opened or password changed
-            accountService.addListener(new AccountServiceListener() {
-
-                @Override
-                public void onAccountOpened() {
-                    try {
-                        log.info(getClass() + ".onAccountOpened() called");
-                        initialize();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                @Override
-                public void onPasswordChanged(String oldPassword, String newPassword) {
-                    log.info(getClass() + ".onPasswordChanged({}, {}) called", oldPassword, newPassword);
-                    connectionList.changePassword(oldPassword, newPassword);
-                }
-            });
+        // initialize when connected to p2p network
+        p2PService.addP2PServiceListener(new P2PServiceListener() {
+            @Override
+            public void onTorNodeReady() {
+                initialize();
+            }
+            @Override
+            public void onHiddenServicePublished() {}
+            @Override
+            public void onDataReceived() {}
+            @Override
+            public void onNoSeedNodeAvailable() {}
+            @Override
+            public void onNoPeersAvailable() {}
+            @Override
+            public void onUpdatedDataReceived() {}
         });
     }
 
@@ -350,6 +343,33 @@ public final class CoreMoneroConnectionsService {
     }
 
     private void initialize() {
+
+        // listen for account to be opened or password changed
+        accountService.addListener(new AccountServiceListener() {
+
+            @Override
+            public void onAccountOpened() {
+                try {
+                    log.info(getClass() + ".onAccountOpened() called");
+                    initialize();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void onPasswordChanged(String oldPassword, String newPassword) {
+                log.info(getClass() + ".onPasswordChanged({}, {}) called", oldPassword, newPassword);
+                connectionList.changePassword(oldPassword, newPassword);
+            }
+        });
+
+        // initialize connections
+        initializeConnections();
+    }
+
+    private void initializeConnections() {
         synchronized (lock) {
 
             // reset connection manager
