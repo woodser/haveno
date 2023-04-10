@@ -90,6 +90,8 @@ public class XmrWalletService {
     private static final double SECURITY_DEPOSIT_TOLERANCE = Config.baseCurrencyNetwork() == BaseCurrencyNetwork.XMR_LOCAL ? 0.25 : 0.05; // security deposit can absorb miner fee up to percent
     private static final double DUST_TOLERANCE = 0.01; // max dust as percent of mining fee
     private static final int NUM_MAX_BACKUP_WALLETS = 10;
+    private static final int MONERO_LOG_LEVEL =  2;
+    private static final boolean PRINT_STACK_TRACE = true;
 
     private final CoreAccountService accountService;
     private final CoreMoneroConnectionsService connectionsService;
@@ -123,6 +125,9 @@ public class XmrWalletService {
         this.walletDir = walletDir;
         this.rpcBindPort = rpcBindPort;
         this.xmrWalletFile = new File(walletDir, MONERO_WALLET_NAME);
+
+        // set monero logging
+        MoneroUtils.setLogLevel(MONERO_LOG_LEVEL);
 
         // initialize after account open and basic setup
         walletsSetup.addSetupTaskHandler(() -> { // TODO: use something better than legacy WalletSetup for notification to initialize
@@ -562,7 +567,7 @@ public class XmrWalletService {
 
         // open or create wallet
         MoneroDaemonRpc daemon = connectionsService.getDaemon();
-        log.info("Initializing main wallet with " + (daemon == null ? "daemon: null" : "monerod uri=" + daemon.getRpcConnection().getUri()));
+        log.info("Initializing main wallet with monerod=" + (daemon == null ? "null" : daemon.getRpcConnection().getUri()));
         MoneroWalletConfig walletConfig = new MoneroWalletConfig().setPath(MONERO_WALLET_NAME).setPassword(getWalletPassword());
         if (MoneroUtils.walletExists(xmrWalletFile.getPath())) {
             wallet = openWalletRpc(walletConfig, rpcBindPort);
@@ -613,6 +618,7 @@ public class XmrWalletService {
 
         // start monero-wallet-rpc instance
         MoneroWalletRpc walletRpc = startWalletRpcInstance(port);
+        walletRpc.getRpcConnection().setPrintStackTrace(PRINT_STACK_TRACE);
 
         // create wallet
         try {
@@ -624,6 +630,7 @@ public class XmrWalletService {
             log.info("Creating wallet " + config.getPath() + " connected to daemon " + connection.getUri());
             long time = System.currentTimeMillis();
             walletRpc.createWallet(config.setServer(connection));
+            walletRpc.getDaemonConnection().setPrintStackTrace(PRINT_STACK_TRACE);
             log.info("Done creating wallet " + config.getPath() + " in " + (System.currentTimeMillis() - time) + " ms");
             return walletRpc;
         } catch (Exception e) {
@@ -637,6 +644,7 @@ public class XmrWalletService {
 
         // start monero-wallet-rpc instance
         MoneroWalletRpc walletRpc = startWalletRpcInstance(port);
+        walletRpc.getRpcConnection().setPrintStackTrace(PRINT_STACK_TRACE);
 
         // open wallet
         try {
@@ -647,6 +655,7 @@ public class XmrWalletService {
             // open wallet
             log.info("Opening wallet " + config.getPath());
             walletRpc.openWallet(config.setServer(connectionsService.getConnection()));
+            if (walletRpc.getDaemonConnection() != null) walletRpc.getDaemonConnection().setPrintStackTrace(PRINT_STACK_TRACE);
             log.info("Done opening wallet " + config.getPath());
             return walletRpc;
         } catch (Exception e) {
@@ -705,6 +714,7 @@ public class XmrWalletService {
         if (wallet == null) maybeInitMainWallet();
         else {
             wallet.setDaemonConnection(connection);
+            if (connection != null) wallet.getDaemonConnection().setPrintStackTrace(PRINT_STACK_TRACE);
             if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
                 wallet.startSyncing(connectionsService.getRefreshPeriodMs());
                 new Thread(() -> {
