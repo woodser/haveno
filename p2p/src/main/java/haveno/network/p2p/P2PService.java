@@ -95,6 +95,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     private final MonadicBinding<Boolean> networkReadyBinding;
     private final Set<DecryptedDirectMessageListener> decryptedDirectMessageListeners = new CopyOnWriteArraySet<>();
     private final Set<P2PServiceListener> p2pServiceListeners = new CopyOnWriteArraySet<>();
+    private final Set<Runnable> shutDownRequestHandlers = new CopyOnWriteArraySet<>();
     private final Set<Runnable> shutDownResultHandlers = new CopyOnWriteArraySet<>();
     private final BooleanProperty hiddenServicePublished = new SimpleBooleanProperty();
     private final BooleanProperty preliminaryDataReceived = new SimpleBooleanProperty();
@@ -177,7 +178,8 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         }
     }
 
-    public void shutDown(Runnable shutDownCompleteHandler) {
+    public void shutDown(Runnable shutDownRequestHandler, Runnable shutDownCompleteHandler) {
+        shutDownRequestHandlers.add(shutDownRequestHandler);
         shutDownResultHandlers.add(shutDownCompleteHandler);
 
         // We need to make sure queued up messages are flushed out before we continue shut down other network
@@ -190,6 +192,8 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     }
 
     private void doShutDown() {
+        shutDownRequestHandlers.forEach(Runnable::run);
+
         if (p2PDataStorage != null) {
             p2PDataStorage.shutDown();
         }

@@ -30,6 +30,7 @@ import haveno.core.api.CoreMoneroConnectionsService;
 import haveno.core.app.HavenoExecutable;
 import haveno.core.offer.OpenOfferManager;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import haveno.core.trade.TradeManager;
 import haveno.core.xmr.setup.WalletsSetup;
 import haveno.core.xmr.wallet.BtcWalletService;
 import haveno.core.xmr.wallet.XmrWalletService;
@@ -82,9 +83,9 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
             if (injector != null) {
                 JsonFileManager.shutDownAllInstances();
                 injector.getInstance(ArbitratorManager.class).shutDown();
-                injector.getInstance(XmrWalletService.class).shutDown();
-                injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
                 injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
+                    injector.getInstance(TradeManager.class).prepareForShutDown();
+                }, () -> {
                     injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
                         module.close(injector);
                         PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
@@ -95,6 +96,8 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
                     });
                     injector.getInstance(WalletsSetup.class).shutDown();
                     injector.getInstance(BtcWalletService.class).shutDown();
+                    injector.getInstance(XmrWalletService.class).shutDown();
+                    injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
                 }));
                 // we wait max 5 sec.
                 UserThread.runAfter(() -> {

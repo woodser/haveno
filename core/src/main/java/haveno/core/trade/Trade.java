@@ -388,6 +388,8 @@ public abstract class Trade implements Tradable, Model {
     @Getter
     transient private boolean isInitialized;
     @Getter
+    transient private boolean isShutDownStarted;
+    @Getter
     transient private boolean isShutDown;
 
     // Added in v1.2.0
@@ -713,8 +715,8 @@ public abstract class Trade implements Tradable, Model {
         synchronized (walletLock) {
             if (wallet != null) return wallet;
             if (!walletExists()) return null;
-            if (isShutDown) throw new RuntimeException("Cannot open wallet for " + getClass().getSimpleName() + " " + getId() + " because trade is shut down");
-            if (!isShutDown) wallet = xmrWalletService.openWallet(getWalletName());
+            if (isShutDownStarted) throw new RuntimeException("Cannot open wallet for " + getClass().getSimpleName() + " " + getId() + " because trade is shut down");
+            if (!isShutDownStarted) wallet = xmrWalletService.openWallet(getWalletName());
             return wallet;
         }
     }
@@ -756,7 +758,7 @@ public abstract class Trade implements Tradable, Model {
         try {
             syncWallet();
         } catch (Exception e) {
-            if (!isShutDown) {
+            if (!isShutDownStarted) {
                 log.warn("Error syncing trade wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage());
             }
         }
@@ -766,7 +768,7 @@ public abstract class Trade implements Tradable, Model {
         syncNormalStartTime = System.currentTimeMillis();
         setWalletRefreshPeriod(xmrWalletService.getConnectionsService().getRefreshPeriodMs());
         UserThread.runAfter(() -> {
-            if (!isShutDown && System.currentTimeMillis() >= syncNormalStartTime + syncNormalDuration) updateWalletRefreshPeriod();
+            if (!isShutDownStarted && System.currentTimeMillis() >= syncNormalStartTime + syncNormalDuration) updateWalletRefreshPeriod();
         }, syncNormalDuration);
     }
 
@@ -1135,12 +1137,19 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
+    public void prepareToShutDown() {
+        isShutDownStarted = true;
+        synchronized (this) {
+            // synchronize on self to wait for current locks to complete
+        }
+    }
+
     public void shutDown() {
 
-        // check responsiveness and terminate process after timeout
+        // terminate wallet process after timeout if unresponsive
         synchronized (walletLock) {
 
-            // set timeout to check wallet responsiveness
+            // set timeout to terminate process
             Timer timeout = UserThread.runAfter(() -> {
                 log.warn("Timeout checking wallet responsiveness for {} {} after {} seconds, forcibly stopping process", getClass().getSimpleName(), getId(), WALLET_SHUT_DOWN_TIMEOUT);
                 xmrWalletService.stopWallet(wallet, wallet.getPath(), true); // force stop
@@ -1158,8 +1167,8 @@ public abstract class Trade implements Tradable, Model {
             }
         }
 
-        // re-acquire lock to allow any blocked wallet requests to process
-        synchronized (walletLock) {
+        // shut down the trade
+        synchronized (this) {
             boolean isOpen = wallet != null;
             if (isOpen) log.info("Shutting down {} {} with open wallet", getClass().getSimpleName(), getId());
             isInitialized = false;
@@ -1678,7 +1687,7 @@ public abstract class Trade implements Tradable, Model {
         synchronized (walletLock) {
 
             // check to ignore
-            if (isShutDown) return;
+            if (isShutDownStarted) return;
             if (wallet == null) return;
             if (HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
@@ -1702,14 +1711,14 @@ public abstract class Trade implements Tradable, Model {
     }
 
     private void updateSyncing() {
-        if (isShutDown) return;
+        if (isShutDownStarted) return;
         if (!isIdling()) {
             updateWalletRefreshPeriod();
             trySyncWallet();
         }  else {
             long startSyncingInMs = ThreadLocalRandom.current().nextLong(0, getWalletRefreshPeriod()); // random time to start syncing
             UserThread.runAfter(() -> {
-                if (!isShutDown) {
+                if (!isShutDownStarted) {
                     updateWalletRefreshPeriod();
                     trySyncWallet();
                 }
@@ -1723,7 +1732,7 @@ public abstract class Trade implements Tradable, Model {
 
     private void setWalletRefreshPeriod(long walletRefreshPeriod) {
         synchronized (walletLock) {
-            if (this.isShutDown) return;
+            if (this.isShutDownStarted) return;
             if (this.walletRefreshPeriod != null && this.walletRefreshPeriod == walletRefreshPeriod) return;
             this.walletRefreshPeriod = walletRefreshPeriod;
             if (getWallet() != null) {
@@ -1773,7 +1782,7 @@ public abstract class Trade implements Tradable, Model {
                 try {
                     txs = xmrWalletService.getTxsWithCache(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()));
                 } catch (Exception e) {
-                    if (!isShutDown) {
+                    if (!isShutDownStarted) {
                         log.warn("Error fetching txs from daemon cache");
                         e.printStackTrace();
                     }
@@ -1795,7 +1804,7 @@ public abstract class Trade implements Tradable, Model {
                         .setIncludeOutputs(true)
                         .setIsConfirmed(true));
             } catch (Exception e) {
-                if (!isShutDown) log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
+                if (!isShutDownStarted) log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
                 return;
             }
 
@@ -1844,7 +1853,7 @@ public abstract class Trade implements Tradable, Model {
                 }
             }
         } catch (Exception e) {
-            if (!isShutDown && getWallet() != null && isWalletConnected()) {
+            if (!isShutDownStarted && getWallet() != null && isWalletConnected()) {
                 log.warn("Error polling trade wallet {}: {}", getId(), e.getMessage());
                 e.printStackTrace();
             }
@@ -1926,7 +1935,7 @@ public abstract class Trade implements Tradable, Model {
                 } catch (Exception e) {
                     processing = false;
                     e.printStackTrace();
-                    if (isInitialized && !isShutDown && !isWalletConnected()) throw e;
+                    if (isInitialized && !isShutDownStarted && !isWalletConnected()) throw e;
                 }
             });
         }

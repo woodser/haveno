@@ -294,6 +294,35 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         thawUnreservedOutputs();
     }
 
+    public void prepareForShutDown() {
+        log.info("Preparing trades to be shut down", getClass().getSimpleName());
+
+        // collect trades to prepare
+        Set<Trade> trades = new HashSet<Trade>();
+        trades.addAll(tradableList.getList());
+        trades.addAll(closedTradableManager.getClosedTrades());
+        trades.addAll(failedTradesManager.getObservableList());
+
+        // prepare to shut down trades in parallel
+        Set<Runnable> tasks = new HashSet<Runnable>();
+        for (Trade trade : trades) tasks.add(() -> {
+            try {
+                trade.prepareToShutDown();
+            } catch (Exception e) {
+                if (e.getMessage() != null && e.getMessage().contains("Connection reset")) return; // expected if shut down with ctrl+c
+                log.warn("Error preparing to shut down {} {}", getClass().getSimpleName(), trade.getId());
+                e.printStackTrace();
+            }
+        });
+        try {
+            HavenoUtils.executeTasks(tasks);
+            log.info("Done preparing all trades to be shut down");
+        } catch (Exception e) {
+            log.warn("Error preparing to shut down trades: {}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void shutDown() {
         log.info("Shutting down {}", getClass().getSimpleName());
         isShutDown = true;
@@ -315,7 +344,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 trade.shutDown();
             } catch (Exception e) {
                 if (e.getMessage() != null && e.getMessage().contains("Connection reset")) return; // expected if shut down with ctrl+c
-                log.warn("Error closing trade subprocess for {} {}", getClass().getSimpleName(), trade.getId());
+                log.warn("Error closing {} {}", getClass().getSimpleName(), trade.getId());
                 e.printStackTrace();
             }
         });

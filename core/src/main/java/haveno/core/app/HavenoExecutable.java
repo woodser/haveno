@@ -40,12 +40,14 @@ import haveno.core.provider.price.PriceFeedService;
 import haveno.core.setup.CorePersistedDataHost;
 import haveno.core.setup.CoreSetup;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import haveno.core.trade.TradeManager;
 import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.core.trade.txproof.xmr.XmrTxProofService;
 import haveno.core.xmr.setup.WalletsSetup;
 import haveno.core.xmr.wallet.BtcWalletService;
 import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.network.p2p.P2PService;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
@@ -72,6 +74,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     protected Injector injector;
     protected AppModule module;
     protected Config config;
+    @Getter
     private boolean isShutdownInProgress;
     private boolean isReadOnly;
     private Thread keepRunningThread;
@@ -328,30 +331,28 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         try {
             injector.getInstance(PriceFeedService.class).shutDown();
             injector.getInstance(ArbitratorManager.class).shutDown();
-            injector.getInstance(XmrWalletService.class).shutDown();
-            injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
             injector.getInstance(TradeStatisticsManager.class).shutDown();
             injector.getInstance(XmrTxProofService.class).shutDown();
             injector.getInstance(AvoidStandbyModeService.class).shutDown();
-            log.info("OpenOfferManager shutdown started");
-            injector.getInstance(OpenOfferManager.class).shutDown(() -> {
-                log.info("OpenOfferManager shutdown completed");
 
-                injector.getInstance(BtcWalletService.class).shutDown();
-
-                // We need to shutdown BitcoinJ before the P2PService as it uses Tor.
-                WalletsSetup walletsSetup = injector.getInstance(WalletsSetup.class);
-                walletsSetup.shutDownComplete.addListener((ov, o, n) -> {
-                    log.info("WalletsSetup shutdown completed");
-
-                    injector.getInstance(P2PService.class).shutDown(() -> {
-                        log.info("P2PService shutdown completed");
-                        module.close(injector);
-                        completeShutdown(resultHandler, EXIT_SUCCESS, systemExit);
+            log.info("OpenOfferManager and P2PService shutdown started");
+            injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
+                injector.getInstance(TradeManager.class).prepareForShutDown();
+            }, () -> {
+                log.info("OpenOfferManager and P2PService shutdown completed");
+                injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
+                    module.close(injector);
+                    PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
+                        resultHandler.handleResult();
+                        log.info("Graceful shutdown completed. Exiting now.");
+                        UserThread.runAfter(() -> System.exit(HavenoExecutable.EXIT_SUCCESS), 1);
                     });
                 });
-                walletsSetup.shutDown();
-            });
+                injector.getInstance(WalletsSetup.class).shutDown();
+                injector.getInstance(BtcWalletService.class).shutDown();
+                injector.getInstance(XmrWalletService.class).shutDown();
+                injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
+            }));
         } catch (Throwable t) {
             log.error("App shutdown failed with exception {}", t.toString());
             t.printStackTrace();
