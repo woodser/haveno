@@ -772,7 +772,10 @@ public abstract class Trade implements Tradable, Model {
         if (getBuyer().getUpdatedMultisigHex() != null) multisigHexes.add(getBuyer().getUpdatedMultisigHex());
         if (getSeller().getUpdatedMultisigHex() != null) multisigHexes.add(getSeller().getUpdatedMultisigHex());
         if (getArbitrator().getUpdatedMultisigHex() != null) multisigHexes.add(getArbitrator().getUpdatedMultisigHex());
-        if (!multisigHexes.isEmpty()) getWallet().importMultisigHex(multisigHexes.toArray(new String[0]));
+        if (!multisigHexes.isEmpty()) {
+            log.info("Importing multisig hex for {} {}", getClass().getSimpleName(), getId());
+            getWallet().importMultisigHex(multisigHexes.toArray(new String[0]));
+        }
     }
 
     public void changeWalletPassword(String oldPassword, String newPassword) {
@@ -979,8 +982,11 @@ public abstract class Trade implements Tradable, Model {
         BigInteger expectedSellerPayout = sellerDepositAmount.subtract(tradeAmount).subtract(txCost.divide(BigInteger.valueOf(2)));
         if (!sellerPayoutDestination.getAmount().equals(expectedSellerPayout)) throw new IllegalArgumentException("Seller destination amount is not deposit amount - trade amount - 1/2 tx costs, " + sellerPayoutDestination.getAmount() + " vs " + expectedSellerPayout);
 
-        // check wallet's daemon connection
-        checkWalletConnection();
+        // check wallet connection and import multisig info
+        if (sign || publish) {
+            checkWalletConnection();
+            importMultisigHex();
+        }
 
         // handle tx signing
         if (sign) {
@@ -1127,16 +1133,26 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void shutDown() {
-        synchronized (this) {
-            boolean isActive = wallet != null;
-            if (isActive) log.info("Shutting down {} {}", getClass().getSimpleName(), getId()); // only print for active trades
+
+        // wait until wallet is responsive
+        // TODO: monero-wallet-rpc blocks while syncing in background, which can take a long time on tor
+        synchronized (walletLock) {
+            log.info("Waiting until trade wallet is responsive in order to shut down {} {}", getClass().getSimpleName(), getId());
+            wallet.getHeight(); 
+            log.warn("Done waiting until trade wallet is responsive for {} {}", getClass().getSimpleName(), getId());
+        }
+
+        // re-acquire lock to allow any blocked wallet requests to process
+        synchronized (walletLock) {
+            boolean isOpen = wallet != null;
+            if (isOpen) log.info("Shutting down {} {} with open wallet", getClass().getSimpleName(), getId());
             isInitialized = false;
             isShutDown = true;
             if (wallet != null) closeWallet();
             if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
             if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
             idlePayoutSyncer = null; // main wallet removes listener itself
-            if (isActive) log.info("Done shutting down {} {}", getClass().getSimpleName(), getId());
+            if (isOpen) log.warn("Done shutting down {} {}", getClass().getSimpleName(), getId());    
         }
     }
 
@@ -1685,7 +1701,7 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
-    private void updateWalletRefreshPeriod() {
+    public void updateWalletRefreshPeriod() {
         setWalletRefreshPeriod(getWalletRefreshPeriod());
     }
 
@@ -1730,12 +1746,38 @@ public abstract class Trade implements Tradable, Model {
             // rescan spent if deposits unlocked
             if (isDepositsUnlocked()) getWallet().rescanSpent();
 
-            // get txs with outputs
+            // check if deposit txs published
+            if (!isDepositsConfirmed()) {
+
+                // skip if either deposit tx hash is null
+                if (processModel.getMaker().getDepositTxHash() == null || processModel.getTaker().getDepositTxHash() == null) return; // TODO: incorporate this no matter what
+                
+                // fetch txs from daemon with cache
+                List<MoneroTx> txs = null;
+                try {
+                    txs = xmrWalletService.getTxsWithCache(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()));
+                } catch (Exception e) {
+                    if (!isShutDown) {
+                        log.warn("Error fetching txs from daemon cache");
+                        e.printStackTrace();
+                    }
+                }
+                if (txs == null || txs.size() != 2) return;
+                for (MoneroTx tx : txs) if (Boolean.TRUE.equals(tx.isDoubleSpendSeen())) {
+                    log.warn("Double spend seen for deposit tx " + tx.getHash() + " for " + getClass().getSimpleName() + " " + getId());
+                    return;
+                }
+                setStateDepositsPublished();
+                for (MoneroTx tx : txs) if (!tx.isConfirmed()) return;
+            }
+
+            // get confirmed txs with outputs
             List<MoneroTxWallet> txs;
             try {
                 txs = getWallet().getTxs(new MoneroTxQuery()
                         .setHashes(Arrays.asList(processModel.getMaker().getDepositTxHash(), processModel.getTaker().getDepositTxHash()))
-                        .setIncludeOutputs(true));
+                        .setIncludeOutputs(true)
+                        .setIsConfirmed(true));
             } catch (Exception e) {
                 if (!isShutDown) log.info("Could not fetch deposit txs from wallet for {} {}: {}", getClass().getSimpleName(), getId(), e.getMessage()); // expected at first
                 return;
@@ -1757,10 +1799,6 @@ public abstract class Trade implements Tradable, Model {
                         getBuyer().setSecurityDeposit(buyerSecurityDeposit);
                         getSeller().setSecurityDeposit(sellerSecurityDeposit);
                     }
-
-                    // set deposits published state
-                    setStateDepositsPublished();
-
                     // check if deposit txs confirmed
                     if (txs.get(0).isConfirmed() && txs.get(1).isConfirmed()) setStateDepositsConfirmed();
                     if (!txs.get(0).isLocked() && !txs.get(1).isLocked()) setStateDepositsUnlocked();
