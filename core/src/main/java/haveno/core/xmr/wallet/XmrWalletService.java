@@ -248,8 +248,16 @@ public class XmrWalletService {
         } catch (MoneroError e) {
             err = e;
         }
-        MONERO_WALLET_RPC_MANAGER.stopInstance((MoneroWalletRpc) wallet, path);
+        stopWallet(wallet, path);
         if (err != null) throw err;
+    }
+
+    public void stopWallet(MoneroWallet wallet, String path) {
+        stopWallet(wallet, path, false);
+    }
+
+    public void stopWallet(MoneroWallet wallet, String path, boolean force) {
+        MONERO_WALLET_RPC_MANAGER.stopInstance((MoneroWalletRpc) wallet, path, force);
     }
 
     public void deleteWallet(String walletName) {
@@ -635,7 +643,7 @@ public class XmrWalletService {
             return walletRpc;
         } catch (Exception e) {
             e.printStackTrace();
-            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc, config.getPath());
+            stopWallet(walletRpc, config.getPath());
             throw e;
         }
     }
@@ -660,7 +668,7 @@ public class XmrWalletService {
             return walletRpc;
         } catch (Exception e) {
             e.printStackTrace();
-            MONERO_WALLET_RPC_MANAGER.stopInstance(walletRpc, config.getPath());
+            stopWallet(walletRpc, config.getPath());
             throw e;
         }
     }

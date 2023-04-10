@@ -20,6 +20,8 @@ package haveno.core.trade;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
+
+import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.crypto.Encryption;
 import haveno.common.crypto.PubKeyRing;
@@ -108,6 +110,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public abstract class Trade implements Tradable, Model {
 
     private static final String MONERO_TRADE_WALLET_PREFIX = "xmr_trade_";
+    private static final int WALLET_SHUT_DOWN_TIMEOUT = 5; // in seconds
     private MoneroWallet wallet; // trade wallet
     private Object walletLock = new Object();
 
@@ -1134,12 +1137,25 @@ public abstract class Trade implements Tradable, Model {
 
     public void shutDown() {
 
-        // wait until wallet is responsive
-        // TODO: monero-wallet-rpc blocks while syncing in background, which can take a long time on tor
+        // check responsiveness and terminate process after timeout
         synchronized (walletLock) {
-            log.info("Waiting until trade wallet is responsive in order to shut down {} {}", getClass().getSimpleName(), getId());
-            wallet.getHeight(); 
-            log.warn("Done waiting until trade wallet is responsive for {} {}", getClass().getSimpleName(), getId());
+
+            // set timeout to check wallet responsiveness
+            Timer timeout = UserThread.runAfter(() -> {
+                log.warn("Timeout checking wallet responsiveness for {} {} after {} seconds, forcibly stopping process", getClass().getSimpleName(), getId(), WALLET_SHUT_DOWN_TIMEOUT);
+                xmrWalletService.stopWallet(wallet, wallet.getPath(), true); // force stop
+                wallet = null;
+            }, WALLET_SHUT_DOWN_TIMEOUT);
+
+            // check wallet responsiveness
+            try {
+                log.info("Checking wallet responsiveness for shut down {} {}", getClass().getSimpleName(), getId());
+                if (wallet != null) wallet.getHeight();
+                log.info("Done checking wallet responsiveness for shut down {} {}", getClass().getSimpleName(), getId());
+                timeout.stop();
+            } catch (Exception e) {
+                if (!e.getMessage().contains("Connecection reset")) throw e; // connection reset is expected on forced shutdown
+            }
         }
 
         // re-acquire lock to allow any blocked wallet requests to process
