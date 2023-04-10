@@ -789,7 +789,7 @@ public class XmrWalletService {
     public synchronized XmrAddressEntry getNewAddressEntry(String offerId, XmrAddressEntry.Context context) {
 
         // try to use available and not yet used entries
-        List<MoneroTxWallet> incomingTxs = getIncomingTxs(null); // pre-fetch all incoming txs to avoid query per subaddress
+        List<MoneroTxWallet> incomingTxs = getIncomingTxs(); // prefetch all incoming txs to avoid query per subaddress
         Optional<XmrAddressEntry> emptyAvailableAddressEntry = getAddressEntryListAsImmutableList().stream().filter(e -> XmrAddressEntry.Context.AVAILABLE == e.getContext()).filter(e -> isSubaddressUnused(e.getSubaddressIndex(), incomingTxs)).findAny();
         if (emptyAvailableAddressEntry.isPresent()) return xmrAddressEntryList.swapAvailableToAddressEntryWithOfferId(emptyAvailableAddressEntry.get(), context, offerId);
         
@@ -906,8 +906,9 @@ public class XmrWalletService {
     }
 
     public List<XmrAddressEntry> getUnusedAddressEntries() {
+        List<MoneroTxWallet> incomingTxs = getIncomingTxs(); // prefetch all incoming txs to avoid query per subaddress
         return getAvailableAddressEntries().stream()
-                .filter(e -> isSubaddressUnused(e.getSubaddressIndex()))
+                .filter(e -> isSubaddressUnused(e.getSubaddressIndex(), incomingTxs))
                 .collect(Collectors.toList());
     }
 
