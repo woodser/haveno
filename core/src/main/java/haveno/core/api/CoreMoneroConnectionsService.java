@@ -440,6 +440,7 @@ public final class CoreMoneroConnectionsService {
                     }
                 } catch (Exception e) {
                     log.warn("Unable to start local monero node: " + e.getMessage());
+                    e.printStackTrace();
                 }
             });
 
