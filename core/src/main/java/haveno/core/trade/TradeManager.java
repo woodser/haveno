@@ -416,6 +416,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 @Override
                 public void run() {
                     initPersistedTrade(trade);
+
+                    // remove trade which didn't finish initializing 
+                    if (!trade.isDepositRequested()) {
+                        log.warn("Removing persisted {} {} because it did not finish initializing (state={})", trade.getClass().getSimpleName(), trade.getId(), trade.getState());
+                        removeTradeOnError(trade);
+                    }
                 }
             });
         };
