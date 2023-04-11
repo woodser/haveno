@@ -337,6 +337,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             log.info("OpenOfferManager and P2PService shutdown started");
             injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
                 injector.getInstance(XmrWalletService.class).onShutDownStarted();
+                injector.getInstance(CoreMoneroConnectionsService.class).onShutDownStarted();
             }, () -> {
                 log.info("OpenOfferManager and P2PService shutdown completed");
                 injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {

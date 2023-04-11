@@ -96,6 +96,7 @@ public final class CoreMoneroConnectionsService {
     @Getter
     private MoneroDaemonInfo lastInfo;
     private TaskLooper daemonPollLooper;
+    private boolean isShutDownStarted;
     private boolean isShutDown;
     private List<MoneroConnectionManagerListener> listeners = new ArrayList<>();
 
@@ -136,8 +137,13 @@ public final class CoreMoneroConnectionsService {
         });
     }
 
+    public void onShutDownStarted() {
+        log.info("Shutting down started for {}", getClass().getSimpleName());
+        isShutDownStarted = true;
+    }
+
     public void shutDown() {
-        log.info("Shutting down {}", getClass().getSimpleName());
+        log.info("Shutting down started for {}", getClass().getSimpleName());
         isShutDown = true;
         synchronized (lock) {
             isInitialized = false;
@@ -475,7 +481,7 @@ public final class CoreMoneroConnectionsService {
 
     private void onConnectionChanged(MoneroRpcConnection currentConnection) {
         log.warn("CoreMoneroConnetionsService.onConnectionChanged()={}", currentConnection);
-        if (isShutDown) return;
+        if (isShutDownStarted) return;
         synchronized (lock) {
             if (currentConnection == null) {
                 daemon = null;
@@ -519,7 +525,7 @@ public final class CoreMoneroConnectionsService {
     }
 
     private void pollDaemonInfo() {
-        if (isShutDown) return;
+        if (isShutDownStarted) return;
         try {
             log.debug("Polling daemon info");
             if (daemon == null) throw new RuntimeException("No daemon connection");
@@ -550,12 +556,10 @@ public final class CoreMoneroConnectionsService {
         } catch (Exception e) {
 
             // log error message periodically
-            if (lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS) {
+            if (isShutDownStarted && (lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS)) {
                 lastErrorTimestamp = System.currentTimeMillis();
-                if (!isShutDown) {
-                    log.warn("Could not update daemon info: " + e.getMessage());
-                    if (DevEnv.isDevMode()) e.printStackTrace();
-                }
+                log.warn("Could not update daemon info: " + e.getMessage());
+                if (DevEnv.isDevMode()) e.printStackTrace();
             }
 
             // check connection which notifies of changes

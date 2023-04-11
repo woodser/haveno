@@ -717,7 +717,7 @@ public abstract class Trade implements Tradable, Model {
             if (wallet != null) return wallet;
             if (!walletExists()) return null;
             if (isShutDownStarted) throw new RuntimeException("Cannot open wallet for " + getClass().getSimpleName() + " " + getId() + " because trade is shut down");
-            if (!isShutDownStarted) wallet = xmrWalletService.openWallet(getWalletName());
+            else wallet = xmrWalletService.openWallet(getWalletName());
             return wallet;
         }
     }

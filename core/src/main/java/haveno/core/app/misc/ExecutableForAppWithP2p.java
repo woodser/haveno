@@ -84,6 +84,7 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
                 injector.getInstance(ArbitratorManager.class).shutDown();
                 injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
                     injector.getInstance(XmrWalletService.class).onShutDownStarted();
+                    injector.getInstance(CoreMoneroConnectionsService.class).onShutDownStarted();
                 }, () -> {
                     injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
                         module.close(injector);
