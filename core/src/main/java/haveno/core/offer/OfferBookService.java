@@ -68,7 +68,7 @@ public class OfferBookService {
     // poll key images of offers
     private MoneroKeyImagePoller keyImagePoller;
     private static final long KEY_IMAGE_REFRESH_PERIOD_MS_LOCAL = 20000; // 20 seconds
-    private static final long KEY_IMAGE_REFRESH_PERIOD_MS_REMOTE = 300000; // 5 minutes
+    private static final long KEY_IMAGE_REFRESH_PERIOD_MS_REMOTE = 20000; // 5 minutes
 
     public interface OfferBookChangedListener {
         void onAdded(Offer offer);
@@ -97,7 +97,9 @@ public class OfferBookService {
         connectionsService.addListener(new MoneroConnectionManagerListener() {
             @Override
             public void onConnectionChanged(MoneroRpcConnection connection) {
-                if (keyImagePoller == null) return;
+                log.warn("KEY POLLER CONNECTION CHANGED!!!! " + connection);
+                maybeInitializeKeyImagePoller();
+                log.warn("Setting daemon to: " + connectionsService.getDaemon());
                 keyImagePoller.setDaemon(connectionsService.getDaemon());
                 keyImagePoller.setRefreshPeriodMs(getKeyImageRefreshPeriodMs());
             }
@@ -263,6 +265,7 @@ public class OfferBookService {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     private synchronized void maybeInitializeKeyImagePoller() {
+        log.warn("Initializing key image pooller..");
         if (keyImagePoller != null) return;
         keyImagePoller = new MoneroKeyImagePoller(connectionsService.getDaemon(), getKeyImageRefreshPeriodMs());
 
@@ -276,9 +279,12 @@ public class OfferBookService {
             }
         });
 
-        // first poll after 5s
+        // first poll after 20s
+        log.warn("Maybe initializing offer book service key image polller..");
         new Thread(() -> {
-            GenUtils.waitFor(5000);
+            log.warn("waiting..");
+            GenUtils.waitFor(20000);
+            log.warn("polling..");
             keyImagePoller.poll();
         });
     }

@@ -50,6 +50,8 @@ import monero.wallet.model.MoneroTxWallet;
 import monero.wallet.model.MoneroWalletConfig;
 import monero.wallet.model.MoneroWalletListener;
 import monero.wallet.model.MoneroWalletListenerI;
+
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -560,7 +562,7 @@ public class XmrWalletService {
         }
 
         // prepare trades for shut down
-        tradeManager.onShutDownStarted();
+        if (tradeManager != null) tradeManager.onShutDownStarted();
     }
 
     public void shutDown() {
@@ -734,21 +736,37 @@ public class XmrWalletService {
         if (wallet != null && HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
         log.info("Setting main wallet daemon connection: " + (connection == null ? null : connection.getUri()));
+        log.warn("1");
+        String oldProxyUri = wallet == null || wallet.getDaemonConnection() == null ? null : wallet.getDaemonConnection().getProxyUri();
+        String newProxyUri = connection == null ? null : connection.getProxyUri();
+        log.warn("2");
         if (wallet == null) maybeInitMainWallet();
-        else {
+        else if (wallet instanceof MoneroWalletRpc && !StringUtils.equals(oldProxyUri, newProxyUri)) {
+            log.info("Restarting main wallet since proxy URI has changed");
+            closeMainWallet(true); // restart monero-wallet-rpc
+            maybeInitMainWallet();
+        } else {
+            log.warn("3");
             wallet.setDaemonConnection(connection);
+            log.warn("4");
             if (connection != null) wallet.getDaemonConnection().setPrintStackTrace(PRINT_STACK_TRACE);
             if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
+                log.warn("5");
                 wallet.startSyncing(connectionsService.getRefreshPeriodMs());
+                log.warn("6");
                 new Thread(() -> {
                     try {
+                        log.warn("7");
                         wallet.sync();
+                        log.warn("8");
                     } catch (Exception e) {
                         log.warn("Failed to sync main wallet after setting daemon connection: " + e.getMessage());
                     }
                 }).start();
             }
         }
+
+        log.info("Done setting main wallet daemon connection: " + (connection == null ? null : connection.getUri()));
     }
 
     private void notifyBalanceListeners() {

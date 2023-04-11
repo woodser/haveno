@@ -73,6 +73,7 @@ import monero.common.TaskLooper;
 import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroTx;
 import monero.wallet.MoneroWallet;
+import monero.wallet.MoneroWalletRpc;
 import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroMultisigSignResult;
 import monero.wallet.model.MoneroOutputWallet;
@@ -81,6 +82,8 @@ import monero.wallet.model.MoneroTxQuery;
 import monero.wallet.model.MoneroTxSet;
 import monero.wallet.model.MoneroTxWallet;
 import monero.wallet.model.MoneroWalletListener;
+
+import org.apache.commons.lang3.StringUtils;
 import org.bitcoinj.core.Coin;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
@@ -1674,17 +1677,24 @@ public abstract class Trade implements Tradable, Model {
     private void onConnectionChanged(MoneroRpcConnection connection) {
         synchronized (walletLock) {
 
-            // check to ignore
+            // check if ignored
             if (isShutDownStarted) return;
             if (wallet == null) return;
             if (HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
-            // set daemon connection
-            MoneroWallet wallet = getWallet();
+            // set daemon connection (must restart monero-wallet-rpc if proxy uri changed)
+            String oldProxyUri = wallet.getDaemonConnection() == null ? null : wallet.getDaemonConnection().getProxyUri();
+            String newProxyUri = connection == null ? null : connection.getProxyUri();
             log.info("Setting daemon connection for trade wallet {}: {}", getId() , connection == null ? null : connection.getUri());
-            wallet.setDaemonConnection(connection);
+            if (wallet instanceof MoneroWalletRpc && !StringUtils.equals(oldProxyUri, newProxyUri)) {
+                log.info("Restarting monero-wallet-rpc for trade wallet to set proxy URI {}: {}", getId() , connection == null ? null : connection.getUri());
+                closeWallet();
+                wallet = getWallet();
+            } else {
+                wallet.setDaemonConnection(connection);
+            }
             updateWalletRefreshPeriod();
-    
+
             // sync and reprocess messages on new thread
             if (connection != null && !Boolean.FALSE.equals(connection.isConnected())) {
                 HavenoUtils.submitTask(() -> {

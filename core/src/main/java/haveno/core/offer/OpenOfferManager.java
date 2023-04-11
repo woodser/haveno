@@ -201,6 +201,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         connectionsService.addListener(new MoneroConnectionManagerListener() {
             @Override
             public void onConnectionChanged(MoneroRpcConnection connection) {
+                log.warn("OpenOfferManager core connection service changed! " + connection);
                 maybeInitializeKeyImagePoller();
                 signedOfferKeyImagePoller.setDaemon(connectionsService.getDaemon());
                 signedOfferKeyImagePoller.setRefreshPeriodMs(getKeyImageRefreshPeriodMs());
