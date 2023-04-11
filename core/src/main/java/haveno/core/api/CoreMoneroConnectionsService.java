@@ -97,7 +97,6 @@ public final class CoreMoneroConnectionsService {
     private MoneroDaemonInfo lastInfo;
     private TaskLooper daemonPollLooper;
     private boolean isShutDownStarted;
-    private boolean isShutDown;
     private List<MoneroConnectionManagerListener> listeners = new ArrayList<>();
 
     @Inject
@@ -138,13 +137,15 @@ public final class CoreMoneroConnectionsService {
     }
 
     public void onShutDownStarted() {
-        log.info("Shutting down started for {}", getClass().getSimpleName());
+        log.info("{}.onShutDownStarted()", getClass().getSimpleName());
         isShutDownStarted = true;
+        synchronized (this) {
+            // ensures request not in progress
+        }
     }
 
     public void shutDown() {
         log.info("Shutting down started for {}", getClass().getSimpleName());
-        isShutDown = true;
         synchronized (lock) {
             isInitialized = false;
             if (daemonPollLooper != null) daemonPollLooper.stop();
@@ -529,7 +530,9 @@ public final class CoreMoneroConnectionsService {
         try {
             log.debug("Polling daemon info");
             if (daemon == null) throw new RuntimeException("No daemon connection");
-            lastInfo = daemon.getInfo();
+            synchronized (this) {
+                lastInfo = daemon.getInfo();
+            }
             chainHeight.set(lastInfo.getTargetHeight() == 0 ? lastInfo.getHeight() : lastInfo.getTargetHeight());
 
             // set peer connections
@@ -556,15 +559,17 @@ public final class CoreMoneroConnectionsService {
         } catch (Exception e) {
 
             // log error message periodically
-            if (isShutDownStarted && (lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS)) {
+            if ((lastErrorTimestamp == null || System.currentTimeMillis() - lastErrorTimestamp > MIN_ERROR_LOG_PERIOD_MS)) {
                 lastErrorTimestamp = System.currentTimeMillis();
                 log.warn("Could not update daemon info: " + e.getMessage());
                 if (DevEnv.isDevMode()) e.printStackTrace();
             }
 
             // check connection which notifies of changes
-            if (connectionManager.getAutoSwitch()) connectionManager.setConnection(connectionManager.getBestAvailableConnection());
-            else connectionManager.checkConnection();
+            synchronized (this) {
+                if (connectionManager.getAutoSwitch()) connectionManager.setConnection(connectionManager.getBestAvailableConnection());
+                else connectionManager.checkConnection();
+            }
         }
     }
 
