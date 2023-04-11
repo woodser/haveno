@@ -40,7 +40,6 @@ import haveno.core.provider.price.PriceFeedService;
 import haveno.core.setup.CorePersistedDataHost;
 import haveno.core.setup.CoreSetup;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
-import haveno.core.trade.TradeManager;
 import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.core.trade.txproof.xmr.XmrTxProofService;
 import haveno.core.xmr.setup.WalletsSetup;
@@ -337,7 +336,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
 
             log.info("OpenOfferManager and P2PService shutdown started");
             injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
-                injector.getInstance(TradeManager.class).prepareForShutDown();
+                injector.getInstance(XmrWalletService.class).onShutDownStarted();
             }, () -> {
                 log.info("OpenOfferManager and P2PService shutdown completed");
                 injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {

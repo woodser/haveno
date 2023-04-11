@@ -294,8 +294,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         thawUnreservedOutputs();
     }
 
-    public void prepareForShutDown() {
-        log.info("Preparing trades to be shut down", getClass().getSimpleName());
+    public void onShutDownStarted() {
+        log.info("{}.onShutDownStared()", getClass().getSimpleName());
 
         // collect trades to prepare
         Set<Trade> trades = new HashSet<Trade>();
@@ -307,18 +307,17 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         Set<Runnable> tasks = new HashSet<Runnable>();
         for (Trade trade : trades) tasks.add(() -> {
             try {
-                trade.prepareToShutDown();
+                trade.onShutDownStarted();
             } catch (Exception e) {
                 if (e.getMessage() != null && e.getMessage().contains("Connection reset")) return; // expected if shut down with ctrl+c
-                log.warn("Error preparing to shut down {} {}", getClass().getSimpleName(), trade.getId());
+                log.warn("Error notifying {} {} that shut down started {}", getClass().getSimpleName(), trade.getId());
                 e.printStackTrace();
             }
         });
         try {
             HavenoUtils.executeTasks(tasks);
-            log.info("Done preparing all trades to be shut down");
         } catch (Exception e) {
-            log.warn("Error preparing to shut down trades: {}", e.getMessage());
+            log.warn("Error notifying trades that shut down started: {}", e.getMessage());
             e.printStackTrace();
         }
     }

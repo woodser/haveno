@@ -30,7 +30,6 @@ import haveno.core.api.CoreMoneroConnectionsService;
 import haveno.core.app.HavenoExecutable;
 import haveno.core.offer.OpenOfferManager;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
-import haveno.core.trade.TradeManager;
 import haveno.core.xmr.setup.WalletsSetup;
 import haveno.core.xmr.wallet.BtcWalletService;
 import haveno.core.xmr.wallet.XmrWalletService;
@@ -84,7 +83,7 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
                 JsonFileManager.shutDownAllInstances();
                 injector.getInstance(ArbitratorManager.class).shutDown();
                 injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
-                    injector.getInstance(TradeManager.class).prepareForShutDown();
+                    injector.getInstance(XmrWalletService.class).onShutDownStarted();
                 }, () -> {
                     injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
                         module.close(injector);

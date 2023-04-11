@@ -91,7 +91,7 @@ public class XmrWalletService {
     private static final double DUST_TOLERANCE = 0.01; // max dust as percent of mining fee
     private static final int NUM_MAX_BACKUP_WALLETS = 10;
     private static final int MONERO_LOG_LEVEL =  2;
-    private static final boolean PRINT_STACK_TRACE = true;
+    private static final boolean PRINT_STACK_TRACE = false;
 
     private final CoreAccountService accountService;
     private final CoreMoneroConnectionsService connectionsService;
@@ -107,7 +107,7 @@ public class XmrWalletService {
     private TradeManager tradeManager;
     private MoneroWalletRpc wallet;
     private final Map<String, Optional<MoneroTx>> txCache = new HashMap<String, Optional<MoneroTx>>();
-    private boolean isShutDown = false;
+    private boolean isShutDownStarted = false;
 
     private HavenoSetup havenoSetup;
 
@@ -217,7 +217,7 @@ public class XmrWalletService {
 
     public MoneroWalletRpc createWallet(String walletName) {
         log.info("{}.createWallet({})", getClass().getSimpleName(), walletName);
-        if (isShutDown) throw new IllegalStateException("Cannot create wallet because shutting down");
+        if (isShutDownStarted) throw new IllegalStateException("Cannot create wallet because shutting down");
         return createWalletRpc(new MoneroWalletConfig()
                 .setPath(walletName)
                 .setPassword(getWalletPassword()),
@@ -226,7 +226,7 @@ public class XmrWalletService {
 
     public MoneroWalletRpc openWallet(String walletName) {
         log.info("{}.openWallet({})", getClass().getSimpleName(), walletName);
-        if (isShutDown) throw new IllegalStateException("Cannot open wallet because shutting down");
+        if (isShutDownStarted) throw new IllegalStateException("Cannot open wallet because shutting down");
         return openWalletRpc(new MoneroWalletConfig()
                 .setPath(walletName)
                 .setPassword(getWalletPassword()),
@@ -547,9 +547,19 @@ public class XmrWalletService {
         }
     }
 
+    public void onShutDownStarted() {
+        log.info("XmrWalletService.onShutDownStarted()");
+        this.isShutDownStarted = true;
+
+        // remove listeners which stops polling wallet
+        for (MoneroWalletListenerI listener : new HashSet<>(wallet.getListeners())) wallet.removeListener(listener); // TODO monero-java: wallet.stopPolling()?
+
+        // prepare trades for shut down
+        tradeManager.onShutDownStarted();
+    }
+
     public void shutDown() {
         log.info("Shutting down {}", getClass().getSimpleName());
-        this.isShutDown = true;
 
         // shut down trade and main wallets at same time
         List<Runnable> tasks = new ArrayList<Runnable>();
@@ -715,7 +725,7 @@ public class XmrWalletService {
 
     // TODO: monero-wallet-rpc needs restarted if applying tor proxy since it's a startup flag
     private void onConnectionChanged(MoneroRpcConnection connection) {
-        if (isShutDown) return;
+        if (isShutDownStarted) return;
         if (wallet != null && HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
         log.info("Setting main wallet daemon connection: " + (connection == null ? null : connection.getUri()));

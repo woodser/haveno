@@ -461,6 +461,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                             })))
                     .executeTasks();
             awaitTradeLatch();
+            log.warn("Latch released for DepositsConfirmedMessage for {} {}", getClass().getSimpleName(), trade.getId());
         }
     }
 

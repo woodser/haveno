@@ -822,8 +822,13 @@ public abstract class Trade implements Tradable, Model {
                         throw new RuntimeException("Refusing to delete wallet for " + getClass().getSimpleName() + " " + getId() + " because its balance is more than dust");
                     }
 
-                    // close and delete trade wallet
-                    if (wallet != null) closeWallet();
+                    // stop wallet
+                    if (wallet != null) {
+                        stopPolling();
+                        xmrWalletService.stopWallet(wallet, wallet.getPath(), true);
+                    }
+
+                    // delete wallet
                     log.info("Deleting wallet for {} {}", getClass().getSimpleName(), getId());
                     xmrWalletService.deleteWallet(getWalletName());
 
@@ -1137,10 +1142,10 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
-    public void prepareToShutDown() {
+    public void onShutDownStarted() {
         isShutDownStarted = true;
         synchronized (this) {
-            // synchronize on self to wait for current locks to complete
+            stopPolling();
         }
     }
 
@@ -1163,7 +1168,7 @@ public abstract class Trade implements Tradable, Model {
                 log.info("Done checking wallet responsiveness for shut down {} {}", getClass().getSimpleName(), getId());
                 timeout.stop();
             } catch (Exception e) {
-                if (!e.getMessage().contains("Connecection reset")) throw e; // connection reset is expected on forced shutdown
+                if (!e.getMessage().contains("Connection reset")) throw e; // connection reset is expected on forced shutdown
             }
         }
 
