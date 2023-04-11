@@ -340,17 +340,14 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             }, () -> {
                 log.info("OpenOfferManager and P2PService shutdown completed");
                 injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
+                    log.info("Monero wallets and connections shutdown completed. Exiting now");
                     module.close(injector);
-                    PersistenceManager.flushAllDataToDiskAtShutdown(() -> {
-                        resultHandler.handleResult();
-                        log.info("Graceful shutdown completed. Exiting now.");
-                        UserThread.runAfter(() -> System.exit(HavenoExecutable.EXIT_SUCCESS), 1);
-                    });
+                    completeShutdown(resultHandler, EXIT_SUCCESS, systemExit);
                 });
-                injector.getInstance(WalletsSetup.class).shutDown();
                 injector.getInstance(BtcWalletService.class).shutDown();
                 injector.getInstance(XmrWalletService.class).shutDown();
                 injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
+                injector.getInstance(WalletsSetup.class).shutDown();
             }));
         } catch (Throwable t) {
             log.error("App shutdown failed with exception {}", t.toString());

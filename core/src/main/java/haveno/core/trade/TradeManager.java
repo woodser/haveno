@@ -257,19 +257,19 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
             @Override
             public void onAccountCreated() {
-                log.info(getClass().getSimpleName() + ".accountService.onAccountCreated()");
+                log.info(TradeManager.class + ".accountService.onAccountCreated()");
                 initialize();
             }
 
             @Override
             public void onAccountOpened() {
-                log.info(getClass().getSimpleName() + ".accountService.onAccountOpened()");
+                log.info(TradeManager.class + ".accountService.onAccountOpened()");
                 initialize();
             }
 
             @Override
             public void onAccountClosed() {
-                log.info(getClass().getSimpleName() + ".accountService.onAccountClosed()");
+                log.info(TradeManager.class + ".accountService.onAccountClosed()");
                 closeAllTrades();
             }
 

@@ -93,10 +93,10 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
                             UserThread.runAfter(() -> System.exit(HavenoExecutable.EXIT_SUCCESS), 1);
                         });
                     });
-                    injector.getInstance(WalletsSetup.class).shutDown();
                     injector.getInstance(BtcWalletService.class).shutDown();
                     injector.getInstance(XmrWalletService.class).shutDown();
                     injector.getInstance(CoreMoneroConnectionsService.class).shutDown();
+                    injector.getInstance(WalletsSetup.class).shutDown();
                 }));
                 // we wait max 5 sec.
                 UserThread.runAfter(() -> {

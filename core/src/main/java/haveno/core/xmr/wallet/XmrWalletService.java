@@ -552,7 +552,12 @@ public class XmrWalletService {
         this.isShutDownStarted = true;
 
         // remove listeners which stops polling wallet
-        for (MoneroWalletListenerI listener : new HashSet<>(wallet.getListeners())) wallet.removeListener(listener); // TODO monero-java: wallet.stopPolling()?
+        // TODO monero-java: wallet.stopPolling()?
+        if (wallet != null) {
+            for (MoneroWalletListenerI listener : new HashSet<>(wallet.getListeners())) {
+                wallet.removeListener(listener);
+            }
+        }
 
         // prepare trades for shut down
         tradeManager.onShutDownStarted();
@@ -791,8 +796,10 @@ public class XmrWalletService {
     private void closeMainWallet(boolean save) {
         try {
             walletListeners.clear();
-            closeWallet(wallet, true);
-            wallet = null;
+            if (wallet != null) {
+                closeWallet(wallet, true);
+                wallet = null;
+            }
         } catch (Exception e) {
             log.warn("Error closing main monero-wallet-rpc subprocess: " + e.getMessage() + ". Was Haveno stopped manually with ctrl+c?");
         }
