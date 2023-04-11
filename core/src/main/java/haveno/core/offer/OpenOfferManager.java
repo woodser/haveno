@@ -201,10 +201,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         connectionsService.addListener(new MoneroConnectionManagerListener() {
             @Override
             public void onConnectionChanged(MoneroRpcConnection connection) {
-                log.warn("OpenOfferManager core connection service changed! " + connection);
                 maybeInitializeKeyImagePoller();
-                signedOfferKeyImagePoller.setDaemon(connectionsService.getDaemon());
-                signedOfferKeyImagePoller.setRefreshPeriodMs(getKeyImageRefreshPeriodMs());
             }
         });
 
@@ -259,10 +256,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         });
 
         // first poll in 5s
+        // TODO: remove?
         new Thread(() -> {
             GenUtils.waitFor(5000);
             signedOfferKeyImagePoller.poll();
-        });
+        }).start();
     }
 
     private long getKeyImageRefreshPeriodMs() {

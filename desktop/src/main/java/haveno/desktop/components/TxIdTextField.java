@@ -147,10 +147,13 @@ public class TxIdTextField extends AnchorPane {
     }
 
     public void cleanup() {
-        if (xmrWalletService != null && txUpdater != null) {
-            xmrWalletService.removeWalletListener(txUpdater);
-            txUpdater = null;
+        synchronized (this) {
+            if (xmrWalletService != null && txUpdater != null) {
+                xmrWalletService.removeWalletListener(txUpdater);
+                txUpdater = null;
+            }
         }
+
         textField.setOnMouseClicked(null);
         blockExplorerIcon.setOnMouseClicked(null);
         copyIcon.setOnMouseClicked(null);
@@ -185,9 +188,11 @@ public class TxIdTextField extends AnchorPane {
             if (txConfidenceIndicator.getProgress() != 0) {
                 AnchorPane.setRightAnchor(txConfidenceIndicator, 0.0);
             }
-            if (txConfidenceIndicator.getProgress() >= 1.0 && txUpdater != null) {
-                xmrWalletService.removeWalletListener(txUpdater); // unregister listener
-                txUpdater = null;
+            synchronized (this) {
+                if (txConfidenceIndicator.getProgress() >= 1.0 && txUpdater != null) {
+                    xmrWalletService.removeWalletListener(txUpdater); // unregister listener
+                    txUpdater = null;
+                }
             }
         });
     }

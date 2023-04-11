@@ -97,6 +97,7 @@ public final class CoreMoneroConnectionsService {
     private MoneroDaemonInfo lastInfo;
     private TaskLooper daemonPollLooper;
     private boolean isShutDown;
+    private List<MoneroConnectionManagerListener> listeners = new ArrayList<>();
 
     @Inject
     public CoreMoneroConnectionsService(P2PService p2PService,
@@ -159,8 +160,7 @@ public final class CoreMoneroConnectionsService {
 
     public void addListener(MoneroConnectionManagerListener listener) {
         synchronized (lock) {
-            log.warn("Adding connection listener: " + listener);
-            connectionManager.addListener(listener);
+            listeners.add(listener);
         }
     }
 
@@ -373,10 +373,8 @@ public final class CoreMoneroConnectionsService {
     private void initializeConnections() {
         synchronized (lock) {
 
-            // reset connection manager while preserving listeners
-            List<MoneroConnectionManagerListener> listeners = new ArrayList<>(connectionManager.getListeners());
+            // reset connection manager
             connectionManager.reset();
-            for (MoneroConnectionManagerListener listener : listeners) connectionManager.addListener(listener); // TODO: maintain internal list of listeners?
             connectionManager.setTimeout(REFRESH_PERIOD_HTTP_MS);
 
             // load connections
@@ -467,10 +465,8 @@ public final class CoreMoneroConnectionsService {
             }
 
             // register connection change listener
-            if (!isInitialized) {
-                connectionManager.addListener(this::onConnectionChanged);
-                isInitialized = true;
-            }
+            connectionManager.addListener(this::onConnectionChanged);
+            isInitialized = true;
 
             // update connection state
             onConnectionChanged(connectionManager.getConnection());
@@ -492,6 +488,11 @@ public final class CoreMoneroConnectionsService {
             }
         }
         updatePollingDaemonInfo();
+
+        // notify listeners
+        synchronized (lock) {
+            for (MoneroConnectionManagerListener listener : listeners) listener.onConnectionChanged(currentConnection);
+        }
     }
 
     private void updatePollingDaemonInfo() {

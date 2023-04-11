@@ -81,7 +81,6 @@ public class MoneroKeyImagePoller {
      * @param daemon - the daemon to fetch key images from
      */
     public void setDaemon(MoneroDaemon daemon) {
-        log.warn("Just set key image poller's daemon: " + daemon);
         this.daemon = daemon;
     }
 
@@ -214,7 +213,6 @@ public class MoneroKeyImagePoller {
     }
 
     public void poll() {
-        log.warn("Polling!!!");
         if (daemon == null) {
             log.warn("Cannot poll key images because daemon is null");
             return;
