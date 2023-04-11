@@ -1847,7 +1847,9 @@ public abstract class Trade implements Tradable, Model {
                 }
 
                 // check for outgoing txs (appears after wallet submits payout tx or on payout confirmed)
-                List<MoneroTxWallet> outgoingTxs = getWallet().getTxs(new MoneroTxQuery().setIsOutgoing(true));
+                List<MoneroTxWallet> outgoingTxs = getWallet().getTxs(new MoneroTxQuery()
+                        .setIsOutgoing(true)
+                        .setInTxPool(isPayoutPublished() ? null : false)); // don't check pool unless expected
                 if (!outgoingTxs.isEmpty()) {
                     MoneroTxWallet payoutTx = outgoingTxs.get(0);
                     setPayoutTx(payoutTx);

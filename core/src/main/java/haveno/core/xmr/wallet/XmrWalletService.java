@@ -93,7 +93,7 @@ public class XmrWalletService {
     private static final double DUST_TOLERANCE = 0.01; // max dust as percent of mining fee
     private static final int NUM_MAX_BACKUP_WALLETS = 10;
     private static final int MONERO_LOG_LEVEL = 0;
-    private static final boolean PRINT_STACK_TRACE = false;
+    private static final boolean PRINT_STACK_TRACE = true;
 
     private final CoreAccountService accountService;
     private final CoreMoneroConnectionsService connectionsService;

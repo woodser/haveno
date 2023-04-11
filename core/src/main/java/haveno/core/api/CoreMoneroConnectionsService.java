@@ -137,9 +137,9 @@ public final class CoreMoneroConnectionsService {
     }
 
     public void shutDown() {
+        log.info("Shutting down {}", getClass().getSimpleName());
+        isShutDown = true;
         synchronized (lock) {
-            log.info("Shutting down {}", getClass().getSimpleName());
-            isShutDown = true;
             isInitialized = false;
             if (daemonPollLooper != null) daemonPollLooper.stop();
             connectionManager.stopCheckingConnection();
@@ -475,8 +475,8 @@ public final class CoreMoneroConnectionsService {
 
     private void onConnectionChanged(MoneroRpcConnection currentConnection) {
         log.warn("CoreMoneroConnetionsService.onConnectionChanged()={}", currentConnection);
+        if (isShutDown) return;
         synchronized (lock) {
-            if (isShutDown) return;
             if (currentConnection == null) {
                 daemon = null;
                 connectionList.setCurrentConnectionUri(null);

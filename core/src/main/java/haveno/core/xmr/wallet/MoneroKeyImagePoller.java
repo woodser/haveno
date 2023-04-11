@@ -216,8 +216,6 @@ public class MoneroKeyImagePoller {
         if (daemon == null) {
             log.warn("Cannot poll key images because daemon is null");
             return;
-        } else {
-            log.warn("Fetching key images with daemon: " + daemon);
         }
 
         // get copy of key images to fetch
@@ -226,9 +224,13 @@ public class MoneroKeyImagePoller {
         // fetch spent statuses
         List<MoneroKeyImageSpentStatus> spentStatuses = null;
         try {
-            spentStatuses = keyImages.isEmpty() ? new ArrayList<MoneroKeyImageSpentStatus>() : daemon.getKeyImageSpentStatuses(keyImages); // TODO monero-java: if order of getKeyImageSpentStatuses is guaranteed, then it should take list parameter
+            if (keyImages.isEmpty()) spentStatuses = new ArrayList<MoneroKeyImageSpentStatus>();
+            else {
+                log.info("Polling spent status of key images");
+                spentStatuses = daemon.getKeyImageSpentStatuses(keyImages); // TODO monero-java: if order of getKeyImageSpentStatuses is guaranteed, then it should take list parameter
+            }
         } catch (Exception e) {
-            log.warn("Error fetching spent status of key images: " + e.getMessage());
+            log.warn("Error polling spent status of key images: " + e.getMessage());
             return;
         }
 

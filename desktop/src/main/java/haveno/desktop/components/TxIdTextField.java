@@ -142,8 +142,7 @@ public class TxIdTextField extends AnchorPane {
         copyIcon.setOnMouseClicked(e -> Utilities.copyToClipboard(txId));
         txConfidenceIndicator.setVisible(true);
 
-        // update off main thread
-        new Thread(() -> updateConfidence(txId, true, null)).start();
+        updateConfidence(txId, true, null);
     }
 
     public void cleanup() {
@@ -171,15 +170,17 @@ public class TxIdTextField extends AnchorPane {
         }
     }
 
-    private synchronized void updateConfidence(String txId, boolean useCache, Long height) {
-        MoneroTx tx = null;
-        try {
-            tx = useCache ? xmrWalletService.getTxWithCache(txId) : xmrWalletService.getTx(txId);
-            tx.setNumConfirmations(tx.isConfirmed() ? (height == null ? xmrWalletService.getConnectionsService().getLastInfo().getHeight() : height) - tx.getHeight(): 0l); // TODO: don't set if tx.getNumConfirmations() works reliably on non-local testnet
-        } catch (Exception e) {
-            // do nothing
-        }
-        updateConfidence(tx);
+    private void updateConfidence(String txId, boolean useCache, Long height) {
+        new Thread(() -> {
+            MoneroTx tx = null;
+            try {
+                tx = useCache ? xmrWalletService.getTxWithCache(txId) : xmrWalletService.getTx(txId);
+                tx.setNumConfirmations(tx.isConfirmed() ? (height == null ? xmrWalletService.getConnectionsService().getLastInfo().getHeight() : height) - tx.getHeight(): 0l); // TODO: don't set if tx.getNumConfirmations() works reliably on non-local testnet
+            } catch (Exception e) {
+                // do nothing
+            }
+            updateConfidence(tx);
+        }).start();
     }
 
     private void updateConfidence(MoneroTx tx) {
@@ -188,12 +189,12 @@ public class TxIdTextField extends AnchorPane {
             if (txConfidenceIndicator.getProgress() != 0) {
                 AnchorPane.setRightAnchor(txConfidenceIndicator, 0.0);
             }
-            synchronized (this) {
-                if (txConfidenceIndicator.getProgress() >= 1.0 && txUpdater != null) {
-                    xmrWalletService.removeWalletListener(txUpdater); // unregister listener
-                    txUpdater = null;
-                }
-            }
         });
+        synchronized (this) {
+            if (txConfidenceIndicator.getProgress() >= 1.0 && txUpdater != null) {
+                xmrWalletService.removeWalletListener(txUpdater); // unregister listener
+                txUpdater = null;
+            }
+        }
     }
 }
