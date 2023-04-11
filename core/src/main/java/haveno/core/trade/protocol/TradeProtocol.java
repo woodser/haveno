@@ -440,11 +440,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     public void handle(DepositsConfirmedMessage response, NodeAddress sender) {
         System.out.println(getClass().getSimpleName() + ".handle(DepositsConfirmedMessage)");
-        log.warn("Locking for DepositsConfirmedMessage for {} {}", trade.getClass().getSimpleName(), trade.getId());
         synchronized (trade) {
-            log.warn("Latching for DepositsConfirmedMessage for {} {}, now latching trade...", getClass().getSimpleName(), trade.getId());
             latchTrade();
-            log.warn("Done latching for DepositsConfirmedMessage for {} {}", getClass().getSimpleName(), trade.getId());
             expect(new Condition(trade)
                     .with(response)
                     .from(sender))
@@ -461,7 +458,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                             })))
                     .executeTasks();
             awaitTradeLatch();
-            log.warn("Latch released for DepositsConfirmedMessage for {} {}", getClass().getSimpleName(), trade.getId());
         }
     }
 

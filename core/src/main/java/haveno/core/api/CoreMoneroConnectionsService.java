@@ -263,7 +263,6 @@ public final class CoreMoneroConnectionsService {
 
     public long getRefreshPeriodMs() {
         if (connectionList.getRefreshPeriod() < 0 || connectionList.getRefreshPeriod() > 0) {
-            log.warn("Using configured refresh period of {} ms", connectionList.getRefreshPeriod());
             return connectionList.getRefreshPeriod();
         } else {
             return getDefaultRefreshPeriodMs();

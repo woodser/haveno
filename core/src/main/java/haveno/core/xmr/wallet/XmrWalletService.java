@@ -90,7 +90,7 @@ public class XmrWalletService {
     private static final double SECURITY_DEPOSIT_TOLERANCE = Config.baseCurrencyNetwork() == BaseCurrencyNetwork.XMR_LOCAL ? 0.25 : 0.05; // security deposit can absorb miner fee up to percent
     private static final double DUST_TOLERANCE = 0.01; // max dust as percent of mining fee
     private static final int NUM_MAX_BACKUP_WALLETS = 10;
-    private static final int MONERO_LOG_LEVEL =  2;
+    private static final int MONERO_LOG_LEVEL = 0;
     private static final boolean PRINT_STACK_TRACE = false;
 
     private final CoreAccountService accountService;
