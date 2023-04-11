@@ -30,6 +30,7 @@ import haveno.core.api.CoreMoneroConnectionsService;
 import haveno.core.app.HavenoExecutable;
 import haveno.core.offer.OpenOfferManager;
 import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
+import haveno.core.trade.HavenoUtils;
 import haveno.core.xmr.setup.WalletsSetup;
 import haveno.core.xmr.wallet.BtcWalletService;
 import haveno.core.xmr.wallet.XmrWalletService;
@@ -43,7 +44,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -83,8 +86,10 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
                 JsonFileManager.shutDownAllInstances();
                 injector.getInstance(ArbitratorManager.class).shutDown();
                 injector.getInstance(OpenOfferManager.class).shutDown(() -> injector.getInstance(P2PService.class).shutDown(() -> {
-                    injector.getInstance(XmrWalletService.class).onShutDownStarted();
-                    injector.getInstance(CoreMoneroConnectionsService.class).onShutDownStarted();
+                    Set<Runnable> tasks = new HashSet<Runnable>();
+                    tasks.add(() -> injector.getInstance(XmrWalletService.class).onShutDownStarted());
+                    tasks.add(() -> injector.getInstance(CoreMoneroConnectionsService.class).onShutDownStarted());
+                    HavenoUtils.executeTasks(tasks); // notify services in parallel
                 }, () -> {
                     injector.getInstance(WalletsSetup.class).shutDownComplete.addListener((ov, o, n) -> {
                         module.close(injector);
