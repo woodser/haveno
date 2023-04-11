@@ -573,6 +573,7 @@ public class XmrWalletService {
         log.info("Shutting down {}", getClass().getSimpleName());
 
         // shut down trade and main wallets at same time
+        walletListeners.clear();
         List<Runnable> tasks = new ArrayList<Runnable>();
         if (tradeManager != null) tasks.add(() -> tradeManager.shutDown());
         tasks.add(() -> closeMainWallet(true));
@@ -593,6 +594,8 @@ public class XmrWalletService {
 
     private void maybeInitMainWallet() {
         if (wallet != null) throw new RuntimeException("Main wallet is already initialized");
+
+        MoneroUtils.setLogLevel(2);
 
         // open or create wallet
         MoneroDaemonRpc daemon = connectionsService.getDaemon();
@@ -809,7 +812,6 @@ public class XmrWalletService {
 
     private void closeMainWallet(boolean save) {
         try {
-            walletListeners.clear();
             if (wallet != null) {
                 closeWallet(wallet, true);
                 wallet = null;

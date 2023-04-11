@@ -1095,7 +1095,7 @@ public abstract class Trade implements Tradable, Model {
         if (depositId == null) return null;
         try {
             if (trader.getDepositTx() == null || !trader.getDepositTx().isConfirmed()) {
-                trader.setDepositTx(getTxFromWalletOrDaemon(depositId));
+                trader.setDepositTx(getDepositTxFromWalletOrDaemon(depositId));
             }
             return trader.getDepositTx();
         } catch (MoneroError e) {
@@ -1104,12 +1104,18 @@ public abstract class Trade implements Tradable, Model {
         }
     }
 
-    private MoneroTx getTxFromWalletOrDaemon(String txId) {
+    private MoneroTx getDepositTxFromWalletOrDaemon(String txId) {
         MoneroTx tx = null;
+
+        // first check wallet
         if (getWallet() != null) {
-            try { tx = getWallet().getTx(txId); } // TODO monero-java: return null if tx not found
-            catch (Exception e) { }
+            List<MoneroTxWallet> filteredTxs = getWallet().getTxs(new MoneroTxQuery()
+                    .setHash(txId)
+                    .setIsConfirmed(isDepositsConfirmed() ? true : null)); // avoid checking pool if confirmed
+            if (filteredTxs.size() == 1) tx = filteredTxs.get(0);
         }
+
+        // then check daemon
         if (tx == null) tx = getXmrWalletService().getTxWithCache(txId);
         return tx;
     }
