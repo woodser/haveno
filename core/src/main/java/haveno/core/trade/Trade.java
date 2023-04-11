@@ -21,7 +21,6 @@ import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 
-import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.crypto.Encryption;
 import haveno.common.crypto.PubKeyRing;
@@ -110,7 +109,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public abstract class Trade implements Tradable, Model {
 
     private static final String MONERO_TRADE_WALLET_PREFIX = "xmr_trade_";
-    private static final int WALLET_SHUT_DOWN_TIMEOUT = 5; // in seconds
     private MoneroWallet wallet; // trade wallet
     private Object walletLock = new Object();
 
@@ -799,9 +797,18 @@ public abstract class Trade implements Tradable, Model {
 
     private void closeWallet() {
         synchronized (walletLock) {
-            if (wallet == null) throw new RuntimeException("Trade wallet to close was not previously opened for trade " + getId());
+            if (wallet == null) throw new RuntimeException("Trade wallet to close is not open for trade " + getId());
             stopPolling();
             xmrWalletService.closeWallet(wallet, true);
+            wallet = null;
+        }
+    }
+
+    private void stopWallet() {
+        synchronized (walletLock) {
+            if (wallet == null) throw new RuntimeException("Trade wallet to close is not open for trade " + getId());
+            stopPolling();
+            xmrWalletService.stopWallet(wallet, wallet.getPath(), true);
             wallet = null;
         }
     }
@@ -822,11 +829,8 @@ public abstract class Trade implements Tradable, Model {
                         throw new RuntimeException("Refusing to delete wallet for " + getClass().getSimpleName() + " " + getId() + " because its balance is more than dust");
                     }
 
-                    // stop wallet
-                    if (wallet != null) {
-                        stopPolling();
-                        xmrWalletService.stopWallet(wallet, wallet.getPath(), true);
-                    }
+                    // force stop the wallet
+                    if (wallet != null) stopWallet();
 
                     // delete wallet
                     log.info("Deleting wallet for {} {}", getClass().getSimpleName(), getId());
@@ -1150,35 +1154,14 @@ public abstract class Trade implements Tradable, Model {
     }
 
     public void shutDown() {
-
-        // terminate wallet process after timeout if unresponsive
-        synchronized (walletLock) {
-
-            // set timeout to terminate process
-            Timer timeout = UserThread.runAfter(() -> {
-                log.warn("Timeout checking wallet responsiveness for {} {} after {} seconds, forcibly stopping process", getClass().getSimpleName(), getId(), WALLET_SHUT_DOWN_TIMEOUT);
-                xmrWalletService.stopWallet(wallet, wallet.getPath(), true); // force stop
-                wallet = null;
-            }, WALLET_SHUT_DOWN_TIMEOUT);
-
-            // check wallet responsiveness
-            try {
-                log.info("Checking wallet responsiveness for shut down {} {}", getClass().getSimpleName(), getId());
-                if (wallet != null) wallet.getHeight();
-                log.info("Done checking wallet responsiveness for shut down {} {}", getClass().getSimpleName(), getId());
-                timeout.stop();
-            } catch (Exception e) {
-                if (!e.getMessage().contains("Connection reset")) throw e; // connection reset is expected on forced shutdown
-            }
-        }
-
-        // shut down the trade
         synchronized (this) {
             boolean isOpen = wallet != null;
             if (isOpen) log.info("Shutting down {} {} with open wallet", getClass().getSimpleName(), getId());
             isInitialized = false;
             isShutDown = true;
-            if (wallet != null) closeWallet();
+            synchronized (walletLock) {
+                if (wallet != null) closeWallet();
+            }
             if (tradePhaseSubscription != null) tradePhaseSubscription.unsubscribe();
             if (payoutStateSubscription != null) payoutStateSubscription.unsubscribe();
             idlePayoutSyncer = null; // main wallet removes listener itself

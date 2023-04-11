@@ -132,8 +132,8 @@ public class MoneroWalletRpcManager {
     }
 
     private int unregisterPort(MoneroWalletRpc walletRpc) {
-        int port = -1;
         synchronized (registeredPorts) {
+            int port = -1;
             boolean found = false;
             for (Map.Entry<Integer, MoneroWalletRpc> entry : registeredPorts.entrySet()) {
                 if (walletRpc == entry.getValue()) {
@@ -148,8 +148,8 @@ public class MoneroWalletRpcManager {
                 }
             }
             if (!found) throw new RuntimeException("MoneroWalletRpc instance not registered with a port");
+            return port;
         }
-        return port;
     }
 
     private void removePort(int port) {
