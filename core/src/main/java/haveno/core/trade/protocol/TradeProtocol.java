@@ -256,11 +256,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
         // send deposit confirmed message on startup or event
         if (trade.getState().ordinal() >= Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN.ordinal()) {
-            new Thread(() -> sendDepositsConfirmedMessages()).start();
+            new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
         } else {
             EasyBind.subscribe(trade.stateProperty(), state -> {
                 if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
-                    new Thread(() -> sendDepositsConfirmedMessages()).start();
+                    new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
                 }
             });
         }
@@ -844,7 +844,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    private void sendDepositsConfirmedMessages() {
+    private void maybeSendDepositsConfirmedMessages() {
         synchronized (trade) {
             if (!trade.isInitialized()) return; // skip if shutting down
             if (trade.getProcessModel().isDepositsConfirmedMessagesDelivered()) return; // skip if already delivered
@@ -860,7 +860,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
                                 // retry in 15 minutes
                                 UserThread.runAfter(() -> {
-                                    sendDepositsConfirmedMessages();
+                                    maybeSendDepositsConfirmedMessages();
                                 }, 15, TimeUnit.MINUTES);
                                 handleTaskRunnerFault(null, null, "SendDepositsConfirmedMessages", errorMessage);
                             })))
