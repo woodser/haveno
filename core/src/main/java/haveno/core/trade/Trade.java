@@ -750,7 +750,7 @@ public abstract class Trade implements Tradable, Model {
         if (getWallet() == null) throw new RuntimeException("Cannot sync trade wallet because it doesn't exist for " + getClass().getSimpleName() + ", " + getId());
         if (getWallet().getDaemonConnection() == null) throw new RuntimeException("Cannot sync trade wallet because it's not connected to a Monero daemon for " + getClass().getSimpleName() + ", " + getId());
         log.info("Syncing wallet for {} {}", getClass().getSimpleName(), getId());
-        getWallet().sync();
+        xmrWalletService.syncWallet(getWallet());
         pollWallet();
         log.info("Done syncing wallet for {} {}", getClass().getSimpleName(), getId());
     }

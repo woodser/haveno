@@ -43,6 +43,7 @@ import monero.wallet.model.MoneroDestination;
 import monero.wallet.model.MoneroOutputQuery;
 import monero.wallet.model.MoneroOutputWallet;
 import monero.wallet.model.MoneroSubaddress;
+import monero.wallet.model.MoneroSyncResult;
 import monero.wallet.model.MoneroTransferQuery;
 import monero.wallet.model.MoneroTxConfig;
 import monero.wallet.model.MoneroTxQuery;
@@ -68,7 +69,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -93,7 +98,7 @@ public class XmrWalletService {
     private static final double DUST_TOLERANCE = 0.01; // max dust as percent of mining fee
     private static final int NUM_MAX_BACKUP_WALLETS = 10;
     private static final int MONERO_LOG_LEVEL = 0;
-    private static final boolean PRINT_STACK_TRACE = true;
+    private static final boolean PRINT_STACK_TRACE = false;
 
     private final CoreAccountService accountService;
     private final CoreMoneroConnectionsService connectionsService;
@@ -110,6 +115,7 @@ public class XmrWalletService {
     private MoneroWalletRpc wallet;
     private final Map<String, Optional<MoneroTx>> txCache = new HashMap<String, Optional<MoneroTx>>();
     private boolean isShutDownStarted = false;
+    private ExecutorService syncWalletThreadPool = Executors.newFixedThreadPool(10); // TODO: adjust based on connection type
 
     private HavenoSetup havenoSetup;
 
@@ -233,6 +239,19 @@ public class XmrWalletService {
                 .setPath(walletName)
                 .setPassword(getWalletPassword()),
                 null);
+    }
+
+    /**
+     * Sync the given wallet in a thread pool with other wallets.
+     */
+    public MoneroSyncResult syncWallet(MoneroWallet wallet) {
+        Callable<MoneroSyncResult> task = () -> wallet.sync();
+        Future<MoneroSyncResult> future = syncWalletThreadPool.submit(task);
+        try {
+            return future.get();
+        } catch (Exception e) {
+            throw new MoneroError(e.getMessage());
+        }
     }
 
     public void saveWallet(MoneroWallet wallet, boolean backup) {
