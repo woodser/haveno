@@ -727,13 +727,13 @@ public class DisputeSummaryWindow extends Overlay<DisputeSummaryWindow> {
                 sellerPayoutAmount.equals(sellerSecurityDeposit)) {
             buyerGetsTradeAmountRadioButton.setSelected(true);
         } else if (buyerPayoutAmount.equals(tradeAmount.add(buyerSecurityDeposit).add(sellerSecurityDeposit)) &&
-                sellerPayoutAmount.equals(Coin.ZERO)) {
+                sellerPayoutAmount.equals(BigInteger.valueOf(0))) {
             buyerGetsAllRadioButton.setSelected(true);
         } else if (sellerPayoutAmount.equals(tradeAmount.add(sellerSecurityDeposit))
                 && buyerPayoutAmount.equals(buyerSecurityDeposit)) {
             sellerGetsTradeAmountRadioButton.setSelected(true);
         } else if (sellerPayoutAmount.equals(tradeAmount.add(buyerSecurityDeposit).add(sellerSecurityDeposit))
-                && buyerPayoutAmount.equals(Coin.ZERO)) {
+                && buyerPayoutAmount.equals(BigInteger.valueOf(0))) {
             sellerGetsAllRadioButton.setSelected(true);
         } else {
             customRadioButton.setSelected(true);
