@@ -614,8 +614,6 @@ public class XmrWalletService {
     private void maybeInitMainWallet() {
         if (wallet != null) throw new RuntimeException("Main wallet is already initialized");
 
-        MoneroUtils.setLogLevel(2);
-
         // open or create wallet
         MoneroDaemonRpc daemon = connectionsService.getDaemon();
         log.info("Initializing main wallet with monerod=" + (daemon == null ? "null" : daemon.getRpcConnection().getUri()));

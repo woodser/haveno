@@ -300,17 +300,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     private void initializeAfterServices() {
-        // if (p2PService.isBootstrapped()) {
-        //     initPersistedTrades();
-        // } else {
-        //     p2PService.addP2PServiceListener(new BootstrapListener() {
-        //         @Override
-        //         public void onUpdatedDataReceived() {
-        //             initPersistedTrades();
-        //         }
-        //     });
-        // }
-
         getObservableList().addListener((ListChangeListener<Trade>) change -> onTradesChanged());
         onTradesChanged();
 
@@ -318,10 +307,18 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
         // thaw unreserved outputs
         thawUnreservedOutputs();
+
+        // We do not include failed trades as they should not be counted anyway in the trade statistics
+        // TODO: remove stats pu
+        Set<Trade> nonFailedTrades = new HashSet<>(closedTradableManager.getClosedTrades());
+        nonFailedTrades.addAll(tradableList.getList());
+        String referralId = referralIdService.getOptionalReferralId().orElse(null);
+        boolean isTorNetworkNode = p2PService.getNetworkNode() instanceof TorNetworkNode;
+        tradeStatisticsManager.maybeRepublishTradeStatistics(nonFailedTrades, referralId, isTorNetworkNode);
     }
 
     public void onShutDownStarted() {
-        log.info("{}.onShutDownStared()", getClass().getSimpleName());
+        log.info("{}.onShutDownStarted()", getClass().getSimpleName());
 
         // collect trades to prepare
         Set<Trade> trades = new HashSet<Trade>();
@@ -428,7 +425,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     // Init pending trade
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void initPersistedTrades() {
+    private synchronized void initPersistedTrades() {
+        if (persistedTradesInitialized.get()) return;
 
         // get all trades
         List<Trade> trades = getAllTrades();
@@ -445,26 +443,19 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
                     // remove trade which didn't finish initializing 
                     if (!trade.isDepositRequested()) {
-                        log.warn("Removing persisted {} {} because it did not finish initializing (state={})", trade.getClass().getSimpleName(), trade.getId(), trade.getState());
+                        log.warn("Removing persisted {} {} with uid={} because it did not finish initializing (state={})", trade.getClass().getSimpleName(), trade.getId(), trade.getUid(), trade.getState());
                         removeTradeOnError(trade);
                     }
                 }
             });
         };
         HavenoUtils.executeTasks(tasks, threadPoolSize);
-        log.warn("Done initializing trades");
+        log.warn("Done initializing trade protocols");
 
         if (isShutDown) return;
 
         // notify that persisted trades initialized
         persistedTradesInitialized.set(true);
-
-        // We do not include failed trades as they should not be counted anyway in the trade statistics
-        Set<Trade> nonFailedTrades = new HashSet<>(closedTradableManager.getClosedTrades());
-        nonFailedTrades.addAll(tradableList.getList());
-        String referralId = referralIdService.getOptionalReferralId().orElse(null);
-        boolean isTorNetworkNode = p2PService.getNetworkNode() instanceof TorNetworkNode;
-        tradeStatisticsManager.maybeRepublishTradeStatistics(nonFailedTrades, referralId, isTorNetworkNode);
 
         // sync idle trades once in background after active trades
         for (Trade trade : trades) {
@@ -1177,7 +1168,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         }
     }
 
-    private synchronized void removeTradeOnError(Trade trade) {
+    private void removeTradeOnError(Trade trade) {
         log.info("TradeManager.removeTradeOnError() " + trade.getId());
         synchronized(tradableList) {
             if (!tradableList.contains(trade)) return;

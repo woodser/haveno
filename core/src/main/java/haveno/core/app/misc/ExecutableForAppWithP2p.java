@@ -81,6 +81,14 @@ public abstract class ExecutableForAppWithP2p extends HavenoExecutable {
     @Override
     public void gracefulShutDown(ResultHandler resultHandler) {
         log.info("Starting graceful shut down of {}", getClass().getSimpleName());
+
+        // ignore if shut down in progress
+        if (isShutdownInProgress) {
+            log.info("Ignoring call to gracefulShutDown, already in progress");
+            return;
+        }
+        isShutdownInProgress = true;
+
         try {
             if (injector != null) {
                 JsonFileManager.shutDownAllInstances();

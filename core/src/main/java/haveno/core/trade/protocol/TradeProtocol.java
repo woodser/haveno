@@ -270,24 +270,9 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
                 // process mailbox messages
                 MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
-                log.info("Done adding decrypted mailbox listener for trade protocol {} {}", trade.getClass().getSimpleName(), trade.getId());
+                log.info("Handling mailbox mailbox listener for trade protocol {} {}", trade.getClass().getSimpleName(), trade.getId());
                 handleMailboxCollection(mailboxMessageService.getMyDecryptedMailboxMessages());
                 log.info("Done handling mailbox messages for trade protocol {} {}", trade.getClass().getSimpleName(), trade.getId());
-
-                // send deposit confirmed message on startup or event
-                if (trade.isDepositsConfirmed()) {
-                    new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
-                } else {
-                    EasyBind.subscribe(trade.stateProperty(), state -> {
-                        if (trade.isDepositsConfirmed()) {
-                            new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
-                        }
-                    });
-                }
-
-                // reprocess payout messages if pending
-                maybeReprocessPaymentReceivedMessage(true);
-                HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(trade, true);
 
                 unlatchTrade();
             }
@@ -499,7 +484,8 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         // the mailbox msg once wallet is ready and trade state set.
         synchronized (trade) {
             if (trade.getPhase().ordinal() >= Trade.Phase.PAYMENT_SENT.ordinal()) {
-                log.warn("Ignoring PaymentSentMessage which was already processed");
+                log.warn("Received another PaymentSentMessage which was already processed, ACKing");
+                handleTaskRunnerSuccess(peer, message);
                 return;
             }
             latchTrade();
@@ -542,6 +528,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             return;
         }
         synchronized (trade) {
+            if (trade.getPhase().ordinal() >= Trade.Phase.PAYMENT_RECEIVED.ordinal()) {
+                log.warn("Received another PaymentReceivedMessage which was already processed, ACKing");
+                handleTaskRunnerSuccess(peer, message);
+                return;
+            }
             latchTrade();
             Validator.checkTradeId(processModel.getOfferId(), message);
             processModel.setTradeMessage(message);
@@ -868,7 +859,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         }
     }
 
-    private void maybeSendDepositsConfirmedMessages() {
+    public void maybeSendDepositsConfirmedMessages() {
         synchronized (trade) {
             if (!trade.isInitialized()) return; // skip if shutting down
             if (trade.getProcessModel().isDepositsConfirmedMessagesDelivered()) return; // skip if already delivered

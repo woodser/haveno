@@ -576,7 +576,10 @@ public abstract class Trade implements Tradable, Model {
     // INITIALIZATION
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void initialize(ProcessModelServiceProvider serviceProvider) {
+    public synchronized void initialize(ProcessModelServiceProvider serviceProvider) {
+        if (isInitialized) throw new IllegalStateException(getClass().getSimpleName() + " " + getId() + " is already initialized");
+
+        // set arbitrator pub key ring once known
         serviceProvider.getArbitratorManager().getDisputeAgentByNodeAddress(getArbitratorNodeAddress()).ifPresent(arbitrator -> {
             getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
         });
@@ -659,8 +662,31 @@ public abstract class Trade implements Tradable, Model {
 
         if (isDepositRequested()) {
 
-            // start syncing and polling trade wallet off main thread
-            new Thread(() -> updateSyncing()).start();
+            // sync and reprocess messages on new thread
+            if (xmrWalletService.getConnectionsService().getConnection() != null && !Boolean.FALSE.equals(xmrWalletService.getConnectionsService().getConnection().isConnected())) {
+                HavenoUtils.submitTask(() -> {
+                    updateSyncing();
+
+                    // send deposit confirmed message on startup or event
+                    if (isDepositsConfirmed()) {
+                        new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
+                    } else {
+                        EasyBind.subscribe(stateProperty(), state -> {
+                            log.warn("Observed state change!: " + state);
+                            if (isDepositsConfirmed()) {
+                                new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
+                            }
+                        });
+                    }
+    
+                    // reprocess pending payout messages
+                    this.getProtocol().maybeReprocessPaymentReceivedMessage(false);
+                    HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(this, false);
+                });
+            }
+
+            // // start syncing and polling trade wallet off main thread
+            // new Thread(() -> updateSyncing()).start();
 
             // // allow state notifications to process before returning
             // CountDownLatch latch = new CountDownLatch(1);
@@ -1157,14 +1183,19 @@ public abstract class Trade implements Tradable, Model {
 
     public void onShutDownStarted() {
         isShutDownStarted = true;
+        log.info("{} {} onShutDownStarted() 0", getClass().getSimpleName(), getId());
         synchronized (this) {
+            log.info("{} {} onShutDownStarted() 1", getClass().getSimpleName(), getId());
             synchronized (walletLock) {
+                log.info("{} {} onShutDownStarted() 2", getClass().getSimpleName(), getId());
                 stopPolling(); // allow locks to release before stopping
+                log.info("{} {} onShutDownStarted() 3", getClass().getSimpleName(), getId());
             }
         }
     }
 
     public void shutDown() {
+        if (wallet != null) log.info("{} {} onShutDown()", getClass().getSimpleName(), getId());
         synchronized (this) {
             boolean isOpen = wallet != null;
             if (isOpen) log.info("Shutting down {} {} with open wallet", getClass().getSimpleName(), getId());
@@ -1224,6 +1255,7 @@ public abstract class Trade implements Tradable, Model {
 
         this.state = state;
         UserThread.execute(() -> {
+            log.warn("Setting state property on new thread: " + state);
             stateProperty.set(state);
             phaseProperty.set(state.getPhase());
         });
@@ -1683,11 +1715,12 @@ public abstract class Trade implements Tradable, Model {
     }
 
     private void onConnectionChanged(MoneroRpcConnection connection) {
+        log.warn("{} {} onConnectionChanged()", getClass().getSimpleName(), getId());
         synchronized (walletLock) {
 
             // check if ignored
             if (isShutDownStarted) return;
-            if (wallet == null) return;
+            if (getWallet() == null) return;
             if (HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;
 
             // set daemon connection (must restart monero-wallet-rpc if proxy uri changed)

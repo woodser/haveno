@@ -77,7 +77,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     protected AppModule module;
     protected Config config;
     @Getter
-    private boolean isShutdownInProgress;
+    protected boolean isShutdownInProgress;
     private boolean isReadOnly;
     private Thread keepRunningThread;
     private AtomicInteger keepRunningResult = new AtomicInteger(EXIT_SUCCESS);
@@ -307,11 +307,12 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
     @Override
     public void gracefulShutDown(ResultHandler onShutdown, boolean systemExit) {
         log.info("Starting graceful shut down of {}", getClass().getSimpleName());
+
+        // ignore if shut down in progress
         if (isShutdownInProgress) {
             log.info("Ignoring call to gracefulShutDown, already in progress");
             return;
         }
-
         isShutdownInProgress = true;
 
         ResultHandler resultHandler;
