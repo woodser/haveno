@@ -200,6 +200,13 @@ public class MoneroKeyImagePoller {
     }
 
     /**
+     * Clear the key images which stops polling.
+     */
+    public void clearKeyImages() {
+        setKeyImages();
+    }
+
+    /**
      * Indicates if the given key image is spent.
      *
      * @param keyImage - the key image to check
