@@ -612,19 +612,20 @@ public class XmrWalletService {
     }
 
     private void maybeInitMainWallet() {
-        if (wallet != null) throw new RuntimeException("Main wallet is already initialized");
 
-        // open or create wallet
-        MoneroDaemonRpc daemon = connectionsService.getDaemon();
-        log.info("Initializing main wallet with monerod=" + (daemon == null ? "null" : daemon.getRpcConnection().getUri()));
-        MoneroWalletConfig walletConfig = new MoneroWalletConfig().setPath(MONERO_WALLET_NAME).setPassword(getWalletPassword());
-        if (MoneroUtils.walletExists(xmrWalletFile.getPath())) {
-            wallet = openWalletRpc(walletConfig, rpcBindPort);
-        } else if (connectionsService.getConnection() != null && Boolean.TRUE.equals(connectionsService.getConnection().isConnected())) {
-            wallet = createWalletRpc(walletConfig, rpcBindPort);
+        // open or create wallet main wallet
+        if (wallet == null) {
+            MoneroDaemonRpc daemon = connectionsService.getDaemon();
+            log.info("Initializing main wallet with monerod=" + (daemon == null ? "null" : daemon.getRpcConnection().getUri()));
+            MoneroWalletConfig walletConfig = new MoneroWalletConfig().setPath(MONERO_WALLET_NAME).setPassword(getWalletPassword());
+            if (MoneroUtils.walletExists(xmrWalletFile.getPath())) {
+                wallet = openWalletRpc(walletConfig, rpcBindPort);
+            } else if (connectionsService.getConnection() != null && Boolean.TRUE.equals(connectionsService.getConnection().isConnected())) {
+                wallet = createWalletRpc(walletConfig, rpcBindPort);
+            }
         }
 
-        // sync wallet when initialized
+        // sync wallet if open
         if (wallet != null) {
             log.info("Monero wallet uri={}, path={}", wallet.getRpcConnection().getUri(), wallet.getPath());
             while (!havenoSetup.getWalletInitialized().get()) {
