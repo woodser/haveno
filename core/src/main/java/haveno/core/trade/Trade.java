@@ -666,33 +666,26 @@ public abstract class Trade implements Tradable, Model {
             if (xmrWalletService.getConnectionsService().getConnection() != null && !Boolean.FALSE.equals(xmrWalletService.getConnectionsService().getConnection().isConnected())) {
                 HavenoUtils.submitTask(() -> {
                     updateSyncing();
-
-                    // send deposit confirmed message on startup or event
-                    if (isDepositsConfirmed()) {
-                        new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
-                    } else {
-                        EasyBind.subscribe(stateProperty(), state -> {
-                            log.warn("Observed state change!: " + state);
-                            if (isDepositsConfirmed()) {
-                                new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
-                            }
-                        });
-                    }
-    
-                    // reprocess pending payout messages
-                    this.getProtocol().maybeReprocessPaymentReceivedMessage(false);
-                    HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(this, false);
                 });
             }
-
-            // // start syncing and polling trade wallet off main thread
-            // new Thread(() -> updateSyncing()).start();
-
-            // // allow state notifications to process before returning
-            // CountDownLatch latch = new CountDownLatch(1);
-            // UserThread.execute(() -> latch.countDown());
-            // HavenoUtils.awaitLatch(latch);
         }
+
+        // send deposit confirmed message on startup or event
+        log.warn("Ok, checking if confirmed: " + isDepositsConfirmed());
+        if (isDepositsConfirmed()) {
+            new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
+        } else {
+            EasyBind.subscribe(stateProperty(), state -> {
+                log.warn("Observed state change!: " + state);
+                if (isDepositsConfirmed()) {
+                    new Thread(() -> getProtocol().maybeSendDepositsConfirmedMessages()).start();
+                }
+            });
+        }
+
+        // reprocess pending payout messages
+        this.getProtocol().maybeReprocessPaymentReceivedMessage(false);
+        HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(this, false);
 
         isInitialized = true;
     }
@@ -806,6 +799,7 @@ public abstract class Trade implements Tradable, Model {
         if (!multisigHexes.isEmpty()) {
             log.info("Importing multisig hex for {} {}", getClass().getSimpleName(), getId());
             getWallet().importMultisigHex(multisigHexes.toArray(new String[0]));
+            log.info("Done importing multisig hex for {} {}", getClass().getSimpleName(), getId());
         }
     }
 
@@ -849,13 +843,6 @@ public abstract class Trade implements Tradable, Model {
                     // check if funds deposited but payout not unlocked
                     if (isDepositsPublished() && !isPayoutUnlocked()) {
                         throw new RuntimeException("Refusing to delete wallet for " + getClass().getSimpleName() + " " + getId() + " because the deposit txs have been published but payout tx has not unlocked");
-                    }
-
-                    // check if wallet balance > dust
-                    BigInteger maxBalance = isDepositsPublished() ? getMakerDepositTx().getFee().min(getTakerDepositTx().getFee()) : BigInteger.ZERO;
-                    if (wallet == null) getWallet();
-                    if (wallet.getBalance().compareTo(maxBalance) > 0) {
-                        throw new RuntimeException("Refusing to delete wallet for " + getClass().getSimpleName() + " " + getId() + " because its balance is more than dust");
                     }
 
                     // force stop the wallet
