@@ -131,6 +131,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     @Override
     public void onDirectMessage(DecryptedMessageWithPubKey decryptedMessageWithPubKey, NodeAddress peer) {
+        log.warn("direct message received! " + decryptedMessageWithPubKey + ", " + peer);
         NetworkEnvelope networkEnvelope = decryptedMessageWithPubKey.getNetworkEnvelope();
         if (!isMyMessage(networkEnvelope)) {
             return;
@@ -199,6 +200,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     private void handleMailboxMessage(MailboxMessage mailboxMessage) {
+        log.warn("Handling mailbox message: " + mailboxMessage);
         if (mailboxMessage instanceof TradeMessage) {
             TradeMessage tradeMessage = (TradeMessage) mailboxMessage;
             // We only remove here if we have already completed the trade.
@@ -242,32 +244,54 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     protected void onInitialized() {
+
+        // listen for direct and mailbox messages unless completed
         if (!trade.isCompleted()) {
+            log.warn("Trade protocol has added direct message listner for {} {}", trade.getClass().getSimpleName(), trade.getId());
             processModel.getP2PService().addDecryptedDirectMessageListener(this);
+            processModel.getP2PService().getMailboxMessageService().addDecryptedMailboxListener(this);
         }
 
-        // initialize trade
-        trade.initialize(processModel.getProvider());
+        // listen for new
+        // MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
+        // if (!trade.isCompleted()) {
+        //     processModel.getP2PService().addDecryptedDirectMessageListener(this);
+        // }
 
-        // process mailbox messages
-        MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
-        mailboxMessageService.addDecryptedMailboxListener(this);
-        handleMailboxCollection(mailboxMessageService.getMyDecryptedMailboxMessages());
+        // initialize rest of trade off main thread
+        new Thread(() -> {
+            synchronized (trade) {
+                latchTrade();
 
-        // send deposit confirmed message on startup or event
-        if (trade.getState().ordinal() >= Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN.ordinal()) {
-            new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
-        } else {
-            EasyBind.subscribe(trade.stateProperty(), state -> {
-                if (state == Trade.State.DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN) {
+                // initialize trade
+                log.warn("Initializing trade {} {}", trade.getClass().getSimpleName(), trade.getId());
+                trade.initialize(processModel.getProvider());
+                log.warn("Done initializing trade {} {}", trade.getClass().getSimpleName(), trade.getId());
+
+                // process mailbox messages
+                MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
+                log.info("Done adding decrypted mailbox listener for trade protocol {} {}", trade.getClass().getSimpleName(), trade.getId());
+                handleMailboxCollection(mailboxMessageService.getMyDecryptedMailboxMessages());
+                log.info("Done handling mailbox messages for trade protocol {} {}", trade.getClass().getSimpleName(), trade.getId());
+
+                // send deposit confirmed message on startup or event
+                if (trade.isDepositsConfirmed()) {
                     new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
+                } else {
+                    EasyBind.subscribe(trade.stateProperty(), state -> {
+                        if (trade.isDepositsConfirmed()) {
+                            new Thread(() -> maybeSendDepositsConfirmedMessages()).start();
+                        }
+                    });
                 }
-            });
-        }
 
-        // reprocess payout messages if pending
-        maybeReprocessPaymentReceivedMessage(true);
-        HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(trade, true);
+                // reprocess payout messages if pending
+                maybeReprocessPaymentReceivedMessage(true);
+                HavenoUtils.arbitrationManager.maybeReprocessDisputeClosedMessage(trade, true);
+
+                unlatchTrade();
+            }
+        }).start();
     }
 
     public void maybeReprocessPaymentReceivedMessage(boolean reprocessOnError) {

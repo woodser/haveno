@@ -98,7 +98,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -603,7 +602,7 @@ public abstract class Trade implements Tradable, Model {
             setState(Trade.State.SELLER_RECEIVED_PAYMENT_SENT_MSG);
         }
 
-        // handle trade state events
+        // handle trade phase events
         tradePhaseSubscription = EasyBind.subscribe(phaseProperty, newValue -> {
             if (isDepositsPublished() && !isPayoutUnlocked()) updateWalletRefreshPeriod();
             if (isCompleted()) {
@@ -660,13 +659,13 @@ public abstract class Trade implements Tradable, Model {
 
         if (isDepositRequested()) {
 
-            // start syncing and polling trade wallet
-            updateSyncing();
+            // start syncing and polling trade wallet off main thread
+            new Thread(() -> updateSyncing()).start();
 
-            // allow state notifications to process before returning
-            CountDownLatch latch = new CountDownLatch(1);
-            UserThread.execute(() -> latch.countDown());
-            HavenoUtils.awaitLatch(latch);
+            // // allow state notifications to process before returning
+            // CountDownLatch latch = new CountDownLatch(1);
+            // UserThread.execute(() -> latch.countDown());
+            // HavenoUtils.awaitLatch(latch);
         }
 
         isInitialized = true;
@@ -828,12 +827,13 @@ public abstract class Trade implements Tradable, Model {
 
                     // check if wallet balance > dust
                     BigInteger maxBalance = isDepositsPublished() ? getMakerDepositTx().getFee().min(getTakerDepositTx().getFee()) : BigInteger.ZERO;
-                    if (getWallet().getBalance().compareTo(maxBalance) > 0) {
+                    if (wallet == null) getWallet();
+                    if (wallet.getBalance().compareTo(maxBalance) > 0) {
                         throw new RuntimeException("Refusing to delete wallet for " + getClass().getSimpleName() + " " + getId() + " because its balance is more than dust");
                     }
 
                     // force stop the wallet
-                    if (wallet != null) stopWallet();
+                    stopWallet();
 
                     // delete wallet
                     log.info("Deleting wallet for {} {}", getClass().getSimpleName(), getId());
@@ -1158,7 +1158,9 @@ public abstract class Trade implements Tradable, Model {
     public void onShutDownStarted() {
         isShutDownStarted = true;
         synchronized (this) {
-            stopPolling();
+            synchronized (walletLock) {
+                stopPolling(); // allow locks to release before stopping
+            }
         }
     }
 

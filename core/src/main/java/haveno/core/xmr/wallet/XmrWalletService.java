@@ -639,6 +639,14 @@ public class XmrWalletService {
                     log.info("Done syncing main wallet in " + (System.currentTimeMillis() - time) + " ms");
                     wallet.startSyncing(connectionsService.getRefreshPeriodMs());
                     if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) log.info("Monero wallet balance={}, unlocked balance={}", wallet.getBalance(0), wallet.getUnlockedBalance(0));
+
+                    // reset any available address entries
+                    getAddressEntriesForAvailableBalanceStream()
+                            .filter(addressEntry -> addressEntry.getOfferId() != null)
+                            .forEach(addressEntry -> {
+                                log.warn("Swapping pending {} entries at startup. offerId={}", addressEntry.getContext(), addressEntry.getOfferId());
+                                swapTradeEntryToAvailableEntry(addressEntry.getOfferId(), addressEntry.getContext());
+                            });
                     
                     // TODO: using this to signify both daemon and wallet synced, use separate sync handlers
                     connectionsService.doneDownload();
@@ -756,7 +764,6 @@ public class XmrWalletService {
         return MONERO_WALLET_RPC_MANAGER.startInstance(cmd);
     }
 
-    // TODO: monero-wallet-rpc needs restarted if applying tor proxy since it's a startup flag
     private void onConnectionChanged(MoneroRpcConnection connection) {
         if (isShutDownStarted) return;
         if (wallet != null && HavenoUtils.connectionConfigsEqual(connection, wallet.getDaemonConnection())) return;

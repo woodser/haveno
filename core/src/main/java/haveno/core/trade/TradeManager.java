@@ -71,6 +71,7 @@ import haveno.network.p2p.DecryptedDirectMessageListener;
 import haveno.network.p2p.DecryptedMessageWithPubKey;
 import haveno.network.p2p.NodeAddress;
 import haveno.network.p2p.P2PService;
+import haveno.network.p2p.P2PServiceListener;
 import haveno.network.p2p.network.TorNetworkNode;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.LongProperty;
@@ -198,6 +199,24 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         p2PService.addDecryptedDirectMessageListener(this);
 
         failedTradesManager.setUnFailTradeCallback(this::unFailTrade);
+
+        // initialize trades when connected to p2p network
+        p2PService.addP2PServiceListener(new P2PServiceListener() {
+            @Override
+            public void onTorNodeReady() {}
+            @Override
+            public void onHiddenServicePublished() {}
+            @Override
+            public void onDataReceived() {}
+            @Override
+            public void onNoSeedNodeAvailable() {}
+            @Override
+            public void onNoPeersAvailable() {}
+            @Override
+            public void onUpdatedDataReceived() {
+                initPersistedTrades();
+            }
+        });
     }
 
 
@@ -249,8 +268,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     public void onAllServicesInitialized() {
 
-        // initialize
-        initialize();
+        log.warn("TradeManager.onAllServicesInitialized");
+        initializeAfterServices();
 
         // listen for account updates
         accountService.addListener(new AccountServiceListener() {
@@ -258,13 +277,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             @Override
             public void onAccountCreated() {
                 log.info(TradeManager.class + ".accountService.onAccountCreated()");
-                initialize();
+                initializeAfterServices();
             }
 
             @Override
             public void onAccountOpened() {
                 log.info(TradeManager.class + ".accountService.onAccountOpened()");
-                initialize();
+                initializeAfterServices();
             }
 
             @Override
@@ -280,10 +299,17 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         });
     }
 
-    private void initialize() {
-
-        // initialize trades off main thread
-        new Thread(() -> initPersistedTrades()).start(); 
+    private void initializeAfterServices() {
+        // if (p2PService.isBootstrapped()) {
+        //     initPersistedTrades();
+        // } else {
+        //     p2PService.addP2PServiceListener(new BootstrapListener() {
+        //         @Override
+        //         public void onUpdatedDataReceived() {
+        //             initPersistedTrades();
+        //         }
+        //     });
+        // }
 
         getObservableList().addListener((ListChangeListener<Trade>) change -> onTradesChanged());
         onTradesChanged();
@@ -408,7 +434,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         List<Trade> trades = getAllTrades();
 
         // open trades in parallel since each may open a multisig wallet
-        log.info("Initializing trades");
+        log.warn("Initializing trades");
         int threadPoolSize = 10;
         Set<Runnable> tasks = new HashSet<Runnable>();
         for (Trade trade : trades) {
@@ -426,16 +452,9 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             });
         };
         HavenoUtils.executeTasks(tasks, threadPoolSize);
-        log.info("Done initializing trades");
+        log.warn("Done initializing trades");
 
-        // reset any available address entries
         if (isShutDown) return;
-        xmrWalletService.getAddressEntriesForAvailableBalanceStream()
-                .filter(addressEntry -> addressEntry.getOfferId() != null)
-                .forEach(addressEntry -> {
-                    log.warn("Swapping pending {} entries at startup. offerId={}", addressEntry.getContext(), addressEntry.getOfferId());
-                    xmrWalletService.swapTradeEntryToAvailableEntry(addressEntry.getOfferId(), addressEntry.getContext());
-                });
 
         // notify that persisted trades initialized
         persistedTradesInitialized.set(true);
