@@ -1337,6 +1337,18 @@ public abstract class Trade implements Tradable, Model {
         errorMessageProperty.set(errorMessage);
     }
 
+    public void prependErrorMessage(String errorMessage) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(errorMessage);
+        if (this.errorMessage != null && !this.errorMessage.isEmpty()) {
+            sb.append("\n\n---- Previous Error -----\n\n");
+            sb.append(this.errorMessage);
+        }
+        String appendedErrorMessage = sb.toString();
+        this.errorMessage = appendedErrorMessage;
+        errorMessageProperty.set(appendedErrorMessage);
+    }
+
     public void setAssetTxProofResult(@Nullable AssetTxProofResult assetTxProofResult) {
         this.assetTxProofResult = assetTxProofResult;
         assetTxProofResultUpdateProperty.set(assetTxProofResultUpdateProperty.get() + 1);
