@@ -18,7 +18,6 @@
 package haveno.core.offer;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import haveno.common.util.MathUtils;
 import haveno.core.locale.CurrencyUtil;
 import haveno.core.locale.Res;
 import haveno.core.monetary.Price;
@@ -66,7 +65,7 @@ public class OfferForJson {
     @JsonIgnore
     transient private final MonetaryFormat fiatFormat = new MonetaryFormat().shift(0).minDecimals(4).repeatOptionalDecimals(0, 0);
     @JsonIgnore
-    transient private final MonetaryFormat altcoinFormat = new MonetaryFormat().shift(0).minDecimals(8).repeatOptionalDecimals(0, 0);
+    transient private final MonetaryFormat nonFiatFormat = new MonetaryFormat().shift(0).minDecimals(8).repeatOptionalDecimals(0, 0);
     @JsonIgnore
     transient private final MonetaryFormat coinFormat = MonetaryFormat.BTC;
 
@@ -99,43 +98,34 @@ public class OfferForJson {
     private void setDisplayStrings() {
         try {
             final Price price = getPrice();
+
             if (CurrencyUtil.isCryptoCurrency(currencyCode)) {
                 primaryMarketDirection = direction == OfferDirection.BUY ? OfferDirection.SELL : OfferDirection.BUY;
                 currencyPair = currencyCode + "/" + Res.getBaseCurrencyCode();
-
-                // int precision = 8;
-                //decimalFormat.setMaximumFractionDigits(precision);
-
-                // amount and volume is inverted for json
-                priceDisplayString = altcoinFormat.noCode().format(price.getMonetary()).toString();
-                primaryMarketMinAmountDisplayString = altcoinFormat.noCode().format(getMinVolume().getMonetary()).toString();
-                primaryMarketAmountDisplayString = altcoinFormat.noCode().format(getVolume().getMonetary()).toString();
-                primaryMarketMinVolumeDisplayString = HavenoUtils.formatXmr(getMinAmount()).toString();
-                primaryMarketVolumeDisplayString = HavenoUtils.formatXmr(getAmount()).toString();
-
-                primaryMarketPrice = price.getValue();
-                primaryMarketMinAmount = getMinVolume().getValue();
-                primaryMarketAmount = getVolume().getValue();
-                primaryMarketMinVolume = getMinAmount().longValueExact();
-                primaryMarketVolume = getAmount().longValueExact();
             } else {
                 primaryMarketDirection = direction;
                 currencyPair = Res.getBaseCurrencyCode() + "/" + currencyCode;
+            }
 
+            if (CurrencyUtil.isFiatCurrency(currencyCode)) {
                 priceDisplayString = fiatFormat.noCode().format(price.getMonetary()).toString();
                 primaryMarketMinAmountDisplayString = HavenoUtils.formatXmr(getMinAmount()).toString();
                 primaryMarketAmountDisplayString = HavenoUtils.formatXmr(getAmount()).toString();
                 primaryMarketMinVolumeDisplayString = fiatFormat.noCode().format(getMinVolume().getMonetary()).toString();
                 primaryMarketVolumeDisplayString = fiatFormat.noCode().format(getVolume().getMonetary()).toString();
-
-                // we use precision 4 for fiat based price but on the markets api we use precision 8 so we scale up by 10000
-                primaryMarketPrice = (long) MathUtils.scaleUpByPowerOf10(price.getValue(), 4);
-                primaryMarketMinVolume = (long) MathUtils.scaleUpByPowerOf10(getMinVolume().getValue(), 4);
-                primaryMarketVolume = (long) MathUtils.scaleUpByPowerOf10(getVolume().getValue(), 4);
-
-                primaryMarketMinAmount = getMinAmount().longValueExact();
-                primaryMarketAmount = getAmount().longValueExact();
+            } else {
+                // amount and volume is inverted for json
+                priceDisplayString = nonFiatFormat.noCode().format(price.getMonetary()).toString();
+                primaryMarketMinAmountDisplayString = nonFiatFormat.noCode().format(getMinVolume().getMonetary()).toString();
+                primaryMarketAmountDisplayString = nonFiatFormat.noCode().format(getVolume().getMonetary()).toString();
+                primaryMarketMinVolumeDisplayString = HavenoUtils.formatXmr(getMinAmount()).toString();
+                primaryMarketVolumeDisplayString = HavenoUtils.formatXmr(getAmount()).toString();
             }
+            primaryMarketPrice = price.getValue();
+            primaryMarketMinAmount = getMinVolume().getValue();
+            primaryMarketAmount = getVolume().getValue();
+            primaryMarketMinVolume = getMinAmount().longValueExact();
+            primaryMarketVolume = getAmount().longValueExact();
 
         } catch (Throwable t) {
             log.error("Error at setDisplayStrings: " + t.getMessage());
