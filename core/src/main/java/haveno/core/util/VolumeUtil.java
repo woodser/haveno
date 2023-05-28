@@ -48,7 +48,7 @@ public class VolumeUtil {
     }
 
     public static Volume getAdjustedVolumeForHalCash(Volume volumeByAmount) {
-        // EUR has precision 8 and we want multiple of 10 so we divide by EXPONENT then
+        // EUR has precision TraditionalMoney.SMALLEST_UNIT_EXPONENT and we want multiple of 10 so we divide by EXPONENT then
         // round and multiply with 10
         return getAdjustedFiatVolume(volumeByAmount, 10);
     }
@@ -61,8 +61,8 @@ public class VolumeUtil {
      * @return The adjusted Fiat volume
      */
     public static Volume getAdjustedFiatVolume(Volume volumeByAmount, int factor) {
-        // Fiat currencies use precision 8 and we want multiple of factor so we divide by EXPONENT * factor then
-        // round and multiply with factor
+        // Fiat currencies use precision TraditionalMoney.SMALLEST_UNIT_EXPONENT and we want multiple of factor so we divide
+        // by EXPONENT * factor then round and multiply with factor
         long roundedVolume = Math.round((double) volumeByAmount.getValue() / (EXPONENT * factor)) * factor;
         // Smallest allowed volume is factor (e.g. 10 EUR or 1 EUR,...)
         roundedVolume = Math.max(factor, roundedVolume);
