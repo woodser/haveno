@@ -356,6 +356,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             reservedKeyImages.addAll(trade.getSelf().getReserveTxKeyImages());
         }
         for (OpenOffer openOffer : openOfferManager.getObservableList()) {
+            if (openOffer.getOffer().getOfferPayload().getReserveTxKeyImages() == null) continue;
             reservedKeyImages.addAll(openOffer.getOffer().getOfferPayload().getReserveTxKeyImages());
         }
 

@@ -31,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 import monero.daemon.model.MoneroOutput;
 import monero.wallet.model.MoneroTxWallet;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -77,15 +76,11 @@ public class MaybeSendSignContractRequest extends TradeTask {
 
           // create deposit tx and freeze inputs
           Integer subaddressIndex = null;
-          BigInteger exactOutputAmount = null;
           if (trade instanceof MakerTrade) {
             boolean isSplitOutputOffer = processModel.getOpenOfferManager().getOpenOfferById(trade.getId()).get().isSplitOutput();
-            if (isSplitOutputOffer) {
-                exactOutputAmount = trade.getOffer().getReserveAmount();
-                subaddressIndex = model.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.OFFER_FUNDING).get().getSubaddressIndex();
-            }
+            if (isSplitOutputOffer) subaddressIndex = model.getXmrWalletService().getAddressEntry(trade.getId(), XmrAddressEntry.Context.OFFER_FUNDING).get().getSubaddressIndex();
           }
-          MoneroTxWallet depositTx = trade.getXmrWalletService().createDepositTx(trade, exactOutputAmount, subaddressIndex);
+          MoneroTxWallet depositTx = trade.getXmrWalletService().createDepositTx(trade, subaddressIndex);
 
           // collect reserved key images
           List<String> reservedKeyImages = new ArrayList<String>();
