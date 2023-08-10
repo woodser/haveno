@@ -435,12 +435,21 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         xmrWalletService.addWalletListener(new MoneroWalletListener() {
             @Override
             public void onBalancesChanged(BigInteger newBalance, BigInteger newUnlockedBalance) {
+                log.info("Balances have changed! lastUnlockedBalance={}, newBalance={}, newUnlockedBalance={}", lastUnlockedBalance, newBalance, newUnlockedBalance);
                 if (lastUnlockedBalance == null || lastUnlockedBalance.compareTo(newUnlockedBalance) < 0) {
+                    log.warn("GOING TO SCHEDULE OFFERS!");
                     processScheduledOffers((transaction) -> {}, (errorMessage) -> {
                         log.warn("Error processing unposted offers on new unlocked balance: " + errorMessage); // TODO: popup to notify user that offer did not post
                     });
+                } else {
+                    log.warn("GOING TO IGNORE BALANCE CHANGE!");
                 }
                 lastUnlockedBalance = newUnlockedBalance;
+            }
+
+            @Override
+            public void onNewBlock(long height) {
+                System.out.println("NEW BLOCK!!! " + height);
             }
         });
 
