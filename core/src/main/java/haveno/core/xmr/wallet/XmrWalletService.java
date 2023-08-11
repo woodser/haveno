@@ -660,6 +660,8 @@ public class XmrWalletService {
 
     private synchronized void maybeInitMainWallet() {
 
+        log.warn("monero-java version: " + MoneroUtils.getVersion());
+
         // open or create wallet main wallet
         if (wallet == null) {
             MoneroDaemonRpc daemon = connectionsService.getDaemon();
