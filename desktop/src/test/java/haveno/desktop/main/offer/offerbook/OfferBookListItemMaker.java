@@ -43,7 +43,7 @@ public class OfferBookListItemMaker {
 
     public static final Instantiator<OfferBookListItem> OfferBookListItem = lookup ->
             new OfferBookListItem(make(xmrUsdOffer.but(
-                    MakeItEasy.with(OfferMaker.price, lookup.valueOf(price, 100000L)),
+                    MakeItEasy.with(OfferMaker.price, lookup.valueOf(price, 1000000000L)),
                     with(OfferMaker.amount, lookup.valueOf(amount, 1000000000L)),
                     with(OfferMaker.minAmount, lookup.valueOf(amount, 1000000000L)),
                     with(OfferMaker.direction, lookup.valueOf(direction, OfferDirection.BUY)),
