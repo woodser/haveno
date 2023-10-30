@@ -176,6 +176,10 @@ public class HavenoUtils {
         return applyDecimals(formatted, Math.max(2, decimalPlaces)) + (appendCode ? " XMR" : "");
     }
 
+    public static String formatPercent(double percent) {
+        return (percent * 100) + "%";
+    }
+
     private static String applyDecimals(String decimalStr, int decimalPlaces) {
         if (decimalStr.contains(".")) return decimalStr + getNumZeros(decimalPlaces - (decimalStr.length() - decimalStr.indexOf(".") - 1));
         else return decimalStr + "." + getNumZeros(decimalPlaces);
