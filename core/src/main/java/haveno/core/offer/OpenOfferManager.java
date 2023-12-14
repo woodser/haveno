@@ -1569,7 +1569,11 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
 
         stopPeriodicRefreshOffersTimer();
 
-        processListForRepublishOffers(getOpenOffers());
+        new Thread(() -> {
+            priceFeedService.awaitPrices();
+
+            processListForRepublishOffers(getOpenOffers());
+        }).start();
     }
 
     private void processListForRepublishOffers(List<OpenOffer> list) {
