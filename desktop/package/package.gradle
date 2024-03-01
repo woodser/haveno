@@ -55,9 +55,6 @@ task getJavaBinariesDownloadURLs {
         binariesFolderPath.mkdirs()
         ext.binariesFolderPath = binariesFolderPath
 
-        // TODO Extend script logic to alternatively allow a local (separate, v14+) JDK for jpackage
-        // TODO Another option is to use the local JDK for everything: build jars and use jpackage (but then it has to be v14+)
-
         // Define the download URLs (and associated binary hashes) for the JDK used to package the installers
         // These JDKs are independent of what is installed on the building system
         //
@@ -71,15 +68,13 @@ task getJavaBinariesDownloadURLs {
         // -- linux   ( -> use the tar.gz JDK link)
         // -- macOS   ( -> use the tar.gz JDK link)
         // -- windows ( -> use the .zip JDK link)
-        Map jdk15Binaries = [
-                'linux'         : 'https://github.com/AdoptOpenJDK/openjdk15-binaries/releases/download/jdk-15.0.2%2B7/OpenJDK15U-jdk_x64_linux_hotspot_15.0.2_7.tar.gz',
-                'linux-sha256'  : '94f20ca8ea97773571492e622563883b8869438a015d02df6028180dd9acc24d',
-                'mac'           : 'https://github.com/AdoptOpenJDK/openjdk15-binaries/releases/download/jdk-15.0.2%2B7/OpenJDK15U-jdk_x64_mac_hotspot_15.0.2_7.tar.gz',
-                'mac-sha256'    : 'd358a7ff03905282348c6c80562a4da2e04eb377b60ad2152be4c90f8d580b7f',
-                'windows'       : 'https://github.com/AdoptOpenJDK/openjdk15-binaries/releases/download/jdk-15.0.2%2B7/OpenJDK15U-jdk_x64_windows_hotspot_15.0.2_7.zip',
-                'windows-sha256': 'b80dde2b7f8374eff0f1726c1cbdb48fb095fdde21489046d92f7144baff5741'
-
-                // TODO For some reason, using "--runtime-image jdk-11" does NOT work with a v15 jpackage, but works with v14
+        Map jdk21Binaries = [
+                'linux'         : 'https://cdn.azul.com/zulu/bin/zulu21.32.17-ca-jdk21.0.2-linux_x64.tar.gz',
+                'linux-sha256'  : '5ad730fbee6bb49bfff10bf39e84392e728d89103d3474a7e5def0fd134b300a',
+                'mac'           : 'https://cdn.azul.com/zulu/bin/zulu21.32.17-ca-jdk21.0.2-macosx_x64.tar.gz',
+                'mac-sha256'    : '3ad8fe288eb57d975c2786ae453a036aa46e47ab2ac3d81538ebae2a54d3c025',
+                'windows'       : 'https://cdn.azul.com/zulu/bin/zulu21.32.17-ca-jdk21.0.2-win_x64.zip',
+                'windows-sha256': 'f7cc15ca17295e69c907402dfe8db240db446e75d3b150da7bf67243cded93de'
         ]
 
         String osKey
@@ -91,8 +86,8 @@ task getJavaBinariesDownloadURLs {
             osKey = 'linux'
         }
 
-        ext.jdk15Binary_DownloadURL = jdk15Binaries[osKey]
-        ext.jdk15Binary_SHA256Hash = jdk15Binaries[osKey + '-sha256']
+        ext.jdk21Binary_DownloadURL = jdk21Binaries[osKey]
+        ext.jdk21Binary_SHA256Hash = jdk21Binaries[osKey + '-sha256']
     }
 }
 
@@ -108,8 +103,8 @@ task retrieveAndExtractJavaBinaries {
         File jdkForJpackageDir = new File(tempRootDir, jdkForJpackageDirName)
         jdkForJpackageDir.mkdirs()
 
-        String jdkForJpackageArchiveURL = getJavaBinariesDownloadURLs.property('jdk15Binary_DownloadURL')
-        String jdkForJpackageArchiveHash = getJavaBinariesDownloadURLs.property('jdk15Binary_SHA256Hash')
+        String jdkForJpackageArchiveURL = getJavaBinariesDownloadURLs.property('jdk21Binary_DownloadURL')
+        String jdkForJpackageArchiveHash = getJavaBinariesDownloadURLs.property('jdk21Binary_SHA256Hash')
         String jdkForJpackageArchiveFileName = jdkForJpackageArchiveURL.tokenize('/').last()
         File jdkForJpackageFile = new File(jdkForJpackageDir, jdkForJpackageArchiveFileName)
 
