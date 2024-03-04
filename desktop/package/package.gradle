@@ -248,6 +248,7 @@ task packageInstallers {
         String commonOpts = new String(
                 // Generic options
                 " --dest \"${binariesFolderPath}\"" +
+                        " --verbose" +
                         " --name ${appNameAndVendor}" +
                         //" --description \"${appDescription}\"" + // TODO: task managers show app description instead of name, so we disable it
                         " --app-version ${appVersion}" +
