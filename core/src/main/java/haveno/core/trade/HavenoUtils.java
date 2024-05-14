@@ -96,10 +96,10 @@ public class HavenoUtils {
     // configure fees
     public static final boolean ARBITRATOR_ASSIGNS_TRADE_FEE_ADDRESS = true;
     public static final double PENALTY_FEE_PCT = 0.25; // charge 25% of security deposit for penalty
-    private static final double MAKER_FEE_PCT_CRYPTO = 0.0015;
-    private static final double TAKER_FEE_PCT_CRYPTO = 0.0075;
-    private static final double MAKER_FEE_PCT_TRADITIONAL = 0.0015;
-    private static final double TAKER_FEE_PCT_TRADITIONAL = 0.0075;
+    private static final double MAKER_FEE_PCT_CRYPTO = 0.00;
+    private static final double TAKER_FEE_PCT_CRYPTO = 0.00;
+    private static final double MAKER_FEE_PCT_TRADITIONAL = 0.00;
+    private static final double TAKER_FEE_PCT_TRADITIONAL = 0.00;
     private static final double MAKER_FEE_FOR_TAKER_WITHOUT_DEPOSIT_PCT_CRYPTO = MAKER_FEE_PCT_CRYPTO + TAKER_FEE_PCT_CRYPTO; // can customize maker's fee when no deposit from taker
     private static final double MAKER_FEE_FOR_TAKER_WITHOUT_DEPOSIT_PCT_TRADITIONAL = MAKER_FEE_PCT_TRADITIONAL + TAKER_FEE_PCT_TRADITIONAL;
     public static final double MINER_FEE_TOLERANCE_FACTOR = 5.0; // miner fees must be within 5x of each other
