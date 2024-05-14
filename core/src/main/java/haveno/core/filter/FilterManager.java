@@ -113,7 +113,12 @@ public class FilterManager {
         this.configFileEditor = new ConfigFileEditor(config.configFile);
         this.providersRepository = providersRepository;
         this.ignoreDevMsg = ignoreDevMsg;
-        this.useDevPrivilegeKeys = useDevPrivilegeKeys;
+
+        publicKeys = useDevPrivilegeKeys ?
+                Collections.singletonList(DevEnv.DEV_PRIVILEGE_PUB_KEY) :
+                List.of("02d8ac0fbe4e25f4a1d68b95936f25fc2e1b218e161cb5ed6661c7ab4c85f1fd4f",
+                        "02e9dc14edddde19cc9f829a0739d0ab0c7310154ad94a15d477b51d85991b5a8a",
+                        "03c8efdf81287ce8b3212241e6aa7cdf094ecbed2d2f119730a3e4d596a764106a");
 
         banFilter.setBannedNodePredicate(this::isNodeAddressBannedFromNetwork);
     }
