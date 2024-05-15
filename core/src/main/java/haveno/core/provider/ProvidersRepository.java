@@ -54,6 +54,7 @@ public class ProvidersRepository {
             "http://elaxlgigphpicy5q7pi5wkz2ko2vgjbq4576vic7febmx4xcxvk6deqd.onion/", // Haveno
             "http://lrrgpezvdrbpoqvkavzobmj7dr2otxc5x6wgktrw337bk6mxsvfp5yid.onion/", // Cake
             "http://2c6y3sqmknakl3fkuwh4tjhxb2q5isr53dnfcqs33vt3y7elujc6tyad.onion/" // boldsuck
+            // TODO: add more onion price providers for mainnet
     );
 
     private final Config config;
@@ -138,7 +139,9 @@ public class ProvidersRepository {
                 providers = List.of(
                     DEFAULT_LOCAL_NODE,
                     "https://price.haveno.network/",
-                    "http://173.230.142.36:8078/");
+                    "http://173.230.142.36:8078/"
+                    // TODO: add more clearnet price providers for mainnet
+                );
             } else {
                 providers = new ArrayList<String>();
                 //providers.add(DEFAULT_LOCAL_NODE); // try local provider first

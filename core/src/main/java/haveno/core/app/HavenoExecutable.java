@@ -84,6 +84,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
 
     // TODO: regular expression is used to parse application name for the flatpak manifest, a more stable approach would be nice
     // Don't edit the next line unless you're only editing in between the quotes.
+    // TODO: customize for your network to avoid user data corruption with other networks
     public static final String DEFAULT_APP_NAME = "Haveno";
 
     public static final int EXIT_SUCCESS = 0;
