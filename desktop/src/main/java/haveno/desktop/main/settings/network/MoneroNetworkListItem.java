@@ -17,28 +17,42 @@
 
 package haveno.desktop.main.settings.network;
 
-import monero.daemon.model.MoneroPeer;
+import lombok.extern.slf4j.Slf4j;
+import monero.common.MoneroRpcConnection;
+import monero.daemon.MoneroDaemon;
+import monero.daemon.MoneroDaemonRpc;
+import monero.daemon.model.MoneroDaemonInfo;
 
+@Slf4j
 public class MoneroNetworkListItem {
-    private final MoneroPeer peer;
-
-    public MoneroNetworkListItem(MoneroPeer peer) {
-        this.peer = peer;
+    private final MoneroRpcConnection connection;
+    private MoneroDaemonInfo info;
+    
+    public MoneroNetworkListItem(MoneroRpcConnection connection) {
+        this.connection = connection;
+        try {
+            MoneroDaemon node = new MoneroDaemonRpc(connection);
+            this.info = node.getInfo();
+        } catch (Exception e) {
+            log.warn("Unable to fetch info from Monero node: " + connection.getUri());
+        }
     }
 
     public String getOnionAddress() {
-        return peer.getHost() + ":" + peer.getPort();
+        return connection.getUri();
     }
 
     public String getVersion() {
-        return "";
+        return info == null ? "" :info.getVersion().split("-")[0];
     }
 
     public String getSubVersion() {
-        return "";
+        if (info == null) return "";
+        String[] parts = info.getVersion().split("-");
+        return parts.length > 1 ? parts[1] : "";
     }
 
     public String getHeight() {
-        return String.valueOf(peer.getHeight());
+        return info == null ? "" : String.valueOf(info.getHeight());
     }
 }

@@ -44,7 +44,6 @@ import haveno.desktop.main.overlays.windows.TorNetworkSettingsWindow;
 import haveno.desktop.util.GUIUtil;
 import haveno.network.p2p.P2PService;
 import haveno.network.p2p.network.Statistic;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import static javafx.beans.binding.Bindings.createStringBinding;
@@ -63,7 +62,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.GridPane;
-import monero.daemon.model.MoneroPeer;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
 
@@ -116,7 +114,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     private final SortedList<MoneroNetworkListItem> moneroSortedList = new SortedList<>(moneroNetworkListItems);
 
     private Subscription numP2PPeersSubscription;
-    private Subscription moneroPeersSubscription;
+    private Subscription moneroConnectionsSubscription;
     private Subscription moneroBlockHeightSubscription;
     private Subscription nodeAddressSubscription;
     private ChangeListener<Boolean> xmrNodesInputTextFieldFocusListener;
@@ -162,7 +160,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         useTorForXmrOffRadio.setText(Res.get("settings.net.useTorForXmrOffRadio"));
         useTorForXmrOnRadio.setText(Res.get("settings.net.useTorForXmrOnRadio"));
         moneroNodesLabel.setText(Res.get("settings.net.moneroNodesLabel"));
-        moneroPeerAddressColumn.setGraphic(new AutoTooltipLabel(Res.get("settings.net.onionAddressColumn")));
+        moneroPeerAddressColumn.setGraphic(new AutoTooltipLabel(Res.get("shared.address")));
         moneroPeerAddressColumn.getStyleClass().add("first-column");
         moneroPeerVersionColumn.setGraphic(new AutoTooltipLabel(Res.get("settings.net.versionColumn")));
         moneroPeerSubVersionColumn.setGraphic(new AutoTooltipLabel(Res.get("settings.net.subVersionColumn")));
@@ -309,11 +307,11 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
 
         rescanOutputsButton.setOnAction(event -> GUIUtil.rescanOutputs(preferences));
 
-        moneroPeersSubscription = EasyBind.subscribe(connectionService.peerConnectionsProperty(),
-                this::updateMoneroPeersTable);
+        moneroConnectionsSubscription = EasyBind.subscribe(connectionService.connectionsProperty(),
+                connections -> updateMoneroPeersTable());
 
         moneroBlockHeightSubscription = EasyBind.subscribe(connectionService.chainHeightProperty(),
-                this::updateChainHeightTextField);
+                height -> updateMoneroPeersTable());
 
         nodeAddressSubscription = EasyBind.subscribe(p2PService.getNetworkNode().nodeAddressProperty(),
                 nodeAddress -> onionAddress.setText(nodeAddress == null ?
@@ -355,8 +353,8 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         if (nodeAddressSubscription != null)
             nodeAddressSubscription.unsubscribe();
 
-        if (moneroPeersSubscription != null)
-            moneroPeersSubscription.unsubscribe();
+        if (moneroConnectionsSubscription != null)
+            moneroConnectionsSubscription.unsubscribe();
 
         if (moneroBlockHeightSubscription != null)
             moneroBlockHeightSubscription.unsubscribe();
@@ -521,13 +519,12 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
                 .collect(Collectors.toList()));
     }
 
-    private void updateMoneroPeersTable(List<MoneroPeer> peers) {
+    private void updateMoneroPeersTable() {
         moneroNetworkListItems.clear();
-        if (peers != null) {
-            moneroNetworkListItems.setAll(peers.stream()
-                    .map(MoneroNetworkListItem::new)
-                    .collect(Collectors.toList()));
-        }
+        moneroNetworkListItems.setAll(connectionService.getConnections().stream()
+                .map(MoneroNetworkListItem::new)
+                .collect(Collectors.toList()));
+        updateChainHeightTextField(connectionService.chainHeightProperty().get());
     }
 
     private void updateChainHeightTextField(Number chainHeight) {
