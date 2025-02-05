@@ -972,6 +972,48 @@ public class GUIUtil {
         return gridRow;
     }
 
+    public static Tuple2<ComboBox<TradeCurrency>, Integer> addCountryTradeCurrencyComboBoxes(GridPane gridPane,
+                                  int gridRow,
+                                  List<Country> countries,
+                                  Consumer<Country> onCountrySelectedHandler) {
+        ComboBox<Country> countryComboBox = FormBuilder.addComboBox(gridPane, ++gridRow, Res.get("payment.country"));
+        countryComboBox.setPromptText(Res.get("payment.select.country"));
+        countryComboBox.setItems(FXCollections.observableArrayList(countries));
+        countryComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Country country) {
+                return country.name + " (" + country.code + ")";
+            }
+
+            @Override
+            public Country fromString(String string) {
+                return null;
+            }
+        });
+
+        ComboBox<TradeCurrency> currencyComboBox = FormBuilder.addComboBox(gridPane, ++gridRow, Res.get("shared.currency"));
+        currencyComboBox.setPromptText(Res.get("shared.currency"));
+        currencyComboBox.setItems(FXCollections.observableArrayList(CurrencyUtil.getAllSortedTraditionalCurrencies()));
+        currencyComboBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(TradeCurrency currency) {
+                return currency.getNameAndCode();
+            }
+
+            @Override
+            public TradeCurrency fromString(String string) {
+                return null;
+            }
+        });
+        currencyComboBox.setDisable(true);
+
+        countryComboBox.setOnAction(e -> {
+            onCountrySelectedHandler.accept(countryComboBox.getSelectionModel().getSelectedItem());
+        });
+
+        return new Tuple2<>(currencyComboBox, gridRow);
+    }
+
     @NotNull
     public static <T> ListCell<T> getComboBoxButtonCell(String title, ComboBox<T> comboBox) {
         return getComboBoxButtonCell(title, comboBox, true);

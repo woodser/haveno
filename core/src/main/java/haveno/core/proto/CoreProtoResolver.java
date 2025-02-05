@@ -45,6 +45,7 @@ import haveno.core.payment.payload.ImpsAccountPayload;
 import haveno.core.payment.payload.InstantCryptoCurrencyPayload;
 import haveno.core.payment.payload.InteracETransferAccountPayload;
 import haveno.core.payment.payload.JapanBankAccountPayload;
+import haveno.core.payment.payload.MpesaAccountPayload;
 import haveno.core.payment.payload.MoneseAccountPayload;
 import haveno.core.payment.payload.MoneyBeamAccountPayload;
 import haveno.core.payment.payload.MoneyGramAccountPayload;
@@ -169,6 +170,8 @@ public class CoreProtoResolver implements ProtoResolver {
                                             "(PB.PaymentAccountPayload.CountryBasedPaymentAccountPayload.IfscBasedPaymentAccount). " +
                                             "messageCase=" + messageCaseIfsc);
                             }
+                        case MPESA_ACCOUNT_PAYLOAD:
+                            return MpesaAccountPayload.fromProto(proto);
                         default:
                             throw new ProtobufferRuntimeException("Unknown proto message case" +
                                     "(PB.PaymentAccountPayload.CountryBasedPaymentAccountPayload)." +

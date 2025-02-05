@@ -138,6 +138,8 @@ public class PaymentAccountFactory {
                 return new VenmoAccount();
             case PaymentMethod.PAYSAFE_ID:
                 return new PaysafeAccount();
+            case PaymentMethod.MPESA_ID:
+                return new MpesaAccount();
 
             // Cannot be deleted as it would break old trade history entries
             case PaymentMethod.OK_PAY_ID:

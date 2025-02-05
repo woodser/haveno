@@ -91,6 +91,14 @@ public class CountryUtil {
         return list;
     }
 
+    public static List<Country> getAllMpesaCountries() {
+        List<Country> list = new ArrayList<>();
+        String[] codes = { "KE", "TZ", "UG", "ZA", "MZ", "PK", "IN", "EG", "ZM", "SS", "LS", "AF" };
+        populateCountryListByCodes(list, codes);
+        list.sort((a, b) -> a.name.compareTo(b.name));
+        return list;
+    }
+
     public static List<Country> getAllSepaInstantEuroCountries() {
         return getAllSepaEuroCountries();
     }

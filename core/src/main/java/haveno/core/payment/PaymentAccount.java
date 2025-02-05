@@ -522,7 +522,8 @@ public abstract class PaymentAccount implements PersistablePayload {
             if (!CountryUtil.findCountryByCode(value).isPresent()) throw new IllegalArgumentException("Invalid country code: " + value);
             break;
         case MOBILE_NR:
-            throw new IllegalArgumentException("Not implemented");
+            processValidationResult(new LengthValidator(2, 100).validate(value));
+            break;
         case NATIONAL_ACCOUNT_ID:
             throw new IllegalArgumentException("Not implemented");
         case PAYID:
@@ -742,7 +743,9 @@ public abstract class PaymentAccount implements PersistablePayload {
             field.setLabel(Res.get("payment.swift.swiftCode.intermediary"));
             break;
         case MOBILE_NR:
-            throw new IllegalArgumentException("Not implemented");
+            field.setComponent(PaymentAccountFormField.Component.TEXT);
+            field.setLabel(Res.get("payment.mobile"));
+            break;
         case NATIONAL_ACCOUNT_ID:
             throw new IllegalArgumentException("Not implemented");
         case PAYID:

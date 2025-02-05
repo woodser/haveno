@@ -62,6 +62,7 @@ import haveno.core.payment.HalCashAccount;
 import haveno.core.payment.ImpsAccount;
 import haveno.core.payment.InteracETransferAccount;
 import haveno.core.payment.JapanBankAccount;
+import haveno.core.payment.MpesaAccount;
 import haveno.core.payment.MoneseAccount;
 import haveno.core.payment.MoneyBeamAccount;
 import haveno.core.payment.MoneyGramAccount;
@@ -195,6 +196,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public static final String VENMO_ID = "VENMO";
     public static final String PAYPAL_ID = "PAYPAL";
     public static final String PAYSAFE_ID = "PAYSAFE";
+    public static final String MPESA_ID = "MPESA";
 
     public static PaymentMethod UPHOLD;
     public static PaymentMethod MONEY_BEAM;
@@ -255,6 +257,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public static PaymentMethod CASH_APP;
     public static PaymentMethod VENMO;
     public static PaymentMethod PAYSAFE;
+    public static PaymentMethod MPESA;
 
     // Cannot be deleted as it would break old trade history entries
     @Deprecated
@@ -326,6 +329,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
             PAYPAL = new PaymentMethod(PAYPAL_ID, DAY, DEFAULT_TRADE_LIMIT_HIGH_RISK, getAssetCodes(PayPalAccount.SUPPORTED_CURRENCIES)),
             CASH_APP = new PaymentMethod(CASH_APP_ID, DAY, DEFAULT_TRADE_LIMIT_HIGH_RISK, getAssetCodes(CashAppAccount.SUPPORTED_CURRENCIES)),
             PAYSAFE = new PaymentMethod(PaymentMethod.PAYSAFE_ID, DAY, DEFAULT_TRADE_LIMIT_HIGH_RISK, getAssetCodes(PaysafeAccount.SUPPORTED_CURRENCIES)),
+            MPESA = new PaymentMethod(PaymentMethod.MPESA_ID, DAY, DEFAULT_TRADE_LIMIT_HIGH_RISK, getAssetCodes(MpesaAccount.SUPPORTED_CURRENCIES)),
 
             // Japan
             JAPAN_BANK = new PaymentMethod(JAPAN_BANK_ID, DAY, DEFAULT_TRADE_LIMIT_LOW_RISK, getAssetCodes(JapanBankAccount.SUPPORTED_CURRENCIES)),
@@ -369,7 +373,8 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
                 CASH_APP_ID,
                 PAYPAL_ID,
                 VENMO_ID,
-                PAYSAFE_ID);
+                PAYSAFE_ID,
+                MPESA_ID);
         return paymentMethods.stream().filter(paymentMethod -> paymentMethodIds.contains(paymentMethod.getId())).collect(Collectors.toList());
     }
 
@@ -594,7 +599,8 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
                 id.equals(PaymentMethod.CASH_APP_ID) ||
                 id.equals(PaymentMethod.PAYPAL_ID) ||
                 id.equals(PaymentMethod.VENMO_ID) ||
-                id.equals(PaymentMethod.PAYSAFE_ID);
+                id.equals(PaymentMethod.PAYSAFE_ID) ||
+                id.equals(PaymentMethod.MPESA_ID);
     }
 
     public static boolean isRoundedForAtmCash(String id) {

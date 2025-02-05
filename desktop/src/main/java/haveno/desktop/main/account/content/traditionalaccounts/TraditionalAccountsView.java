@@ -94,6 +94,7 @@ import haveno.desktop.components.paymentmethods.HalCashForm;
 import haveno.desktop.components.paymentmethods.ImpsForm;
 import haveno.desktop.components.paymentmethods.InteracETransferForm;
 import haveno.desktop.components.paymentmethods.JapanBankTransferForm;
+import haveno.desktop.components.paymentmethods.MpesaForm;
 import haveno.desktop.components.paymentmethods.MoneseForm;
 import haveno.desktop.components.paymentmethods.MoneyBeamForm;
 import haveno.desktop.components.paymentmethods.MoneyGramForm;
@@ -688,6 +689,8 @@ public class TraditionalAccountsView extends PaymentAccountsView<GridPane, Tradi
                 return new CashAppForm(paymentAccount, accountAgeWitnessService, cashAppValidator, inputValidator, root, gridRow, formatter);
             case PaymentMethod.PAYSAFE_ID:
                 return new PaysafeForm(paymentAccount, accountAgeWitnessService, inputValidator, root, gridRow, formatter);
+            case PaymentMethod.MPESA_ID:
+                return new MpesaForm(paymentAccount, accountAgeWitnessService, inputValidator, root, gridRow, formatter);
             default:
                 log.error("Not supported PaymentMethod: " + paymentMethod);
                 return null;

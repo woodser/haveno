@@ -884,6 +884,7 @@ message PaymentAccountPayload {
         CashAtAtmAccountPayload cash_at_atm_account_payload = 40;
         PayPalAccountPayload paypal_account_payload = 41;
         PaysafeAccountPayload paysafe_account_payload = 42;
+        MpesaAccountPayload mpesa_account_payload = 43;
     }
 }
 
@@ -926,6 +927,7 @@ message CountryBasedPaymentAccountPayload {
         TikkieAccountPayload tikkie_account_payload = 17;
         TransferwiseUsdAccountPayload transferwise_usd_account_payload = 18;
         SwiftAccountPayload swift_account_payload = 19;
+        MpesaAccountPayload mpesa_account_payload = 20;
     }
 }
 
@@ -1238,6 +1240,10 @@ message SwiftAccountPayload {
 
 message PaysafeAccountPayload {
     string email = 1;
+}
+
+message MpesaAccountPayload {
+    string mobile_nr = 1;
 }
 
 message PersistableEnvelope {
@@ -1896,6 +1902,7 @@ message PaymentAccountForm {
         PAYPAL = 17;
         VENMO = 18;
         PAYSAFE = 19;
+        MPESA = 20;
     }
     FormId id = 1;
     repeated PaymentAccountFormField fields = 2;

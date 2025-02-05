@@ -70,6 +70,7 @@ import haveno.desktop.components.paymentmethods.JapanBankTransferForm;
 import haveno.desktop.components.paymentmethods.MoneseForm;
 import haveno.desktop.components.paymentmethods.MoneyBeamForm;
 import haveno.desktop.components.paymentmethods.MoneyGramForm;
+import haveno.desktop.components.paymentmethods.MpesaForm;
 import haveno.desktop.components.paymentmethods.NationalBankForm;
 import haveno.desktop.components.paymentmethods.NeftForm;
 import haveno.desktop.components.paymentmethods.NequiForm;
@@ -420,6 +421,9 @@ public class BuyerStep2View extends TradeStepView {
                 break;
             case PaymentMethod.PAYSAFE_ID:
                 gridRow = PaysafeForm.addFormForBuyer(gridPane, gridRow, paymentAccountPayload);
+                break;
+            case PaymentMethod.MPESA_ID:
+                gridRow = MpesaForm.addFormForBuyer(gridPane, gridRow, paymentAccountPayload);
                 break;
             default:
                 log.error("Not supported PaymentMethod: " + paymentMethodId);
