@@ -520,7 +520,7 @@ haveno-daemon-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 haveno-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -532,7 +532,7 @@ haveno-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user1-daemon-mainnet:
 	./haveno-daemon$(APP_EXT) \
@@ -545,7 +545,7 @@ user1-daemon-mainnet:
 		--apiPort=1202 \
 		--passwordRequired=false \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user1-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -557,7 +557,7 @@ user1-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1202 \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user2-daemon-mainnet:
 	./haveno-daemon$(APP_EXT) \
@@ -570,7 +570,7 @@ user2-daemon-mainnet:
 		--apiPort=1203 \
 		--passwordRequired=false \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user2-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -582,7 +582,7 @@ user2-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1203 \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user3-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -594,4 +594,4 @@ user3-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1204 \
 		--useNativeXmrWallet=false \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
