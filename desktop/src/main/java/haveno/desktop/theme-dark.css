@@ -72,9 +72,10 @@
     -bs-rd-nav-border-color: rgba(255, 255, 255, 0.1);
     -bs-rd-nav-background: #141414;
     -bs-rd-nav-primary-background: rgba(255, 255, 255, 0.015);
+    -bs-rd-nav-button-hover: derive(-bs-rd-nav-background, 10%);
+    -bs-rd-nav-primary-button-hover: derive(-bs-rd-nav-primary-background, 10%);
     -bs-rd-nav-selected: #fff;
     -bs-rd-nav-deselected: rgba(255, 255, 255, 0.45);
-    -bs-rd-nav-button-hover: rgba(255, 255, 255, 0.03);
 
     -bs-content-pane-bg-top: #212121;
     -bs-rd-tab-border: rgba(255, 255, 255, 0.00);
@@ -464,10 +465,6 @@
 .nav-button:selected {
     -fx-background-color: derive(-bs-color-primary-dark, -10%);
     -fx-effect: null;
-}
-
-.nav-button:hover {
-    -fx-background-color: -bs-rd-nav-button-hover;
 }
 
 .nav-primary .nav-button:selected {
