@@ -2063,6 +2063,7 @@ public class XmrWalletService extends XmrWalletBase {
                 }
             }
             saveWalletWithDelay();
+
         }
 
         // cache wallet info last
