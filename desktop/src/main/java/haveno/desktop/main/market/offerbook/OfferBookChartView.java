@@ -52,6 +52,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -79,6 +82,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
@@ -242,7 +246,21 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
                     sellHeaderLabel.setText(Res.get("market.offerBook.sellOffersHeaderLabel", viewBaseCurrencyCode));
                     sellButton.updateText(Res.get("shared.sellCurrency", viewBaseCurrencyCode));
                     sellButton.setGraphic(GUIUtil.getCurrencyIconWithBorder(viewBaseCurrencyCode));
-                    sellButton.setOnAction(e -> model.goToOfferView(model.isCrypto() ? OfferDirection.SELL : OfferDirection.BUY));
+                    sellButton.setOnAction(e -> {
+
+                        Platform.runLater(() -> {
+                            PauseTransition delay = new PauseTransition(Duration.seconds(2));
+                            delay.setOnFinished(event -> {
+                                currencyComboBox.show();
+                                int lastIndex = currencyComboBox.getItems().size() - 1;
+                                if (lastIndex >= 0) {
+                                    currencyComboBox.getSelectionModel().select(lastIndex); // Select last item
+                                }
+                            });
+                            delay.play();
+                        });
+                        //model.goToOfferView(model.isCrypto() ? OfferDirection.SELL : OfferDirection.BUY);
+                    });
                     sellButton.setId("sell-button-big");
 
                     buyHeaderLabel.setText(Res.get("market.offerBook.buyOffersHeaderLabel", viewBaseCurrencyCode));
