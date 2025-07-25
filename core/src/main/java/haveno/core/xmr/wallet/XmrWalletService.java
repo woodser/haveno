@@ -1944,9 +1944,9 @@ public class XmrWalletService extends XmrWalletBase {
         doMaybeInitMainWallet(true, MAX_SYNC_ATTEMPTS);
     }
 
-    public void handleWalletError(Exception e, MoneroRpcConnection sourceConnection) {
+    public void handleWalletError(Exception e, MoneroRpcConnection sourceConnection, int numAttempts) {
         if (HavenoUtils.isUnresponsive(e)) forceCloseMainWallet(); // wallet can be stuck a while
-        requestSwitchToNextBestConnection(sourceConnection);
+        if (numAttempts % 2 == 0) requestSwitchToNextBestConnection(sourceConnection); // request to switch connection every other time
         if (wallet == null) doMaybeInitMainWallet(true, MAX_SYNC_ATTEMPTS);
     }
 
