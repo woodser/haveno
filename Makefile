@@ -17,6 +17,9 @@ haveno:
 update-dependencies:
 	./gradlew --refresh-dependencies && ./gradlew --write-verification-metadata sha256
 
+daemon: localnet
+	./gradlew :daemon:shadowJar -x test -x checkstyleMain -x checkstyleTest
+
 # build haveno without tests
 skip-tests: localnet
 	./gradlew build -x test -x checkstyleMain -x checkstyleTest
@@ -447,7 +450,7 @@ seednode:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=1002 \
-		--appName=haveno-XMR_MAINNET_Seed_1002 \
+		--appName=haveno-reto-XMR_MAINNET_Seed_1002 \
 		--xmrNode=http://127.0.0.1:18081 \
 
 seednode2:
@@ -456,7 +459,7 @@ seednode2:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=1003 \
-		--appName=haveno-XMR_MAINNET_Seed_1003 \
+		--appName=haveno-reto-XMR_MAINNET_Seed_1003 \
 		--xmrNode=http://127.0.0.1:18081 \
 
 arbitrator-daemon-mainnet:
@@ -466,7 +469,7 @@ arbitrator-daemon-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_arbitrator \
+		--appName=haveno-reto-XMR_MAINNET_arbitrator \
 		--apiPassword=apitest \
 		--apiPort=1200 \
 		--passwordRequired=false \
@@ -479,7 +482,7 @@ arbitrator-desktop-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_arbitrator \
+		--appName=haveno-reto-XMR_MAINNET_arbitrator \
 		--apiPassword=apitest \
 		--apiPort=1200 \
 		--xmrNode=http://127.0.0.1:18081 \
@@ -516,7 +519,7 @@ haveno-daemon-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=Haveno \
+		--appName=Haveno-reto \
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=false \
@@ -528,7 +531,7 @@ haveno-desktop-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=Haveno \
+		--appName=Haveno-reto \
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=false \
@@ -540,7 +543,7 @@ user1-daemon-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_user1 \
+		--appName=haveno-reto-XMR_MAINNET_user1 \
 		--apiPassword=apitest \
 		--apiPort=1202 \
 		--passwordRequired=false \
@@ -553,7 +556,7 @@ user1-desktop-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_user1 \
+		--appName=haveno-reto-XMR_MAINNET_user1 \
 		--apiPassword=apitest \
 		--apiPort=1202 \
 		--useNativeXmrWallet=false \
@@ -565,7 +568,7 @@ user2-daemon-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_user2 \
+		--appName=haveno-reto-XMR_MAINNET_user2 \
 		--apiPassword=apitest \
 		--apiPort=1203 \
 		--passwordRequired=false \
@@ -578,7 +581,7 @@ user2-desktop-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_user2 \
+		--appName=haveno-reto-XMR_MAINNET_user2 \
 		--apiPassword=apitest \
 		--apiPort=1203 \
 		--useNativeXmrWallet=false \
@@ -590,7 +593,7 @@ user3-desktop-mainnet:
 		--useLocalhostForP2P=false \
 		--useDevPrivilegeKeys=false \
 		--nodePort=9999 \
-		--appName=haveno-XMR_MAINNET_user3 \
+		--appName=haveno-reto-XMR_MAINNET_user3 \
 		--apiPassword=apitest \
 		--apiPort=1204 \
 		--useNativeXmrWallet=false \
