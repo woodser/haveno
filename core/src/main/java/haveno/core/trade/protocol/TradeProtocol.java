@@ -874,6 +874,12 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             
             // ack message from arbitrator
             else if (peer == trade.getArbitrator()) {
+
+                if (true) {
+                    log.warn("Skipping processing of arbitrator's nack message for PaymentReceivedMessage");
+                    return;
+                }
+
                 trade.getArbitrator().setPaymentReceivedAckMessage(ackMessage);
                 processModel.getTradeManager().persistNow(null);
 
