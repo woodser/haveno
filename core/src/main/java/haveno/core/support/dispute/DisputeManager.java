@@ -519,7 +519,7 @@ public abstract class DisputeManager<T extends DisputeList<Dispute>> extends Sup
         Optional<Dispute> storedDisputeOptional = findDispute(msgDispute);
 
         // determine if re-opening dispute
-        boolean reOpen = storedDisputeOptional.isPresent() && storedDisputeOptional.get().isClosed();
+        boolean reOpen = storedDisputeOptional.isPresent();
 
         // use existing dispute or create new
         Dispute dispute = reOpen ? storedDisputeOptional.get() : msgDispute;
