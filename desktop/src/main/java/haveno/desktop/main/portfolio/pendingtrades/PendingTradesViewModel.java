@@ -453,6 +453,7 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
             case PAYOUT_PUBLISHED:
             case PAYOUT_CONFIRMED:
             case PAYOUT_UNLOCKED:
+            case PAYOUT_FINALIZED:
                 sellerState.set(SellerState.STEP4);
                 buyerState.set(BuyerState.STEP4);
                 break;

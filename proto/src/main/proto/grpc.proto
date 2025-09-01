@@ -911,6 +911,7 @@ message TradeInfo {
     uint64 start_time = 40;
     uint64 max_duration_ms = 41;
     uint64 deadline_time = 42;
+    bool is_payout_finalized = 43;
 }
 
 message ContractInfo {

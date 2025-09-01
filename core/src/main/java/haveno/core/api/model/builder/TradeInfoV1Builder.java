@@ -69,6 +69,7 @@ public final class TradeInfoV1Builder {
     private boolean isPayoutPublished;
     private boolean isPayoutConfirmed;
     private boolean isPayoutUnlocked;
+    private boolean isPayoutFinalized;
     private boolean isCompleted;
     private String contractAsJson;
     private ContractInfo contract;
@@ -264,6 +265,11 @@ public final class TradeInfoV1Builder {
 
     public TradeInfoV1Builder withIsPayoutUnlocked(boolean isPayoutUnlocked) {
         this.isPayoutUnlocked = isPayoutUnlocked;
+        return this;
+    }
+
+    public TradeInfoV1Builder withIsPayoutFinalized(boolean isPayoutFinalized) {
+        this.isPayoutFinalized = isPayoutFinalized;
         return this;
     }
 

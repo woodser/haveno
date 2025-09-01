@@ -96,6 +96,7 @@ public class TradeInfo implements Payload {
     private final boolean isPayoutPublished;
     private final boolean isPayoutConfirmed;
     private final boolean isPayoutUnlocked;
+    private final boolean isPayoutFinalized;
     private final boolean isCompleted;
     private final String contractAsJson;
     private final ContractInfo contract;
@@ -140,6 +141,7 @@ public class TradeInfo implements Payload {
         this.isPayoutPublished = builder.isPayoutPublished();
         this.isPayoutConfirmed = builder.isPayoutConfirmed();
         this.isPayoutUnlocked = builder.isPayoutUnlocked();
+        this.isPayoutFinalized = builder.isPayoutFinalized();
         this.isCompleted = builder.isCompleted();
         this.contractAsJson = builder.getContractAsJson();
         this.contract = builder.getContract();
@@ -204,6 +206,7 @@ public class TradeInfo implements Payload {
                 .withIsPayoutPublished(trade.isPayoutPublished())
                 .withIsPayoutConfirmed(trade.isPayoutConfirmed())
                 .withIsPayoutUnlocked(trade.isPayoutUnlocked())
+                .withIsPayoutFinalized(trade.isPayoutFinalized())
                 .withIsCompleted(trade.isCompleted())
                 .withContractAsJson(trade.getContractAsJson())
                 .withContract(contractInfo)
@@ -258,6 +261,7 @@ public class TradeInfo implements Payload {
                 .setIsPayoutPublished(isPayoutPublished)
                 .setIsPayoutConfirmed(isPayoutConfirmed)
                 .setIsPayoutUnlocked(isPayoutUnlocked)
+                .setIsPayoutFinalized(isPayoutFinalized)
                 .setContractAsJson(contractAsJson == null ? "" : contractAsJson)
                 .setContract(contract.toProtoMessage())
                 .setStartTime(startTime)
@@ -305,6 +309,7 @@ public class TradeInfo implements Payload {
                 .withIsPayoutPublished(proto.getIsPayoutPublished())
                 .withIsPayoutConfirmed(proto.getIsPayoutConfirmed())
                 .withIsPayoutUnlocked(proto.getIsPayoutUnlocked())
+                .withIsPayoutFinalized(proto.getIsPayoutFinalized())
                 .withContractAsJson(proto.getContractAsJson())
                 .withContract((ContractInfo.fromProto(proto.getContract())))
                 .withStartTime(proto.getStartTime())
@@ -350,6 +355,7 @@ public class TradeInfo implements Payload {
                 ", isPayoutPublished=" + isPayoutPublished + "\n" +
                 ", isPayoutConfirmed=" + isPayoutConfirmed + "\n" +
                 ", isPayoutUnlocked=" + isPayoutUnlocked + "\n" +
+                ", isPayoutFinalized=" + isPayoutFinalized + "\n" +
                 ", isCompleted=" + isCompleted + "\n" +
                 ", offer=" + offer + "\n" +
                 ", contractAsJson=" + contractAsJson + "\n" +

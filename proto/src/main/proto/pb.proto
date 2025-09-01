@@ -1486,6 +1486,7 @@ message Trade {
         PAYOUT_PUBLISHED = 1;
         PAYOUT_CONFIRMED = 2;
         PAYOUT_UNLOCKED = 3;
+        PAYOUT_FINALIZED = 4;
     }
 
     enum DisputeState {
