@@ -111,6 +111,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.text.Font;
+
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
 
@@ -225,7 +227,7 @@ public class BuyerStep2View extends TradeStepView {
 
         addTradeInfoBlock();
 
-
+        int paymentDetailsRow = gridRow + 1;
         PaymentAccountPayload paymentAccountPayload = model.dataModel.getSellersPaymentAccountPayload();
         String paymentMethodId = paymentAccountPayload != null ? paymentAccountPayload.getPaymentMethodId() : "<pending>";
         TitledGroupBg accountTitledGroupBg = addTitledGroupBg(gridPane, ++gridRow, 4,
@@ -456,6 +458,33 @@ public class BuyerStep2View extends TradeStepView {
         confirmButton.setOnAction(e -> onPaymentSent());
         busyAnimation = tuple3.second;
         statusLabel = tuple3.third;
+
+        // add mask to cover payment details
+        boolean awaitingConfirmations = true;
+        if (awaitingConfirmations) {
+            GridPane paymentDetailsMask = new GridPane();
+            paymentDetailsMask.setStyle("-fx-background-color: -bs-content-background-gray;");
+            paymentDetailsMask.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            gridPane.add(paymentDetailsMask, 0, paymentDetailsRow, 2, gridRow - paymentDetailsRow + 1);
+
+            // add title
+            addTitledGroupBg(paymentDetailsMask, 0, 1,  Res.get("portfolio.pending.step1.waitForConf"), Layout.COMPACT_GROUP_DISTANCE);
+
+            // add text
+            Label label = new Label(Res.get("portfolio.pending.step2_buyer.additionalConf"));
+            label.setFont(new Font(16));
+            GridPane.setMargin(label, new Insets(20, 0, 0, 0));
+            paymentDetailsMask.add(label, 0, 1);
+
+            // add button to show payment details
+            Button showPaymentDetailsButton = new Button("Show payment details early");
+            showPaymentDetailsButton.getStyleClass().add("action-button");
+            GridPane.setMargin(showPaymentDetailsButton, new Insets(20, 0, 0, 0));
+            showPaymentDetailsButton.setOnAction(e -> {
+                gridPane.getChildren().remove(paymentDetailsMask);
+            });
+            paymentDetailsMask.add(showPaymentDetailsButton, 0, 2);
+        }
     }
 
     private boolean confirmPaymentSentPermitted() {
