@@ -391,8 +391,9 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
                 break;
 
             // buyer and seller step 2
-            // deposits unlocked
+            // deposits unlocked or finalized
             case DEPOSIT_TXS_UNLOCKED_IN_BLOCKCHAIN:
+            case DEPOSIT_TXS_FINALIZED_IN_BLOCKCHAIN:
                 buyerState.set(BuyerState.STEP2);
                 sellerState.set(SellerState.STEP2);
                 break;

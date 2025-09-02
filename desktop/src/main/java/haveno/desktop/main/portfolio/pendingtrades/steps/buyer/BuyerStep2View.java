@@ -131,6 +131,7 @@ public class BuyerStep2View extends TradeStepView {
     private BusyAnimation busyAnimation;
     private Subscription tradeStatePropertySubscription;
     private Timer timeoutTimer;
+    GridPane paymentDetailsMask;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor, Initialisation
@@ -459,9 +460,17 @@ public class BuyerStep2View extends TradeStepView {
         busyAnimation = tuple3.second;
         statusLabel = tuple3.third;
 
+        EasyBind.subscribe(trade.statePhaseProperty(), newValue -> {
+            if (newValue == Trade.Phase.DEPOSITS_FINALIZED) {
+                if (paymentDetailsMask != null) paymentDetailsMask.setVisible(false);
+            }
+        });
+
         // add mask to cover payment details
-        boolean awaitingConfirmations = true;
-        if (awaitingConfirmations) {
+        log.warn("Deposit txs finalized: " + trade.isDepositsFinalized());
+        log.warn("Num confirmations = " + (trade.getMakerDepositTx() == null ? null : trade.getMakerDepositTx().getNumConfirmations()));
+
+        if (!trade.isDepositsFinalized()) {
             GridPane paymentDetailsMask = new GridPane();
             paymentDetailsMask.setStyle("-fx-background-color: -bs-content-background-gray;");
             paymentDetailsMask.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);

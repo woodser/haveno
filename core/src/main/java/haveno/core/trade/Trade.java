@@ -148,7 +148,8 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
     private static final long EXTENDED_RPC_TIMEOUT = 600000; // 10 minutes
     private static final long DELETE_AFTER_MS = TradeProtocol.TRADE_STEP_TIMEOUT_SECONDS;
     private static final int NUM_CONFIRMATIONS_FOR_SCHEDULED_IMPORT = 5;
-    private static final int NUM_BLOCKS_FINALIZED = 60; // ~2 hours before payout is considered finalized and multisig deleted
+    private static final int NUM_BLOCKS_DEPOSITS_FINALIZED = 20;
+    private static final int NUM_BLOCKS_PAYOUT_FINALIZED = 60; // ~2 hours before payout is considered finalized and multisig deleted
     protected final Object pollLock = new Object();
     private final Object removeTradeOnErrorLock = new Object();
     protected static final Object importMultisigLock = new Object();
@@ -180,15 +181,18 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
         SAW_ARRIVED_PUBLISH_DEPOSIT_TX_REQUEST(Phase.DEPOSIT_REQUESTED),
         PUBLISH_DEPOSIT_TX_REQUEST_FAILED(Phase.DEPOSIT_REQUESTED),
 
-        // deposit published
+        // deposits published
         ARBITRATOR_PUBLISHED_DEPOSIT_TXS(Phase.DEPOSITS_PUBLISHED),
         DEPOSIT_TXS_SEEN_IN_NETWORK(Phase.DEPOSITS_PUBLISHED),
 
-        // deposit confirmed
+        // deposits confirmed
         DEPOSIT_TXS_CONFIRMED_IN_BLOCKCHAIN(Phase.DEPOSITS_CONFIRMED),
 
-        // deposit unlocked
+        // deposits unlocked
         DEPOSIT_TXS_UNLOCKED_IN_BLOCKCHAIN(Phase.DEPOSITS_UNLOCKED),
+
+        // deposits finalized
+        DEPOSIT_TXS_FINALIZED_IN_BLOCKCHAIN(Phase.DEPOSITS_FINALIZED),
 
         // payment sent
         BUYER_CONFIRMED_PAYMENT_SENT(Phase.PAYMENT_SENT),
@@ -242,6 +246,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
         DEPOSITS_PUBLISHED,
         DEPOSITS_CONFIRMED,
         DEPOSITS_UNLOCKED,
+        DEPOSITS_FINALIZED,
         PAYMENT_SENT,
         PAYMENT_RECEIVED;
 
@@ -659,6 +664,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                 if (newValue == Trade.Phase.DEPOSITS_PUBLISHED) onDepositsPublished();
                 if (newValue == Trade.Phase.DEPOSITS_CONFIRMED) onDepositsConfirmed();
                 if (newValue == Trade.Phase.DEPOSITS_UNLOCKED) onDepositsUnlocked();
+                if (newValue == Trade.Phase.DEPOSITS_FINALIZED) onDepositsFinalized();
                 if (newValue == Trade.Phase.PAYMENT_SENT) onPaymentSent();
                 if (isDepositsPublished() && !isPayoutFinalized()) updatePollPeriod();
                 if (isPaymentReceived()) {
@@ -764,7 +770,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                     log.warn("Payout state for {} {} is {} but payout is unlocked, updating state", getClass().getSimpleName(), getId(), getPayoutState());
                     setPayoutStateUnlocked();
                 }
-                if (payoutTx.getNumConfirmations() >= NUM_BLOCKS_FINALIZED) {
+                if (payoutTx.getNumConfirmations() >= NUM_BLOCKS_PAYOUT_FINALIZED) {
                     log.warn("Payout state for {} {} is {} but payout is finalized, updating state", getClass().getSimpleName(), getId(), getPayoutState());
                     setPayoutStateFinalized();
                 }
@@ -2306,6 +2312,10 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
         return isDepositsPublished() && getState().getPhase().ordinal() >= Phase.DEPOSITS_UNLOCKED.ordinal();
     }
 
+    public boolean isDepositsFinalized() {
+        return isDepositsPublished() && getState().getPhase().ordinal() >= Phase.DEPOSITS_FINALIZED.ordinal();
+    }
+
     public boolean isPaymentSent() {
         return getState().getPhase().ordinal() >= Phase.PAYMENT_SENT.ordinal() && getState() != State.BUYER_SEND_FAILED_PAYMENT_SENT_MSG;
     }
@@ -2745,7 +2755,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
             if (walletHeight.get() < xmrConnectionService.getTargetHeight() - SYNC_EVERY_NUM_BLOCKS) syncWallet(false);
 
             // update deposit txs
-            if (!isDepositsUnlocked()) {
+            if (!isDepositsFinalized()) {
 
                 // sync wallet if behind
                 syncWalletIfBehind();
@@ -2794,7 +2804,14 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                     if (getMaker().getDepositTx().getNumConfirmations() >= XmrWalletService.NUM_BLOCKS_UNLOCK && (hasBuyerAsTakerWithoutDeposit() || getTaker().getDepositTx().getNumConfirmations() >= XmrWalletService.NUM_BLOCKS_UNLOCK)) {
                         setStateDepositsUnlocked();
                     }
+
+                    // check for deposit txs finalized
+                    if (getMaker().getDepositTx().getNumConfirmations() >= NUM_BLOCKS_DEPOSITS_FINALIZED && (hasBuyerAsTakerWithoutDeposit() || getTaker().getDepositTx().getNumConfirmations() >= NUM_BLOCKS_DEPOSITS_FINALIZED)) {
+                        setStateDepositsFinalized();
+                    }
                 }
+
+                log.warn("6"); 
             }
 
             // check for payout tx
@@ -2861,7 +2878,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                         setPayoutStatePublished();
                         if (tx.isConfirmed()) setPayoutStateConfirmed();
                         if (!tx.isLocked()) setPayoutStateUnlocked();
-                        if (tx.getNumConfirmations() != null && tx.getNumConfirmations() >= NUM_BLOCKS_FINALIZED) setPayoutStateFinalized();
+                        if (tx.getNumConfirmations() != null && tx.getNumConfirmations() >= NUM_BLOCKS_PAYOUT_FINALIZED) setPayoutStateFinalized();
                     }
                 }
             }
@@ -3111,6 +3128,10 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
         }
     }
 
+    private void setStateDepositsFinalized() {
+        if (!isDepositsFinalized()) setState(State.DEPOSIT_TXS_FINALIZED_IN_BLOCKCHAIN);
+    }
+
     private void setPayoutStatePublished() {
         if (!isPayoutPublished()) setPayoutState(PayoutState.PAYOUT_PUBLISHED);
     }
@@ -3203,6 +3224,10 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
 
     private void onDepositsUnlocked() {
         HavenoUtils.notificationService.sendTradeNotification(this, Phase.DEPOSITS_UNLOCKED, "Trade Deposits Unlocked", "The deposit transactions have unlocked");
+    }
+
+    private void onDepositsFinalized() {
+        HavenoUtils.notificationService.sendTradeNotification(this, Phase.DEPOSITS_FINALIZED, "Trade Deposits Finalized", "The deposit transactions have finalized");
     }
 
     private void onPaymentSent() {
