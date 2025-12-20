@@ -132,7 +132,7 @@ public class FilterManager {
                     "02d3beb1293ca2ca14e6d42ca8bd18089a62aac62fd6bb23923ee6ead46ac60fba",
                     "0374dd70f3fa6e47ec5ab97932e1cec6233e98e6ae3129036b17118650c44fd3de");
         case XMR_MAINNET:
-            return List.of();
+            return List.of("03160d4bb4ed019dce9dcc903345d3457232c9ed587545a5b6cce43266d85ca9c9");
         default:
             throw new RuntimeException("Unhandled base currency network: " + Config.baseCurrencyNetwork());
         }
@@ -157,7 +157,8 @@ public class FilterManager {
         // On mainNet we expect to have received a filter object, if not show a popup to the user to inform the
         // Haveno devs.
         if (Config.baseCurrencyNetwork().isMainnet() && getFilter() == null && filterWarningHandler != null) {
-            filterWarningHandler.accept(Res.get("popup.warning.noFilter"));
+            log.warn(Res.get("popup.warning.noFilter"));
+            //filterWarningHandler.accept(Res.get("popup.warning.noFilter"));
         }
 
         p2PService.addHashSetChangedListener(new HashMapChangedListener() {

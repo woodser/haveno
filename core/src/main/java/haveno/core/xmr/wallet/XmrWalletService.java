@@ -117,7 +117,7 @@ public class XmrWalletService extends XmrWalletBase {
     private static final int MAX_SYNC_ATTEMPTS = 3;
     private static final boolean PRINT_RPC_STACK_TRACE = false;
     private static final String THREAD_ID = XmrWalletService.class.getSimpleName();
-    private static final long SHUTDOWN_TIMEOUT_MS = 60000;
+    private static final long SHUTDOWN_TIMEOUT_MS = 20000;
     private static final long NUM_BLOCKS_BEHIND_TOLERANCE = 5;
     private static final long POLL_TXS_TOLERANCE_MS = 1000 * 60 * 3; // request connection switch if txs not updated within 3 minutes
 
