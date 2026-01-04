@@ -365,7 +365,21 @@ public class CurrencyUtil {
 
     public static Optional<List<TradeCurrency>> getTradeCurrencies(List<String> currencyCodes) {
         List<TradeCurrency> tradeCurrencies = new ArrayList<>();
-        currencyCodes.stream().forEachOrdered(c ->
+        currencyCodes.stream().forEachOrdered(c -> {
+            Optional<TradeCurrency> currency = getTradeCurrency(c);
+            if (!currency.isPresent()) {
+                log.warn("Currency is not present: " + c);
+                Optional<TradeCurrency> currency2 = getTradeCurrency("USD");
+                if (currency2.isPresent()) {
+                    log.warn("USD is present!");
+                } else {
+                    log.warn("Also USD currency is not present!");
+                }
+            } else {
+                log.warn("Currency is present: " + c);
+            }
+        });
+        currencyCodes.stream().forEachOrdered(c -> 
                 tradeCurrencies.add(getTradeCurrency(c).orElseThrow(() ->
                         new IllegalArgumentException(format("%s is not a valid trade currency code", c)))));
         return tradeCurrencies.isEmpty()
