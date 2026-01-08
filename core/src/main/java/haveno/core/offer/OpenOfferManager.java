@@ -1770,7 +1770,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                     request.getReserveTxKeyImages(),
                     verifiedTx.getFee().longValueExact(),
                     signature); // TODO (woodser): no need for signature to be part of SignedOffer?
-            addSignedOffer(signedOffer);
+            UserThread.execute(() -> addSignedOffer(signedOffer));
             requestPersistence();
 
             // send response with signature
