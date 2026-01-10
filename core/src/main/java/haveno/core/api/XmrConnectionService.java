@@ -838,8 +838,8 @@ public final class XmrConnectionService {
      */
     private void pollMonerod(MoneroDaemonInfo applyInfo) {
         synchronized (pollLock) {
-            pollInProgress = true;
             if (isShutDownStarted) return;
+            pollInProgress = true;
             try {
 
                 // switch to best connection which comes back to polling
