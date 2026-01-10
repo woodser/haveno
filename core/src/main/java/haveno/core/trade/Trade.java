@@ -3335,13 +3335,10 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                 if (isShutDownStarted) forceCloseWallet();
                 else forceRestartTradeWallet();
             } else {
-                boolean isWalletConnected = isWalletConnectedToDaemon();
-                if (!isShutDownStarted && isWalletConnected) {
-                    if (isExpectedWalletError(e)) {
-                        log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection());
-                    } else {
-                        log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection(), e); // include stack trace for unexpected errors
-                    }
+                if (!isShutDownStarted && Boolean.TRUE.equals(xmrConnectionService.isConnected()) && isExpectedWalletError(e)) {
+                    log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection());
+                } else {
+                    log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection(), e); // include stack trace for unexpected errors
                 }
             }
         } finally {
@@ -3905,7 +3902,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                 } catch (Exception e) {
                     processing = false;
                     if (!isInitialized || isShutDownStarted) return;
-                    if (isWalletConnectedToDaemon()) {
+                    if (Boolean.TRUE.equals(xmrConnectionService.isConnected())) {
                         log.warn("Error polling idle trade for {} {}: {}. Monerod={}\n", getClass().getSimpleName(), getId(), e.getMessage(), getXmrWalletService().getXmrConnectionService().getConnection(), e);
                     };
                 }
