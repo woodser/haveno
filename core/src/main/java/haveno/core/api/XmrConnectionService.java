@@ -267,7 +267,7 @@ public final class XmrConnectionService {
     }
 
     private void setConnection(MoneroRpcConnection connection, MoneroDaemonInfo info) {
-        log.info("XmrConnectionService.setConnection() called with connection: " + connection + ", info: " + info);
+        log.info("XmrConnectionService.setConnection() called with connection: " + connection);
 
         // TODO: remove this as a bucket
         connectionManager.setConnection(connection);
