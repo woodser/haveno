@@ -536,6 +536,7 @@ haveno-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=false \
+		--xmrNode=http://127.0.0.1:18081 \
 		--ignoreLocalXmrNode=false \
 
 user1-daemon-mainnet:

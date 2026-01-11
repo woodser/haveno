@@ -924,7 +924,9 @@ public class XmrWalletService extends XmrWalletBase {
         Runnable shutDownTask = () -> {
 
             // remove listeners
+            log.warn("shut down 1");
             synchronized (walletLock) {
+                log.warn("shut down 2");
                 if (wallet != null) {
                     for (MoneroWalletListenerI listener : new HashSet<>(wallet.getListeners())) {
                         wallet.removeListener(listener);
@@ -932,18 +934,23 @@ public class XmrWalletService extends XmrWalletBase {
                 }
                 walletListeners.clear();
             }
+            log.warn("shut down 3");
 
             // shut down threads
             synchronized (lock) {
+                log.warn("shut down 4");
                 List<Runnable> shutDownThreads = new ArrayList<>();
                 shutDownThreads.add(() -> ThreadUtils.shutDown(THREAD_ID));
                 ThreadUtils.awaitTasks(shutDownThreads);
             }
+            log.warn("shut down 5");
 
             // shut down main wallet
             if (wallet != null) {
+                log.warn("shut down 6");
                 try {
                     closeMainWallet(true);
+                    log.warn("shut down 7");
                 } catch (Exception e) {
                     log.warn("Error closing main wallet: {}. Was Haveno stopped manually with ctrl+c?", e.getMessage());
                 }
