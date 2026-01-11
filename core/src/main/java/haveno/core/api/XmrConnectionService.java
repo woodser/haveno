@@ -716,8 +716,8 @@ public final class XmrConnectionService {
                         boolean isConnectedAndSynced = false;
                         if (xmrLocalNode.isConnected()) {
                             MoneroRpcConnection conn = getConnection(connection.getUri());
-                            checkConnection(connection, connectionTimeout);
-                            isConnectedAndSynced = Boolean.TRUE.equals(conn.isConnected()) && isSyncedWithinTolerance(getCachedDaemonInfo(connection));
+                            checkConnection(conn, connectionTimeout);
+                            isConnectedAndSynced = Boolean.TRUE.equals(conn.isConnected()) && isSyncedWithinTolerance(getCachedDaemonInfo(conn));
                         }
 
                         // update connection
@@ -780,14 +780,10 @@ public final class XmrConnectionService {
 
                 // restore last connection
                 if (connectionList.getCurrentConnectionUri().isPresent() && hasConnection(connectionList.getCurrentConnectionUri().get())) {
-                    log.warn("Restoring last used connection: " + connectionList.getCurrentConnectionUri().get());
-
                     if (!xmrLocalNode.shouldBeIgnored() || !xmrLocalNode.equalsUri(connectionList.getCurrentConnectionUri().get())) {
                         initialConnection = getConnection(connectionList.getCurrentConnectionUri().get());
                     }
                 }
-
-                log.warn("Initial conneciton now: " + initialConnection);
 
                 // set if last node was locally syncing
                 if (!isInitialized) {
