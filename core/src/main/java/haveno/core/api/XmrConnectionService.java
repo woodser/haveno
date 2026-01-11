@@ -368,6 +368,7 @@ public final class XmrConnectionService {
 
     private MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> ignoredConnections) {
         accountService.checkAccountOpen();
+        log.info("Getting best Monero connection");
 
         // user needs to authorize fallback on startup after using locally synced node
         if (fallbackRequiredBeforeConnectionSwitch()) {

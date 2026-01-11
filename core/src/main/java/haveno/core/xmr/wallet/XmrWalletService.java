@@ -1404,10 +1404,10 @@ public class XmrWalletService extends XmrWalletBase {
         maybeInitMainWallet(sync, MAX_SYNC_ATTEMPTS);
     }
 
-    private void maybeInitMainWallet(boolean sync, int numSyncAttemptsRemaining) {
+    private void maybeInitMainWallet(boolean sync, int numSyncAttempts) {
         ThreadUtils.execute(() -> {
             try {
-                doMaybeInitMainWallet(sync, numSyncAttemptsRemaining);
+                doMaybeInitMainWallet(sync, numSyncAttempts);
             } catch (Exception e) {
                 if (isShutDownStarted) return;
                 log.warn("Error initializing main wallet: {}\n", e.getMessage(), e);
@@ -1417,7 +1417,7 @@ public class XmrWalletService extends XmrWalletBase {
         }, THREAD_ID);
     }
 
-    private void doMaybeInitMainWallet(boolean sync, int numSyncAttemptsRemaining) {
+    private void doMaybeInitMainWallet(boolean sync, int numSyncAttempts) {
         synchronized (walletLock) {
             if (isShutDownStarted) return;
 
@@ -1445,7 +1445,7 @@ public class XmrWalletService extends XmrWalletBase {
 
                 // sync main wallet if applicable
                 // TODO: error handling and re-initialization is jenky, refactor
-                if (sync && numSyncAttemptsRemaining > 0) {
+                if (sync && numSyncAttempts <= MAX_SYNC_ATTEMPTS) {
                     try {
 
                         // switch connection if disconnected
@@ -1501,8 +1501,8 @@ public class XmrWalletService extends XmrWalletBase {
                         });
                     } catch (Exception e) {
                         if (isClosingWallet || isShutDownStarted || HavenoUtils.havenoSetup.getWalletInitialized().get()) return; // ignore if wallet closing, shut down started, or app already initialized
-                        log.warn("Error initially syncing main wallet, numSyncAttemptsRemaining={}", numSyncAttemptsRemaining, e);
-                        if (numSyncAttemptsRemaining <= 1) {
+                        log.warn("Error initially syncing main wallet, numSyncAttempts={}", numSyncAttempts, e);
+                        if (numSyncAttempts >= MAX_SYNC_ATTEMPTS) {
                             log.warn("Failed to sync main wallet. Opening app without syncing.");
                             HavenoUtils.havenoSetup.getWalletInitialized().set(true);
 
@@ -1517,12 +1517,12 @@ public class XmrWalletService extends XmrWalletBase {
 
                             // reschedule to init main wallet
                             UserThread.runAfter(() -> {
-                                maybeInitMainWallet(true, MAX_SYNC_ATTEMPTS);
+                                maybeInitMainWallet(true, 1);
                             }, xmrConnectionService.getRefreshPeriodMs() / 1000);
                         } else {
                             log.warn("Trying again in {} seconds", xmrConnectionService.getRefreshPeriodMs() / 1000);
                             UserThread.runAfter(() -> {
-                                maybeInitMainWallet(true, numSyncAttemptsRemaining - 1);
+                                maybeInitMainWallet(true, numSyncAttempts + 1);
                             }, xmrConnectionService.getRefreshPeriodMs() / 1000);
                         }
                     }
