@@ -3225,7 +3225,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
         MoneroWallet sourceWallet = wallet;
 
         // skip if shut down started
-        if (isShutDownStarted) return;
+        if (isShutDownStarted || sourceWallet == null) return;
 
         // set poll in progress
         boolean pollInProgressSet = false;

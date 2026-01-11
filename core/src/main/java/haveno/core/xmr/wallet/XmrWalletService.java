@@ -1505,7 +1505,15 @@ public class XmrWalletService extends XmrWalletBase {
                         if (numSyncAttemptsRemaining <= 1) {
                             log.warn("Failed to sync main wallet. Opening app without syncing.");
                             HavenoUtils.havenoSetup.getWalletInitialized().set(true);
-                            saveWallet(false);
+
+                            // try saving the wallet
+                            if (wallet != null) {
+                                try {
+                                    saveWallet(false);
+                                } catch (Exception ex) {
+                                    log.warn("Error saving wallet after failed sync: {}\n", ex.getMessage(), ex);
+                                }
+                            }
 
                             // reschedule to init main wallet
                             UserThread.runAfter(() -> {
@@ -1973,10 +1981,10 @@ public class XmrWalletService extends XmrWalletBase {
     }
 
     public void doPollWallet(boolean updateTxs) {
-        MoneroWallet sourceWallet = wallet;
 
         // skip if shut down started
-        if (isShutDownStarted) return;
+        MoneroWallet sourceWallet = wallet;
+        if (isShutDownStarted || sourceWallet == null) return;
 
         // set poll in progress
         boolean pollInProgressSet = false;
@@ -2033,7 +2041,7 @@ public class XmrWalletService extends XmrWalletBase {
                             cachedTxs = wallet.getTxs(new MoneroTxQuery().setIncludeOutputs(true));
                             lastPollTxsTimestamp = System.currentTimeMillis();
                         } catch (Exception e) { // fetch from pool can fail
-                            if (!isShutDownStarted) {
+                            if (!isShutDownStarted && wallet != sourceWallet) {
 
                                 // throttle error handling
                                 if (System.currentTimeMillis() - lastLogPollErrorTimestamp > HavenoUtils.LOG_POLL_ERROR_PERIOD_MS) {
