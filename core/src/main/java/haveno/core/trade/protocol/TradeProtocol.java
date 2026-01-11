@@ -276,7 +276,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
         // run on initialization thread to preserve ordering processing messages
         ThreadUtils.execute(() -> {
-            if (!trade.isDepositRequested() || trade.isPayoutFinalized() || trade.isCompleted()) return;
+            if (!trade.isDepositRequested() || trade.isPayoutFinalized() || trade.isCompleted() || trade.isShutDownStarted()) return;
 
             // reprocess messages if applicable
             maybeReprocessPaymentSentMessage(false);
