@@ -1449,7 +1449,7 @@ public class XmrWalletService extends XmrWalletBase {
                     try {
 
                         // switch connection if disconnected
-                        if (!wallet.isConnectedToDaemon()) {
+                        if (!Boolean.TRUE.equals(xmrConnectionService.isConnected())) {
                             log.warn("Switching connection before syncing with progress because disconnected");
                             if (requestSwitchToNextBestConnection()) return; // calls back to this method
                         }
@@ -1845,12 +1845,6 @@ public class XmrWalletService extends XmrWalletBase {
             log.info("Setting daemon connection for main wallet, monerod={}, proxyUri={}", connection == null ? null : connection.getUri(), connection == null ? null : connection.getProxyUri());
             wallet.setDaemonConnection(connection);
 
-            // switch if wallet disconnected
-            if (Boolean.TRUE.equals(connection.isConnected() && !wallet.isConnectedToDaemon())) {
-                log.warn("Main wallet is disconnected from monerod, requesting switch to next best connection");
-                if (requestSwitchToNextBestConnection(connection)) return; // calls back to this method
-            }
-
             // update poll period
             if (connection != null && !isShutDownStarted) {
                 wallet.getDaemonConnection().setPrintStackTrace(PRINT_RPC_STACK_TRACE);
@@ -2056,7 +2050,7 @@ public class XmrWalletService extends XmrWalletBase {
         } catch (Exception e) {
             if (isShutDownStarted || wallet == null || wallet != sourceWallet) return; // skip error handling if shut down or another thread force restarts while polling
             if (HavenoUtils.isUnresponsive(e)) forceRestartMainWallet();
-            else if (isWalletConnectedToDaemon()) {
+            else if (Boolean.TRUE.equals(xmrConnectionService.isConnected())) {
                 if (isExpectedWalletError(e)) {
                     log.warn("Error polling main wallet, errorMessage={}. Monerod={}", e.getMessage(), getXmrConnectionService().getConnection());
                 } else {
@@ -2080,17 +2074,6 @@ public class XmrWalletService extends XmrWalletBase {
                         log.warn("Error caching wallet info: " + e.getMessage() + "\n", e);
                     }
                 }
-            }
-        }
-    }
-
-    public boolean isWalletConnectedToDaemon() {
-        synchronized (walletLock) {
-            try {
-                if (wallet == null) return false;
-                return wallet.isConnectedToDaemon();
-            } catch (Exception e) {
-                return false;
             }
         }
     }
