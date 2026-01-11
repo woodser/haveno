@@ -675,7 +675,8 @@ public final class XmrConnectionService {
             connection.setTimeout(getTimeoutMs(connection));
             MoneroDaemonRpc monerod = new MoneroDaemonRpc(new MoneroRpcConnection(connection));
             MoneroDaemonInfo info = monerod.getInfo();
-            connection.setOnline(true);
+            int numOutgoingConnections = Boolean.TRUE.equals(info.isRestricted()) ? -1 : info.getNumOutgoingConnections();
+            connection.setOnline(numOutgoingConnections != 0);
             connection.setAuthenticated(true);
             connection.setAttribute(LAST_INFO_KEY, info);
         } catch (Exception e) {
