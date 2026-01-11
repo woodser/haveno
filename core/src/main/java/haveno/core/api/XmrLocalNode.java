@@ -187,7 +187,7 @@ public class XmrLocalNode {
     }
 
     private void checkConnection() {
-        XmrConnectionService.checkConnection(daemon.getRpcConnection(), REFRESH_PERIOD_LOCAL_MS);
+        XmrConnectionService.checkConnection(daemon.getRpcConnection());
     }
 
     public XmrNodeSettings getNodeSettings() {
