@@ -169,6 +169,9 @@ public final class XmrConnectionService {
         this.connectionList = connectionList;
         this.socks5ProxyProvider = socks5ProxyProvider;
 
+        // set static references in HavenoUtils // TODO: better way?
+        HavenoUtils.preferences = preferences;
+
         // initialize when connected to p2p network
         p2PService.addP2PServiceListener(new P2PServiceListener() {
             @Override
@@ -1022,13 +1025,13 @@ public final class XmrConnectionService {
                         if (connectionServiceFallbackType.get() == null && (lastFallbackInvocation == null || System.currentTimeMillis() - lastFallbackInvocation > FALLBACK_INVOCATION_PERIOD_MS)) {
                             lastFallbackInvocation = System.currentTimeMillis();
                             if (usedSyncingLocalNodeBeforeStartup) {
-                                log.warn("Failed to fetch monerod info from local connection on startup: " + e.getMessage());
+                                log.warn("Could not get monerod info from local connection on startup: " + e.getMessage());
                                 connectionServiceFallbackType.set(XmrConnectionFallbackType.LOCAL);
                             } else if (isProvidedConnections()) {
-                                log.warn("Failed to fetch monerod info from provided connections on startup: " + e.getMessage());
+                                log.warn("Could not get monerod info from provided connections on startup: " + e.getMessage());
                                 connectionServiceFallbackType.set(XmrConnectionFallbackType.PROVIDED);
                             } else {
-                                log.warn("Failed to fetch monerod info from custom connection on startup: " + e.getMessage());
+                                log.warn("Could not get monerod info from custom connection on startup: " + e.getMessage());
                                 connectionServiceFallbackType.set(XmrConnectionFallbackType.CUSTOM);
                             }
                         }
