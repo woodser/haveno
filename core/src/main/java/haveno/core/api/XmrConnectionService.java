@@ -87,6 +87,7 @@ public final class XmrConnectionService {
     private static final long KEY_IMAGE_REFRESH_PERIOD_MS_REMOTE = 300000; // 5 minutes
     private static final int MAX_CONSECUTIVE_ERRORS = 4; // max errors before switching connections
     private static final int SYNC_TOLERANCE_NUM_BLOCKS = 3;
+    private static final String LAST_INFO_KEY = "lastInfo";
     private static int numConsecutiveErrors = 0;
 
     public enum XmrConnectionFallbackType {
@@ -129,7 +130,7 @@ public final class XmrConnectionService {
     private Long lastLogPollErrorTimestamp;
     private long lastLogMonerodNotSyncedTimestamp;
     private Long syncStartHeight;
-    private TaskLooper monerodPollLooper;
+    private TaskLooper monerodPoller;
     private long lastRefreshPeriodMs;
     @Getter
     private boolean isShutDownStarted;
@@ -202,7 +203,7 @@ public final class XmrConnectionService {
         log.info("Shutting down {}", getClass().getSimpleName());
         isInitialized = false;
         synchronized (lock) {
-            if (monerodPollLooper != null) monerodPollLooper.stop();
+            if (monerodPoller != null) monerodPoller.stop();
             monerod = null;
         }
     }
@@ -391,11 +392,60 @@ public final class XmrConnectionService {
         return bestConnection;
     }
 
-    private static boolean isSyncedWithinTolerance(MoneroDaemonInfo info) {
-        Long targetHeight = getTargetHeight(info);
-        if (targetHeight == null) return false;
-        if (targetHeight - getHeight(info) <= SYNC_TOLERANCE_NUM_BLOCKS) return true; // synced if within 3 blocks of target height
-        return false;
+    private static MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> connections, Collection<MoneroRpcConnection> ignoredConnections, long timeoutMs) {
+
+        // try connections within each ascending priority
+        MoneroRpcConnection bestUnsyncedConnection = null;
+        for (List<MoneroRpcConnection> prioritizedConnections : getConnectionsInAscendingPriority(connections)) {
+            try {
+            
+                // check connections in parallel
+                int numTasks = 0;
+                ExecutorService pool = Executors.newFixedThreadPool(prioritizedConnections.size());
+                CompletionService<MoneroRpcConnection> completionService = new ExecutorCompletionService<MoneroRpcConnection>(pool);
+                for (MoneroRpcConnection connection : prioritizedConnections) {
+                    if (ignoredConnections.contains(connection)) continue;
+                    numTasks++;
+                    completionService.submit(() -> {
+                        checkConnection(connection, timeoutMs);
+                        return connection;
+                    });
+                }
+                
+                // use first available and synced connection
+                pool.shutdown();
+                for (int i = 0; i < numTasks; i++) {
+                    try {
+                        MoneroRpcConnection connection = completionService.take().get();
+                        if (Boolean.TRUE.equals(connection.isConnected())) {
+                            if (isSyncedWithinTolerance(getCachedDaemonInfo(connection))) {
+                                return connection;
+                            } else if (bestUnsyncedConnection == null) {
+                                bestUnsyncedConnection = connection;
+                            }
+                        }
+                    } catch (Exception e) {
+                        // ignore error connecting
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Error checking prioritized connections: " + e.getMessage() + ". That should never happen.");
+                throw new MoneroError(e);
+            }
+        }
+        return bestUnsyncedConnection;
+    }
+
+    private static List<List<MoneroRpcConnection>> getConnectionsInAscendingPriority(Collection<MoneroRpcConnection> connections) {
+        Map<Integer, List<MoneroRpcConnection>> connectionPriorities = new TreeMap<Integer, List<MoneroRpcConnection>>();
+        for (MoneroRpcConnection connection : connections) {
+            if (!connectionPriorities.containsKey(connection.getPriority())) connectionPriorities.put(connection.getPriority(), new ArrayList<MoneroRpcConnection>());
+            connectionPriorities.get(connection.getPriority()).add(connection);
+        }
+        List<List<MoneroRpcConnection>> prioritizedConnections = new ArrayList<List<MoneroRpcConnection>>();
+        for (List<MoneroRpcConnection> priorityConnections : connectionPriorities.values()) prioritizedConnections.add(priorityConnections);
+        if (connectionPriorities.containsKey(0)) prioritizedConnections.add(prioritizedConnections.remove(0)); // move priority 0 to end
+        return prioritizedConnections;
     }
 
     private boolean fallbackRequiredBeforeConnectionSwitch() {
@@ -610,6 +660,46 @@ public final class XmrConnectionService {
                 fallbackToBestConnection();
             }
         }
+    }
+
+    // ---------------------------- STATIC UTILS -----------------------------
+
+    protected static void checkConnection(MoneroRpcConnection connection, long timeoutMs) {
+        long startTime = System.currentTimeMillis();
+        try {
+            connection.setTimeout(timeoutMs);
+            MoneroDaemonRpc monerod = new MoneroDaemonRpc(new MoneroRpcConnection(connection));
+            MoneroDaemonInfo info = monerod.getInfo();
+            connection.setOnline(true);
+            connection.setAuthenticated(true);
+            connection.setAttribute(LAST_INFO_KEY, info);
+        } catch (Exception e) {
+            connection.setOnline(false);
+            if (e instanceof MoneroRpcError) {
+                if (((MoneroRpcError) e).getCode() == 401) {
+                    connection.setOnline(true);
+                    connection.setAuthenticated(false);
+                }
+            } else {
+                connection.setOnline(false);
+                connection.setAuthenticated(null);
+            }
+            connection.setAttribute(LAST_INFO_KEY, null);
+        }
+        if (Boolean.TRUE.equals(connection.isOnline())) {
+            connection.setResponseTime(System.currentTimeMillis() - startTime);
+        }
+    }
+
+    protected static MoneroDaemonInfo getCachedDaemonInfo(MoneroRpcConnection connection) {
+        return (MoneroDaemonInfo) connection.getAttribute(LAST_INFO_KEY);
+    }
+
+    protected static boolean isSyncedWithinTolerance(MoneroDaemonInfo info) {
+        Long targetHeight = getTargetHeight(info);
+        if (targetHeight == null) return false;
+        if (targetHeight - getHeight(info) <= SYNC_TOLERANCE_NUM_BLOCKS) return true; // synced if within 3 blocks of target height
+        return false;
     }
 
     // ------------------------------- HELPERS --------------------------------
@@ -847,21 +937,21 @@ public final class XmrConnectionService {
         synchronized (lock) {
             stopPolling();
             AtomicBoolean firstPoll = new AtomicBoolean(true);
-            monerodPollLooper = new TaskLooper(() -> {
+            monerodPoller = new TaskLooper(() -> {
                 if (!pollInProgress) {
                     tryPollMonerod(firstPoll.get() ? applyInfo : null);
                 }
                 firstPoll.set(false);
             });
-            monerodPollLooper.start(getInternalRefreshPeriodMs());
+            monerodPoller.start(getInternalRefreshPeriodMs());
         }
     }
 
     private void stopPolling() {
         synchronized (lock) {
-            if (monerodPollLooper != null) {
-                monerodPollLooper.stop();
-                monerodPollLooper = null;
+            if (monerodPoller != null) {
+                monerodPoller.stop();
+                monerodPoller = null;
             }
         }
     }
@@ -1062,94 +1152,5 @@ public final class XmrConnectionService {
 
     private boolean isProvidedConnections() {
         return preferences.getMoneroNodesOption() == XmrNodes.MoneroNodesOption.PROVIDED;
-    }
-
-    private static MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> connections, Collection<MoneroRpcConnection> ignoredConnections, long timeoutMs) {
-
-        // try connections within each ascending priority
-        MoneroRpcConnection bestUnsyncedConnection = null;
-        for (List<MoneroRpcConnection> prioritizedConnections : getConnectionsInAscendingPriority(connections)) {
-            try {
-            
-                // check connections in parallel
-                int numTasks = 0;
-                ExecutorService pool = Executors.newFixedThreadPool(prioritizedConnections.size());
-                CompletionService<MoneroRpcConnection> completionService = new ExecutorCompletionService<MoneroRpcConnection>(pool);
-                for (MoneroRpcConnection connection : prioritizedConnections) {
-                    if (ignoredConnections.contains(connection)) continue;
-                    numTasks++;
-                    completionService.submit(() -> {
-                        checkConnection(connection, timeoutMs);
-                        return connection;
-                    });
-                }
-                
-                // use first available and synced connection
-                pool.shutdown();
-                for (int i = 0; i < numTasks; i++) {
-                    try {
-                        MoneroRpcConnection connection = completionService.take().get();
-                        if (Boolean.TRUE.equals(connection.isConnected())) {
-                            if (isSyncedWithinTolerance(getCachedDaemonInfo(connection))) {
-                                return connection;
-                            } else if (bestUnsyncedConnection == null) {
-                                bestUnsyncedConnection = connection;
-                            }
-                        }
-                    } catch (Exception e) {
-                        // ignore error connecting
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Error checking prioritized connections: " + e.getMessage() + ". That should never happen.");
-                throw new MoneroError(e);
-            }
-        }
-        return bestUnsyncedConnection;
-    }
-
-    private static List<List<MoneroRpcConnection>> getConnectionsInAscendingPriority(Collection<MoneroRpcConnection> connections) {
-        Map<Integer, List<MoneroRpcConnection>> connectionPriorities = new TreeMap<Integer, List<MoneroRpcConnection>>();
-        for (MoneroRpcConnection connection : connections) {
-            if (!connectionPriorities.containsKey(connection.getPriority())) connectionPriorities.put(connection.getPriority(), new ArrayList<MoneroRpcConnection>());
-            connectionPriorities.get(connection.getPriority()).add(connection);
-        }
-        List<List<MoneroRpcConnection>> prioritizedConnections = new ArrayList<List<MoneroRpcConnection>>();
-        for (List<MoneroRpcConnection> priorityConnections : connectionPriorities.values()) prioritizedConnections.add(priorityConnections);
-        if (connectionPriorities.containsKey(0)) prioritizedConnections.add(prioritizedConnections.remove(0)); // move priority 0 to end
-        return prioritizedConnections;
-    }
-
-    private static void checkConnection(MoneroRpcConnection connection) {
-        checkConnection(connection, REFRESH_PERIOD_HTTP_MS);
-    }
-
-    private static void checkConnection(MoneroRpcConnection connection, long timeoutMs) {
-        long startTime = System.currentTimeMillis();
-        try {
-            connection.setTimeout(timeoutMs);
-            MoneroDaemonRpc monerod = new MoneroDaemonRpc(new MoneroRpcConnection(connection)); // TODO: use different connection in case this connection's http client is busy
-            MoneroDaemonInfo info = monerod.getInfo();
-            connection.setOnline(true);
-            connection.setAuthenticated(true);
-            connection.setAttribute("lastInfo", info);
-        } catch (Exception e) {
-            connection.setOnline(false);
-            if (e instanceof MoneroRpcError) {
-                if (((MoneroRpcError) e).getCode() == 401) {
-                    connection.setOnline(true);
-                    connection.setAuthenticated(false);
-                }
-            } else {
-                throw e;
-            }
-        }
-        if (Boolean.TRUE.equals(connection.isOnline())) {
-            connection.setResponseTime(System.currentTimeMillis() - startTime);
-        }
-    }
-
-    private static MoneroDaemonInfo getCachedDaemonInfo(MoneroRpcConnection connection) {
-        return (MoneroDaemonInfo) connection.getAttribute("lastInfo");
     }
 }
