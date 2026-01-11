@@ -836,8 +836,6 @@ public final class XmrConnectionService {
                 });
             }
 
-            log.warn("Fixed connection: " + isFixedConnection());
-
             // restore connections
             if (!isFixedConnection()) {
 
@@ -900,7 +898,8 @@ public final class XmrConnectionService {
 
                 // update connection
                 if (initialConnection == null || isAutoSwitch()) {
-                    initialConnection = getBestConnection();
+                    MoneroRpcConnection bestConnection = getBestConnection();
+                    if (bestConnection != null) initialConnection = bestConnection;
                     if (initialConnection != null) initialInfo = getCachedDaemonInfo(initialConnection);
                 }
             } else if (!isInitialized) {
