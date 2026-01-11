@@ -1464,8 +1464,7 @@ public class XmrWalletService extends XmrWalletBase {
                             if (wallet != null) log.warn("Error syncing wallet with progress on startup: " + e.getMessage());
                             forceCloseMainWallet();
                             requestSwitchToNextBestConnection(sourceConnection);
-                            maybeInitMainWallet(true, numSyncAttemptsRemaining - 1); // re-initialize wallet and sync again
-                            return;
+                            throw e;
                         }
                         log.info("Done syncing main wallet in " + (System.currentTimeMillis() - time) + " ms");
 
