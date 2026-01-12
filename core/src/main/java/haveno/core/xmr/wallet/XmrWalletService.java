@@ -151,7 +151,6 @@ public class XmrWalletService extends XmrWalletBase {
     private List<MoneroOutputWallet> cachedOutputs;
     private List<MoneroTxWallet> cachedTxs;
     private int numInitSyncAttempts;
-    private boolean initFallbackApplied;
 
     @SuppressWarnings("unused")
     @Inject
@@ -1392,7 +1391,6 @@ public class XmrWalletService extends XmrWalletBase {
 
         // initialize main wallet when daemon synced
         numInitSyncAttempts = 0;
-        initFallbackApplied = false;
         walletInitListener = (obs, oldVal, newVal) -> initMainWalletIfConnected();
         xmrConnectionService.downloadPercentageProperty().addListener(walletInitListener);
         initMainWalletIfConnected();
@@ -1944,7 +1942,7 @@ public class XmrWalletService extends XmrWalletBase {
                 return;
             }
 
-            // sync wallet if behind daemon
+            // sync wallet if first sync or behind daemon
             boolean isFirstSync = !wasWalletSynced;
             if (isFirstSync || walletHeight.get() < xmrConnectionService.getTargetHeight()) {
                 if (isFirstSync) log.info("Syncing main wallet from height " + walletHeight.get());
@@ -1985,7 +1983,7 @@ public class XmrWalletService extends XmrWalletBase {
             if (isShutDownStarted || wallet == null || wallet != sourceWallet) return; // skip error handling if shut down or another thread force restarts while polling
 
             // fallback if unable to sync wallet on startup after max attempts
-            if (!wasWalletSynced && !initFallbackApplied) {
+            if (!wasWalletSynced && !isWalletServiceInitialized()) {
                 log.warn("Failed to sync main wallet on startup, attempt={}/{}", numInitSyncAttempts + 1, MAX_SYNC_ATTEMPTS);
                 numInitSyncAttempts++;
                 if (numInitSyncAttempts >= MAX_SYNC_ATTEMPTS) {
@@ -1998,7 +1996,7 @@ public class XmrWalletService extends XmrWalletBase {
 
             // handle unresponsive wallet
             if (HavenoUtils.isUnresponsive(e)) {
-                if (wasWalletSynced || initFallbackApplied) {
+                if (wasWalletSynced || isWalletServiceInitialized()) {
                     forceRestartMainWallet();
                 } else {
                     forceCloseMainWallet();
@@ -2061,6 +2059,10 @@ public class XmrWalletService extends XmrWalletBase {
 
     private void onWalletServiceInitialized() {
         HavenoUtils.havenoSetup.getWalletInitialized().set(true);
+    }
+
+    private boolean isWalletServiceInitialized() {
+        return HavenoUtils.havenoSetup.getWalletInitialized().get();
     }
 
     private boolean requestSwitchToNextBestConnection() {
