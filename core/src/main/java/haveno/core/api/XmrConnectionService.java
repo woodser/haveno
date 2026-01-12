@@ -533,7 +533,7 @@ public final class XmrConnectionService {
 
         // return if no connection to switch to
         if (bestConnection == null || !Boolean.TRUE.equals(bestConnection.isConnected())) {
-            log.warn("No connection to switch to");
+            log.warn("No best connection to switch to");
             return false;
         }
 
