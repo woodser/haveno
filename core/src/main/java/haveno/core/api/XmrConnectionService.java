@@ -38,6 +38,7 @@ import haveno.network.p2p.P2PService;
 import haveno.network.p2p.P2PServiceListener;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -86,6 +88,7 @@ public final class XmrConnectionService {
     private static final long KEY_IMAGE_REFRESH_PERIOD_MS_REMOTE = 300000; // 5 minutes
     private static final int MAX_CONSECUTIVE_ERRORS = 4; // max errors before switching connections
     private static final int SYNC_TOLERANCE_NUM_BLOCKS = 3;
+    private static final long STAGGER_MS = 1000; // stagger connection checks by 500ms
     private static final String LAST_INFO_KEY = "lastInfo";
     private static int numConsecutiveErrors = 0;
 
@@ -368,7 +371,6 @@ public final class XmrConnectionService {
 
     private MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> ignoredConnections) {
         accountService.checkAccountOpen();
-        log.info("Getting best Monero connection");
 
         // user needs to authorize fallback on startup after using locally synced node
         if (fallbackRequiredBeforeConnectionSwitch()) {
@@ -396,25 +398,33 @@ public final class XmrConnectionService {
     }
 
     private static MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> connections, Collection<MoneroRpcConnection> ignoredConnections) {
+        log.info("Getting best Monero connection");
 
         // try connections within each ascending priority
+        AtomicReference<MoneroRpcConnection> bestConnection = new AtomicReference<>();
         MoneroRpcConnection bestUnsyncedConnection = null;
         for (List<MoneroRpcConnection> prioritizedConnections : getConnectionsInAscendingPriority(connections)) {
             try {
+
+                // shuffle connections within same priority
+                Collections.shuffle(prioritizedConnections);
             
-                // check connections in parallel
+                // check connections staggered
                 int numTasks = 0;
                 ExecutorService pool = Executors.newFixedThreadPool(prioritizedConnections.size());
                 CompletionService<MoneroRpcConnection> completionService = new ExecutorCompletionService<MoneroRpcConnection>(pool);
-                for (MoneroRpcConnection connection : prioritizedConnections) {
+                for (int i = 0; i < prioritizedConnections.size(); i++) {
+                    MoneroRpcConnection connection = prioritizedConnections.get(i);
                     if (ignoredConnections.contains(connection)) continue;
                     numTasks++;
+                    final int delay = i;
                     completionService.submit(() -> {
-                        checkConnection(connection);
+                        if (delay > 0) Thread.sleep(delay * STAGGER_MS); // stagger start
+                        if (bestConnection.get() == null) checkConnection(connection); // check connection if best not found
                         return connection;
                     });
                 }
-                
+
                 // use first available and synced connection
                 pool.shutdown();
                 for (int i = 0; i < numTasks; i++) {
@@ -422,6 +432,7 @@ public final class XmrConnectionService {
                         MoneroRpcConnection connection = completionService.take().get();
                         if (Boolean.TRUE.equals(connection.isConnected())) {
                             if (isSyncedWithinTolerance(getCachedDaemonInfo(connection))) {
+                                bestConnection.set(connection);
                                 return connection;
                             } else if (bestUnsyncedConnection == null) {
                                 bestUnsyncedConnection = connection;
@@ -435,6 +446,11 @@ public final class XmrConnectionService {
                 log.warn("Error checking prioritized connections: " + e.getMessage() + ". That should never happen.");
                 throw new MoneroError(e);
             }
+        }
+        if (bestUnsyncedConnection == null) {
+            log.warn("There is no best Monero connection detected");
+        } else {
+            log.warn("The best Monero connection is not synced");
         }
         return bestUnsyncedConnection;
     }
@@ -533,7 +549,6 @@ public final class XmrConnectionService {
 
         // return if no connection to switch to
         if (bestConnection == null || !Boolean.TRUE.equals(bestConnection.isConnected())) {
-            log.warn("No best connection to switch to");
             return false;
         }
 
@@ -986,13 +1001,6 @@ public final class XmrConnectionService {
             if (isShutDownStarted) return;
             pollInProgress = true;
             try {
-
-                // switch to best connection which comes back to polling
-                if (monerod == null && !fallbackRequiredBeforeConnectionSwitch()) {
-                    pollInProgress = false;
-                    switchToBestConnection();
-                    return;
-                }
 
                 try {
                     if (monerod == null) throw new RuntimeException("No connection to Monero daemon");
