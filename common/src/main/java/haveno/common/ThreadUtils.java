@@ -39,15 +39,6 @@ public class ThreadUtils {
 
 
     /**
-     * Reset the thread with the given id so it's ready for use. Does not shut it down.
-     * 
-     * @param threadId the thread id
-     */
-    public static void reset(String threadId) {
-        remove(threadId);
-    }
-
-    /**
      * Execute the given command in a thread with the given id.
      * 
      * @param command the command to execute
@@ -101,6 +92,15 @@ public class ThreadUtils {
             pool.shutdownNow();
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Reset the thread with the given id so it's ready for use. Does not shut it down.
+     * 
+     * @param threadId the thread id
+     */
+    public static void reset(String threadId) {
+        remove(threadId);
     }
 
     public static void remove(String threadId) {

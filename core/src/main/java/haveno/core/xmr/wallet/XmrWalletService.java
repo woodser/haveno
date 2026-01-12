@@ -1368,6 +1368,9 @@ public class XmrWalletService extends XmrWalletBase {
         if (useNativeXmrWallet && !isNativeLibraryApplied()) log.warn(appliedMsg);
         else log.info(appliedMsg);
 
+        // reset pool
+        ThreadUtils.reset(THREAD_ID);
+
         // listen for connection changes
         xmrConnectionService.addConnectionListener(connection -> {
             if (wasWalletSynced && !isSyncingWithProgress) {

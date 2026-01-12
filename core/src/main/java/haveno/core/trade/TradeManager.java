@@ -1129,13 +1129,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     private void addTradeToPendingTrades(Trade trade) {
         if (!trade.isInitialized()) {
-            ThreadUtils.execute(() -> {
+            ThreadUtils.submitToPool(() -> {
                 try {
                     initTrade(trade);
                 } catch (Exception e) {
                     log.warn("Error initializing {} {} on move to pending trades", trade.getClass().getSimpleName(), trade.getShortId(), e);
                 }
-            }, trade.getId());
+            });
         }
         addTrade(trade);
     }
