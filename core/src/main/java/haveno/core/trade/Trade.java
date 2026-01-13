@@ -3873,8 +3873,8 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                 if (processing) return;
                 processing = true;
 
-                // skip if not idling or not waiting for finalization
-                if (!isIdling() || (isDepositsFinalized() && (!isPayoutPublished() || isPayoutFinalized())))  {
+                // skip unless idling or waiting for finalization
+                if (!isInitialized || !isIdling() || (isDepositsFinalized() && (!isPayoutPublished() || isPayoutFinalized())))  {
                     processing = false;
                     return;
                 }
