@@ -398,7 +398,7 @@ public final class XmrConnectionService {
     }
 
     private static MoneroRpcConnection getBestConnection(Collection<MoneroRpcConnection> connections, Collection<MoneroRpcConnection> ignoredConnections) {
-        log.info("Getting best Monero connection");
+        log.info("Getting best Monero connection, ignoring " + (ignoredConnections == null ? 0 : ignoredConnections.size()) + " connections");
 
         // try connections within each ascending priority
         AtomicReference<MoneroRpcConnection> bestConnection = new AtomicReference<>();
@@ -448,7 +448,7 @@ public final class XmrConnectionService {
             }
         }
         if (bestUnsyncedConnection == null) {
-            log.warn("There is no best Monero connection detected");
+            log.warn("There is no better Monero connection detected");
         } else {
             log.warn("The best Monero connection is not synced");
         }
