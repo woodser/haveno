@@ -175,6 +175,9 @@ public class XmrWalletService extends XmrWalletBase {
         HavenoUtils.xmrConnectionService = xmrConnectionService;
         this.xmrConnectionService = xmrConnectionService; // TODO: super's is null unless set here from injection
 
+        // reset thread pool
+        ThreadUtils.reset(THREAD_ID);
+
         // set monero logging
         if (MONERO_LOG_LEVEL >= 0) MoneroUtils.setLogLevel(MONERO_LOG_LEVEL);
 
@@ -1367,9 +1370,6 @@ public class XmrWalletService extends XmrWalletBase {
         String appliedMsg = "Monero native libraries applied: " + isNativeLibraryApplied();
         if (useNativeXmrWallet && !isNativeLibraryApplied()) log.warn(appliedMsg);
         else log.info(appliedMsg);
-
-        // reset pool
-        ThreadUtils.reset(THREAD_ID);
 
         // listen for connection changes
         xmrConnectionService.addConnectionListener(connection -> {
