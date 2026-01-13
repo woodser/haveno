@@ -3202,6 +3202,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
     }
 
     private void maybeCloseIdlingWallet() {
+        if (isShutDownStarted) return;
         
         // close arbitrator trade wallet while idling
         if (isArbitrator()) {
@@ -3325,18 +3326,16 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model {
                 resetPolling(true); // do not poll again until next period
             }
         } catch (Exception e) {
-            if (wallet == null || wallet != sourceWallet) return; // skip error handling if another thread force restarts while polling
-            if (!(e instanceof IllegalStateException) && !isShutDownStarted && !offlinePoll && !wasWalletSyncedAndPolledProperty.get()) { // request connection switch on failure until synced and polled
+            if (isShutDownStarted) forceCloseWallet();
+            if (wallet == null || wallet != sourceWallet || isShutDownStarted) return; // skip error handling if shut down or another thread force restarts while polling
+            if (!(e instanceof IllegalStateException) && !offlinePoll && !wasWalletSyncedAndPolledProperty.get()) { // request connection switch on failure until synced and polled
                 ThreadUtils.execute(() -> requestSwitchToNextBestConnection(sourceConnection), getId());
             }
             if (HavenoUtils.isUnresponsive(e)) { // wallet can be stuck a while
-                if (wallet != null && !isShutDownStarted) {
-                    log.warn("Error polling unresponsive trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection());
-                }
-                if (isShutDownStarted) forceCloseWallet();
-                else forceRestartTradeWallet();
+                log.warn("Error polling unresponsive trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection());
+                forceRestartTradeWallet();
             } else {
-                if (!isShutDownStarted && Boolean.TRUE.equals(xmrConnectionService.isConnected()) && isExpectedWalletError(e)) {
+                if (Boolean.TRUE.equals(xmrConnectionService.isConnected()) && isExpectedWalletError(e)) {
                     log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection());
                 } else {
                     log.warn("Error polling trade wallet for {} {}, errorMessage={}. Monerod={}", getClass().getSimpleName(), getShortId(), e.getMessage(), wallet.getDaemonConnection(), e); // include stack trace for unexpected errors
