@@ -927,16 +927,6 @@ public class XmrWalletService extends XmrWalletBase {
         // create task to shut down
         Runnable shutDownTask = () -> {
 
-            // remove listeners
-            synchronized (walletLock) {
-                if (wallet != null) {
-                    for (MoneroWalletListenerI listener : new HashSet<>(wallet.getListeners())) {
-                        wallet.removeListener(listener);
-                    }
-                }
-                walletListeners.clear();
-            }
-
             // shut down threads
             synchronized (lock) {
                 List<Runnable> shutDownThreads = new ArrayList<>();
@@ -944,8 +934,9 @@ public class XmrWalletService extends XmrWalletBase {
                 ThreadUtils.awaitTasks(shutDownThreads);
             }
 
-            // shut down main wallet
-            if (wallet != null) {
+            // close main wallet, force close if syncing
+            if (isSyncing()) forceCloseMainWallet();
+            else if (wallet != null) {
                 try {
                     closeMainWallet(true);
                 } catch (Exception e) {
