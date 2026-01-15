@@ -1929,8 +1929,9 @@ public class XmrWalletService extends XmrWalletBase {
             }
 
             // skip polling if trades are reserving main wallet
+            // TODO: we disable reserving main wallet with too many trades to prevent wallet from starving (usually only happens from api tests)
             List<Trade> tradesReservingMainWallet = tradeManager.getTradesReservingMainWallet();
-            if (!tradesReservingMainWallet.isEmpty()) {
+            if (tradesReservingMainWallet.size() >= 1 && tradesReservingMainWallet.size() <= 2) {
                 List<String> tradeIds = tradesReservingMainWallet.stream().map(Trade::getShortId).collect(Collectors.toList());
                 log.info("Skipping main wallet poll because trades are reserving main wallet: " + tradeIds);
                 return;
