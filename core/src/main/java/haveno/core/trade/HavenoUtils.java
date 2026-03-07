@@ -66,6 +66,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
+import java.util.regex.Pattern;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -109,16 +110,22 @@ public class HavenoUtils {
     public static final long LOG_POLL_ERROR_PERIOD_MS = 1000 * 60 * 4; // log poll errors up to once every 4 minutes
     public static final long LOG_MONEROD_NOT_SYNCED_WARN_PERIOD_MS = 1000 * 30; // log warnings when daemon not synced once every 30s
     public static final int PRIVATE_OFFER_PASSPHRASE_NUM_WORDS = 8; // number of words in a private offer passphrase
+    public static final boolean RECOMMEND_CONFIRMATIONS_BEFORE_SENDING_PAYMENT = true; // recommend waiting additional confirmations before sending payment
 
     // synchronize requests to the daemon
     private static boolean SYNC_DAEMON_REQUESTS = false; // sync long requests to daemon (e.g. refresh, update pool) // TODO: performance suffers by syncing daemon requests, but otherwise we sometimes get sporadic errors?
     private static boolean SYNC_WALLET_REQUESTS = false; // additionally sync wallet functions to daemon (e.g. create txs)
+    private static boolean SYNC_IMPORT_MULTISIG_REQUESTS = false; // sync import multisig requests to avoid concurrent imports
     private static Object DAEMON_LOCK = new Object();
+    private static Object IMPORT_MULTISIG_LOCK = new Object();
     public static Object getDaemonLock() {
         return SYNC_DAEMON_REQUESTS ? DAEMON_LOCK : new Object();
     }
     public static Object getWalletFunctionLock() {
         return SYNC_WALLET_REQUESTS ? getDaemonLock() : new Object();
+    }
+    public static Object getImportMultisigLock() {
+        return SYNC_IMPORT_MULTISIG_REQUESTS ? IMPORT_MULTISIG_LOCK : new Object();
     }
 
     // non-configurable
@@ -126,6 +133,7 @@ public class HavenoUtils {
     public static int XMR_SMALLEST_UNIT_EXPONENT = 12;
     public static final String LOOPBACK_HOST = "127.0.0.1"; // local loopback address to host Monero node
     public static final String LOCALHOST = "localhost";
+    private static final Pattern IPV4 = Pattern.compile("^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$");
     private static final long CENTINEROS_AU_MULTIPLIER = 10000;
     private static final BigInteger XMR_AU_MULTIPLIER = new BigInteger("1000000000000");
     public static final DecimalFormat XMR_FORMATTER = new DecimalFormat("##############0.000000000000", DECIMAL_FORMAT_SYMBOLS);
@@ -150,6 +158,10 @@ public class HavenoUtils {
     public static boolean isDaemon() {
         if (isSeedNode()) return true;
         return havenoSetup.getCoreContext().isApiUser();
+    }
+
+    public static boolean isAllDomainServicesInitialized() {
+        return havenoSetup != null && havenoSetup.getAppStartupState() != null && havenoSetup.getAppStartupState().isAllDomainServicesInitialized();
     }
 
     @SuppressWarnings("unused")
@@ -320,7 +332,7 @@ public class HavenoUtils {
     }
 
     public static BigInteger parseXmr(String input) {
-        if (input == null || input.length() == 0) return BigInteger.ZERO;
+        if (input == null || input.length() == 0) return BigInteger.ZERO; // TODO: throw instead?
         try {
             return new BigDecimal(input).multiply(new BigDecimal(XMR_AU_MULTIPLIER)).toBigInteger();
         } catch (Exception e) {
@@ -546,20 +558,32 @@ public class HavenoUtils {
      * Check if the given URI is local or a private IP address.
      */
     public static boolean isPrivateIp(String uriString) {
+        if (uriString == null || uriString.isEmpty()) return false;
         if (isLocalHost(uriString)) return true;
         try {
-
-            // get the host
             URI uri = new URI(uriString);
             String host = uri.getHost();
+            if (host == null) return false;
+
+            // strip IPv6 brackets
+            if (host.startsWith("[") && host.endsWith("]")) {
+                host = host.substring(1, host.length() - 1);
+            }
 
             // check if private IP address
-            if (host == null) return false;
-            InetAddress inetAddress = InetAddress.getByName(host);
-            return inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress() || inetAddress.isSiteLocalAddress();
+            if (!isLiteralIp(host)) return false;
+            InetAddress addr = InetAddress.getByName(host); // does not perform DNS check if using literal IP
+            return addr.isAnyLocalAddress()
+                        || addr.isLoopbackAddress()
+                        || addr.isLinkLocalAddress()
+                        || addr.isSiteLocalAddress();
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private static boolean isLiteralIp(String host) {
+        return IPV4.matcher(host).matches() || host.indexOf(':') >= 0;
     }
 
     /**
@@ -619,11 +643,11 @@ public class HavenoUtils {
     }
 
     public static boolean isConnectionRefused(Throwable e) {
-        return e != null && e.getMessage().contains("Connection refused");
+        return e != null && e.getMessage() != null && e.getMessage().contains("Connection refused");
     }
 
     public static boolean isReadTimeout(Throwable e) {
-        return e != null && e.getMessage().contains("Read timed out");
+        return e != null && e.getMessage() != null && e.getMessage().contains("Read timed out");
     }
 
     public static boolean isUnresponsive(Throwable e) {
@@ -631,23 +655,23 @@ public class HavenoUtils {
     }
 
     private static boolean isNotEnoughSigners(Throwable e) {
-        return e != null && e.getMessage().contains("Not enough signers");
+        return e != null && e.getMessage() != null && e.getMessage().contains("Not enough signers");
     }
 
     private static boolean isFailedToParse(Throwable e) {
-        return e != null && e.getMessage().contains("Failed to parse");
+        return e != null && e.getMessage() != null && e.getMessage().contains("Failed to parse");
     }
 
     private static boolean isStaleData(Throwable e) {
-        return e != null && e.getMessage().contains("stale data");
+        return e != null && e.getMessage() != null && e.getMessage().contains("stale data");
     }
 
     private static boolean isNoTransactionCreated(Throwable e) {
-        return e != null && e.getMessage().contains("No transaction created");
+        return e != null && e.getMessage() != null && e.getMessage().contains("No transaction created");
     }
 
     private static boolean isLRNotFound(Throwable e) {
-        return e != null && e.getMessage().contains("LR not found for enough participants");
+        return e != null && e.getMessage() != null && e.getMessage().contains("LR not found for enough participants");
     }
 
     // TODO: handling specific error messages is brittle, inverse so all errors are illegal except known local issues?
@@ -656,7 +680,7 @@ public class HavenoUtils {
     }
 
     public static boolean isTransactionRejected(Throwable e) {
-        return e != null && e.getMessage().contains("was rejected");
+        return e != null && e.getMessage() != null && e.getMessage().contains("was rejected");
     }
 
     public static boolean isIllegal(Throwable e) {

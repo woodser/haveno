@@ -314,37 +314,39 @@ public class PendingTradesDataModel extends ActivatableDataModel {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     private void onListChanged() {
-        synchronized (tradeManager.getObservableList()) {
+        UserThread.execute(() -> {
+            synchronized (tradeManager.getObservableList()) {
 
-            // add or remove listener for hidden trades
-            for (Trade trade : tradeManager.getObservableList()) {
-                if (isTradeShown(trade)) {
-                    if (hiddenTrades.contains(trade)) {
-                        trade.stateProperty().removeListener(hiddenStateChangeListener);
-                        hiddenTrades.remove(trade);
-                    }
-                } else {
-                    if (!hiddenTrades.contains(trade)) {
-                        trade.stateProperty().addListener(hiddenStateChangeListener);
-                        hiddenTrades.add(trade);
+                // add or remove listener for hidden trades
+                for (Trade trade : tradeManager.getObservableList()) {
+                    if (isTradeShown(trade)) {
+                        if (hiddenTrades.contains(trade)) {
+                            UserThread.execute(() -> trade.stateProperty().removeListener(hiddenStateChangeListener));
+                            hiddenTrades.remove(trade);
+                        }
+                    } else {
+                        if (!hiddenTrades.contains(trade)) {
+                            UserThread.execute(() -> trade.stateProperty().addListener(hiddenStateChangeListener));
+                            hiddenTrades.add(trade);
+                        }
                     }
                 }
-            }
-    
-            // add shown trades to list
-            synchronized (list) {
-                list.clear();
-                list.addAll(tradeManager.getObservableList().stream()
-                        .filter(trade -> isTradeShown(trade))
-                        .map(trade -> new PendingTradesListItem(trade, btcFormatter))
-                        .collect(Collectors.toList()));
+        
+                // add shown trades to list
+                synchronized (list) {
+                    list.clear();
+                    list.addAll(tradeManager.getObservableList().stream()
+                            .filter(trade -> isTradeShown(trade))
+                            .map(trade -> new PendingTradesListItem(trade, btcFormatter))
+                            .collect(Collectors.toList()));
 
-                // we sort by date, earliest first
-                list.sort((o1, o2) -> o2.getTrade().getDate().compareTo(o1.getTrade().getDate()));
+                    // we sort by date, earliest first
+                    list.sort((o1, o2) -> o2.getTrade().getDate().compareTo(o1.getTrade().getDate()));
+                }
             }
-        }
 
-        selectBestItem();
+            selectBestItem();
+        });
     }
 
     private boolean isTradeShown(Trade trade) {
@@ -390,7 +392,7 @@ public class PendingTradesDataModel extends ActivatableDataModel {
                     takerTxId.set(nullToEmptyString(takerDepositTxHash));
                     if (makerDepositTxHash != null || takerDepositTxHash != null) {
                         notificationCenter.setSelectedTradeId(tradeId);
-                        selectedTrade.stateProperty().removeListener(tradeStateChangeListener);
+                        UserThread.execute(() -> selectedTrade.stateProperty().removeListener(tradeStateChangeListener));
                     }
                 };
                 selectedTrade.stateProperty().addListener(tradeStateChangeListener);

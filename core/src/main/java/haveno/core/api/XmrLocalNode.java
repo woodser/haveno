@@ -34,9 +34,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import monero.common.MoneroConnectionManager;
+import monero.common.MoneroRpcConnection;
 import monero.common.MoneroUtils;
+import monero.common.TaskLooper;
 import monero.daemon.MoneroDaemonRpc;
+import monero.daemon.model.MoneroDaemonInfo;
 
 
 /**
@@ -54,11 +56,14 @@ public class XmrLocalNode {
 
     // instance fields
     private MoneroDaemonRpc daemon;
-    private MoneroConnectionManager connectionManager;
     private final Config config;
     private final Preferences preferences;
     private final XmrNodes xmrNodes;
     private final List<XmrLocalNodeListener> listeners = new ArrayList<>();
+    private TaskLooper monerodPoller;
+    private Boolean lastOnline = null;
+    private Boolean lastAuthenticated = null;
+    private Boolean lastSyncedWithinTolerance = null;
 
     // required arguments
     private static final List<String> MONEROD_ARGS = new ArrayList<String>();
@@ -79,14 +84,42 @@ public class XmrLocalNode {
         this.preferences = preferences;
         this.xmrNodes = xmrNodes;
         this.daemon = new MoneroDaemonRpc(getUri());
+    }
 
-        // initialize connection manager to listen to local connection
-        this.connectionManager = new MoneroConnectionManager().setConnection(daemon.getRpcConnection());
-        this.connectionManager.setTimeout(REFRESH_PERIOD_LOCAL_MS);
-        this.connectionManager.addListener((connection) -> {
-            for (var listener : listeners) listener.onConnectionChanged(connection); // notify of connection changes
-        });
-        this.connectionManager.startPolling(REFRESH_PERIOD_LOCAL_MS);
+    public void startPolling() {
+        if (monerodPoller != null) monerodPoller.stop();
+        monerodPoller = new TaskLooper(() -> pollMonerod());
+        monerodPoller.start(REFRESH_PERIOD_LOCAL_MS);
+    }
+
+    private void pollMonerod() {
+
+        // skip if connection manager is already polling default local connection
+        MoneroRpcConnection connection = HavenoUtils.xmrConnectionService.getConnection();
+        if (connection != null && equalsUri(connection.getUri())) {
+            return;
+        }
+
+        // check connection
+        checkConnection();
+
+        // determine if connection changed
+        Boolean isOnline = daemon.getRpcConnection().isOnline();
+        Boolean isAuthenticated = daemon.getRpcConnection().isAuthenticated();
+        MoneroDaemonInfo lastInfo = XmrConnectionService.getCachedDaemonInfo(daemon.getRpcConnection());
+        Boolean isSyncedWithinTolerance = null;
+        if (lastInfo != null) isSyncedWithinTolerance = XmrConnectionService.isSyncedWithinTolerance(lastInfo);
+        boolean change = lastOnline != isOnline || lastAuthenticated != isAuthenticated || lastSyncedWithinTolerance != isSyncedWithinTolerance;
+
+        // update cached state
+        lastOnline = isOnline;
+        lastAuthenticated = isAuthenticated;
+        lastSyncedWithinTolerance = isSyncedWithinTolerance;
+
+        // announce if connection changed
+        if (change) {
+            for (var listener : listeners) listener.onConnectionChanged(daemon.getRpcConnection());
+        }
     }
 
     public String getUri() {
@@ -151,19 +184,18 @@ public class XmrLocalNode {
      */
     public boolean isDetected() {
         checkConnection();
-        return Boolean.TRUE.equals(connectionManager.getConnection().isOnline());
+        return Boolean.TRUE.equals(daemon.getRpcConnection().isOnline());
     }
 
     /**
      * Check if connected to local Monero node.
      */
     public boolean isConnected() {
-        checkConnection();
-        return Boolean.TRUE.equals(connectionManager.isConnected());
+        return Boolean.TRUE.equals(daemon.getRpcConnection().isConnected());
     }
 
     private void checkConnection() {
-        connectionManager.checkConnection();
+        XmrConnectionService.checkConnection(daemon.getRpcConnection());
     }
 
     public XmrNodeSettings getNodeSettings() {

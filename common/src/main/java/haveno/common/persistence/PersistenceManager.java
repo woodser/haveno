@@ -78,7 +78,7 @@ public class PersistenceManager<T extends PersistableEnvelope> {
 
     public static final Map<String, PersistenceManager<?>> ALL_PERSISTENCE_MANAGERS = new HashMap<>();
     private static boolean flushAtShutdownCalled;
-    private static final AtomicBoolean allServicesInitialized = new AtomicBoolean(false);
+    public static final AtomicBoolean allServicesInitialized = new AtomicBoolean(false);
 
     public static void onAllServicesInitialized() {
         allServicesInitialized.set(true);
@@ -387,7 +387,7 @@ public class PersistenceManager<T extends PersistableEnvelope> {
             log.info("Reading {} completed in {} ms", fileName, System.currentTimeMillis() - ts);
             return persistableEnvelope;
         } catch (Throwable t) {
-            log.error("Reading {} failed with {}.", fileName, t.getMessage());
+            log.error("Reading {} failed with {}.", fileName, t.getMessage(), t);
             try {
                 // We keep a backup which might be used for recovery
                 FileUtil.removeAndBackupFile(dir, storageFile, fileName, "backup_of_corrupted_data");
@@ -444,7 +444,7 @@ public class PersistenceManager<T extends PersistableEnvelope> {
     }
 
     public void forcePersistNow() {
-        // Tor Bridges settings are edited before app init completes, require persistNow to be forced, see writeToDisk()
+        // Tor Bridges and other settings are edited before app init completes, require persistNow to be forced, see writeToDisk()
         persistNow(null, true);
     }
 

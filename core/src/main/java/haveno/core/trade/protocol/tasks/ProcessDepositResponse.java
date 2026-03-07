@@ -38,6 +38,12 @@ public class ProcessDepositResponse extends TradeTask {
         try {
           runInterceptHook();
 
+          // ignore if deposits confirmed
+          if (trade.isDepositsConfirmed()) {
+            complete();
+            return;
+          }
+
           // handle error
           DepositResponse message = (DepositResponse) processModel.getTradeMessage();
           if (message.getErrorMessage() != null) {
@@ -52,7 +58,7 @@ public class ProcessDepositResponse extends TradeTask {
           try {
             model.getXmrWalletService().getMonerod().submitTxHex(trade.getSelf().getDepositTxHex());
           } catch (Exception e) {
-            log.warn("Failed to redundantly publish deposit transaction for {} {}", trade.getClass().getSimpleName(), trade.getShortId());
+            log.warn("Failed to redundantly publish deposit transaction for {} {}: {}", trade.getClass().getSimpleName(), trade.getShortId(), e.getMessage());
           }
 
           // record security deposits

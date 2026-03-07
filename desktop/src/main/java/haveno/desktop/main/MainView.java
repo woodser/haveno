@@ -20,7 +20,6 @@ package haveno.desktop.main;
 import com.google.inject.Inject;
 import com.jfoenix.controls.JFXBadge;
 import com.jfoenix.controls.JFXComboBox;
-import haveno.common.app.Version;
 import haveno.common.HavenoException;
 import haveno.common.Timer;
 import haveno.common.UserThread;
@@ -33,6 +32,7 @@ import haveno.core.locale.LanguageUtil;
 import haveno.core.locale.Res;
 import haveno.core.provider.price.MarketPrice;
 import haveno.core.user.Preferences;
+import haveno.core.util.FormattingUtils;
 import haveno.desktop.Navigation;
 import haveno.desktop.common.view.CachingViewLoader;
 import haveno.desktop.common.view.FxmlView;
@@ -671,7 +671,7 @@ public class MainView extends InitializableView<StackPane, MainViewModel>  {
         splashP2PNetworkBox.setPrefHeight(40);
         splashP2PNetworkBox.getChildren().addAll(splashP2PNetworkLabel, splashP2PNetworkBusyAnimation, splashP2PNetworkIcon, showTorNetworkSettingsButton);
 
-        Label versionLabel = new Label("v" + Version.VERSION);
+        Label versionLabel = new Label(FormattingUtils.formatVersion());
 
         vBox.getChildren().addAll(logo, blockchainSyncBox, xmrSyncIndicator, splashP2PNetworkBox, versionLabel);
         return vBox;
@@ -826,6 +826,7 @@ public class MainView extends InitializableView<StackPane, MainViewModel>  {
         p2PNetworkStatusIcon.setCursor(Cursor.HAND);
         p2PNetworkStatusIcon.setFitWidth(networkIconSize);
         p2PNetworkStatusIcon.setFitHeight(networkIconSize);
+        p2PNetworkStatusIcon.setId(model.getP2PNetworkStatusIconId().get());
         setRightAnchor(p2PNetworkStatusIcon, networkIconRightAnchor + 22);
         setBottomAnchor(p2PNetworkStatusIcon, 6d);
         Tooltip p2pNetworkStatusToolTip = new Tooltip();

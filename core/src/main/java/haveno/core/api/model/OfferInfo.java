@@ -19,6 +19,7 @@ package haveno.core.api.model;
 
 import haveno.common.Payload;
 import haveno.core.api.model.builder.OfferInfoBuilder;
+import haveno.core.locale.CountryUtil;
 import haveno.core.monetary.Price;
 import haveno.core.offer.Offer;
 import haveno.core.offer.OpenOffer;
@@ -29,10 +30,11 @@ import lombok.ToString;
 import javax.annotation.Nullable;
 import java.util.Optional;
 
-import static haveno.common.util.MathUtils.exactMultiply;
 import static haveno.core.util.PriceUtil.reformatMarketPrice;
 import static haveno.core.util.VolumeUtil.formatVolume;
 import static java.util.Objects.requireNonNull;
+
+import java.util.List;
 
 @EqualsAndHashCode
 @ToString
@@ -61,8 +63,6 @@ public class OfferInfo implements Payload {
     private final String paymentAccountId;
     private final String paymentMethodId;
     private final String paymentMethodShortName;
-    // For traditional offer the baseCurrencyCode is XMR and the counterCurrencyCode is the traditional currency
-    // For crypto offers it is the opposite. baseCurrencyCode is the crypto and the counterCurrencyCode is XMR.
     private final String baseCurrencyCode;
     private final String counterCurrencyCode;
     private final long date;
@@ -81,6 +81,9 @@ public class OfferInfo implements Payload {
     private final boolean isPrivateOffer;
     private final String challenge;
     private final String extraInfo;
+    private final List<String> acceptedCountryCodes;
+    private final String acceptedCountriesString;
+    private final String city;
 
     public OfferInfo(OfferInfoBuilder builder) {
         this.id = builder.getId();
@@ -117,6 +120,9 @@ public class OfferInfo implements Payload {
         this.isPrivateOffer = builder.isPrivateOffer();
         this.challenge = builder.getChallenge();
         this.extraInfo = builder.getExtraInfo();
+        this.acceptedCountryCodes = builder.getAcceptedCountryCodes();
+        this.acceptedCountriesString = builder.getAcceptedCountriesString();
+        this.city = builder.getCity();
     }
 
     public static OfferInfo toOfferInfo(Offer offer) {
@@ -144,6 +150,7 @@ public class OfferInfo implements Payload {
                 .withSplitOutputTxHash(openOffer.getSplitOutputTxHash())
                 .withSplitOutputTxFee(openOffer.getSplitOutputTxFee())
                 .withChallenge(openOffer.getChallenge())
+                .withIsMyOffer(true)
                 .build();
     }
 
@@ -154,15 +161,16 @@ public class OfferInfo implements Payload {
         var preciseOfferPrice = reformatMarketPrice(
                 requireNonNull(offer.getPrice()).toPlainString(),
                 currencyCode);
-        var marketPriceMarginAsPctLiteral = exactMultiply(offer.getMarketPriceMarginPct(), 100);
         var roundedVolume = formatVolume(requireNonNull(offer.getVolume()));
         var roundedMinVolume = formatVolume(requireNonNull(offer.getMinVolume()));
+        boolean hasAcceptedCountries = offer.getAcceptedCountryCodes() != null && !offer.getAcceptedCountryCodes().isEmpty();
+        String city = offer.getF2FCity();
         return new OfferInfoBuilder()
                 .withId(offer.getId())
                 .withDirection(offer.getDirection().name())
                 .withPrice(preciseOfferPrice)
                 .withUseMarketBasedPrice(offer.isUseMarketBasedPrice())
-                .withMarketPriceMarginPct(marketPriceMarginAsPctLiteral)
+                .withMarketPriceMarginPct(offer.getMarketPriceMarginPct())
                 .withAmount(offer.getAmount().longValueExact())
                 .withMinAmount(offer.getMinAmount().longValueExact())
                 .withMakerFeePct(offer.getMakerFeePct())
@@ -187,7 +195,10 @@ public class OfferInfo implements Payload {
                 .withArbitratorSigner(offer.getOfferPayload().getArbitratorSigner() == null ? null : offer.getOfferPayload().getArbitratorSigner().getFullAddress())
                 .withIsPrivateOffer(offer.isPrivateOffer())
                 .withChallenge(offer.getChallenge())
-                .withExtraInfo(offer.getCombinedExtraInfo());
+                .withExtraInfo(offer.getCombinedExtraInfo())
+                .withAcceptedCountryCodes(hasAcceptedCountries ? offer.getAcceptedCountryCodes() : null)
+                .withAcceptedCountriesString(hasAcceptedCountries ? CountryUtil.getCountriesString(offer.getAcceptedCountryCodes()) : null)
+                .withCity(city == null || city.isEmpty() ? null : city);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -231,6 +242,9 @@ public class OfferInfo implements Payload {
         Optional.ofNullable(splitOutputTxHash).ifPresent(builder::setSplitOutputTxHash);
         Optional.ofNullable(challenge).ifPresent(builder::setChallenge);
         Optional.ofNullable(extraInfo).ifPresent(builder::setExtraInfo);
+        Optional.ofNullable(acceptedCountryCodes).ifPresent(e -> builder.addAllAcceptedCountryCodes(acceptedCountryCodes));
+        Optional.ofNullable(acceptedCountriesString).ifPresent(builder::setAcceptedCountriesString);
+        Optional.ofNullable(city).ifPresent(builder::setCity);
         return builder.build();
     }
 
@@ -271,6 +285,9 @@ public class OfferInfo implements Payload {
                 .withIsPrivateOffer(proto.getIsPrivateOffer())
                 .withChallenge(proto.getChallenge())
                 .withExtraInfo(proto.getExtraInfo())
+                .withAcceptedCountryCodes(proto.getAcceptedCountryCodesList())
+                .withAcceptedCountriesString(proto.getAcceptedCountriesString())
+                .withCity(proto.getCity())
                 .build();
     }
 }

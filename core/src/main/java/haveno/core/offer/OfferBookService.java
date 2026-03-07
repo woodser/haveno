@@ -45,12 +45,12 @@ import haveno.common.file.JsonFileManager;
 import haveno.common.handlers.ErrorMessageHandler;
 import haveno.common.handlers.ResultHandler;
 import haveno.core.api.XmrConnectionService;
+import haveno.core.api.XmrKeyImageListener;
 import haveno.core.filter.FilterManager;
 import haveno.core.locale.Res;
 import haveno.core.provider.price.PriceFeedService;
 import haveno.core.util.JsonUtil;
 import haveno.core.xmr.wallet.Restrictions;
-import haveno.core.xmr.wallet.XmrKeyImageListener;
 import haveno.network.p2p.BootstrapListener;
 import haveno.network.p2p.P2PService;
 import haveno.network.p2p.storage.HashMapChangedListener;
@@ -129,8 +129,9 @@ public class OfferBookService {
                                     replaceValidOffer(offer);
                                     announceOfferAdded(offer);
                                 } catch (IllegalArgumentException e) {
-                                    // ignore illegal offers
-                                } catch (RuntimeException e) {
+                                    log.warn("Ignoring invalid offer {}: {}", offerPayload.getId(), e.getMessage());
+                                } catch (Exception e) {
+                                    log.warn("Adding offer {} to invalid offers: {}", offerPayload.getId(), e.getMessage());
                                     replaceInvalidOffer(offer); // offer can become valid later
                                 }
                             }
@@ -145,23 +146,13 @@ public class OfferBookService {
                     protectedStorageEntries.forEach(protectedStorageEntry -> {
                         if (protectedStorageEntry.getProtectedStoragePayload() instanceof OfferPayload) {
                             OfferPayload offerPayload = (OfferPayload) protectedStorageEntry.getProtectedStoragePayload();
-                            removeValidOffer(offerPayload.getId());
                             Offer offer = new Offer(offerPayload);
                             offer.setPriceFeedService(priceFeedService);
-                            announceOfferRemoved(offer);
-
-                            // check if invalid offers are now valid
-                            synchronized (invalidOffers) {
-                                for (Offer invalidOffer : new ArrayList<Offer>(invalidOffers)) {
-                                    try {
-                                        validateOfferPayload(invalidOffer.getOfferPayload());
-                                        removeInvalidOffer(invalidOffer.getId());
-                                        replaceValidOffer(invalidOffer);
-                                        announceOfferAdded(invalidOffer);
-                                    } catch (Exception e) {
-                                        // ignore
-                                    }
-                                }
+                            synchronized (validOffers) {
+                                removeValidOffer(offerPayload.getId());
+                                removeInvalidOffer(offerPayload.getId());
+                                announceOfferRemoved(offer);
+                                refreshInvalidOffers();
                             }
                         }
                     });
@@ -330,6 +321,21 @@ public class OfferBookService {
         }
     }
 
+    private void refreshInvalidOffers() {
+        synchronized (invalidOffers) {
+            for (Offer invalidOffer : new ArrayList<Offer>(invalidOffers)) {
+                try {
+                    validateOfferPayload(invalidOffer.getOfferPayload());
+                    removeInvalidOffer(invalidOffer.getId());
+                    replaceValidOffer(invalidOffer);
+                    announceOfferAdded(invalidOffer);
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
     private void replaceInvalidOffer(Offer offer) {
         synchronized (invalidOffers) {
             removeInvalidOffer(offer.getId());
@@ -379,28 +385,34 @@ public class OfferBookService {
             throw new IllegalArgumentException("Offer with non-V3 node address is not allowed with offerId=" + offerPayload.getId());
         }
 
+        // validate market price margin
+        double marketPriceMarginPct = offerPayload.getMarketPriceMarginPct();
+        if (marketPriceMarginPct <= -1 || marketPriceMarginPct >= 1) {
+            throw new IllegalArgumentException("Market price margin must be greater than -100% and less than 100% but was " + (marketPriceMarginPct * 100) + "% with offerId=" + offerPayload.getId());
+        }
+
         // validate against existing offers
         synchronized (validOffers) {
             int numOffersWithSharedKeyImages = 0;
-            for (Offer offer : validOffers) {
+            for (Offer validOffer : validOffers) {
 
                 // validate that no offer has overlapping but different key images
-                if (!offer.getOfferPayload().getReserveTxKeyImages().equals(offerPayload.getReserveTxKeyImages()) && 
-                        !Collections.disjoint(offer.getOfferPayload().getReserveTxKeyImages(), offerPayload.getReserveTxKeyImages())) {
-                    throw new RuntimeException("Offer with overlapping key images already exists with offerId=" + offer.getId());
+                if (!new HashSet<>(validOffer.getOfferPayload().getReserveTxKeyImages()).equals(new HashSet<>(offerPayload.getReserveTxKeyImages())) && 
+                        !Collections.disjoint(validOffer.getOfferPayload().getReserveTxKeyImages(), offerPayload.getReserveTxKeyImages())) {
+                    throw new RuntimeException("Offer with overlapping but different key images already exists with offerId=" + validOffer.getId());
                 }
     
                 // validate that no offer has same key images, payment method, and currency
-                if (!offer.getId().equals(offerPayload.getId()) && 
-                        offer.getOfferPayload().getReserveTxKeyImages().equals(offerPayload.getReserveTxKeyImages()) &&
-                        offer.getOfferPayload().getPaymentMethodId().equals(offerPayload.getPaymentMethodId()) &&
-                        offer.getOfferPayload().getBaseCurrencyCode().equals(offerPayload.getBaseCurrencyCode()) &&
-                        offer.getOfferPayload().getCounterCurrencyCode().equals(offerPayload.getCounterCurrencyCode())) {
-                    throw new RuntimeException("Offer with same key images, payment method, and currency already exists with offerId=" + offer.getId());
+                if (!validOffer.getId().equals(offerPayload.getId()) && 
+                        validOffer.getOfferPayload().getReserveTxKeyImages().equals(offerPayload.getReserveTxKeyImages()) &&
+                        validOffer.getOfferPayload().getPaymentMethodId().equals(offerPayload.getPaymentMethodId()) &&
+                        validOffer.getOfferPayload().getBaseCurrencyCode().equals(offerPayload.getBaseCurrencyCode()) &&
+                        validOffer.getOfferPayload().getCounterCurrencyCode().equals(offerPayload.getCounterCurrencyCode())) {
+                    throw new RuntimeException("Offer with same key images, payment method, and currency already exists with offerId=" + validOffer.getId());
                 }
     
                 // count offers with same key images
-                if (!offer.getId().equals(offerPayload.getId()) && !Collections.disjoint(offer.getOfferPayload().getReserveTxKeyImages(), offerPayload.getReserveTxKeyImages())) numOffersWithSharedKeyImages = Math.max(2, numOffersWithSharedKeyImages + 1);
+                if (!validOffer.getId().equals(offerPayload.getId()) && !Collections.disjoint(validOffer.getOfferPayload().getReserveTxKeyImages(), offerPayload.getReserveTxKeyImages())) numOffersWithSharedKeyImages = Math.max(2, numOffersWithSharedKeyImages + 1);
             }
     
             // validate max offers with same key images

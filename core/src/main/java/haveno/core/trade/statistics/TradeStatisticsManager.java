@@ -43,7 +43,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableSet;
+import javafx.collections.ObservableList;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,7 +55,7 @@ public class TradeStatisticsManager {
     private final TradeStatistics3StorageService tradeStatistics3StorageService;
     private final File storageDir;
     private final boolean dumpStatistics;
-    private final ObservableSet<TradeStatistics3> observableTradeStatisticsSet = FXCollections.observableSet();
+    private final ObservableList<TradeStatistics3> observableTradeStatisticsList = FXCollections.observableArrayList();
     private JsonFileManager jsonFileManager;
     public static final int PUBLISH_STATS_RANDOM_DELAY_HOURS = 24;
 
@@ -89,9 +89,9 @@ public class TradeStatisticsManager {
                 if (!tradeStatistics.isValid()) {
                     return;
                 }
-                synchronized (observableTradeStatisticsSet) {
-                    observableTradeStatisticsSet.add(tradeStatistics);
-                    priceFeedService.applyLatestHavenoMarketPrice(observableTradeStatisticsSet);
+                synchronized (observableTradeStatisticsList) {
+                    observableTradeStatisticsList.add(tradeStatistics);
+                    priceFeedService.applyLatestHavenoMarketPrice(observableTradeStatisticsList);
                 }
                 maybeDumpStatistics();
             }
@@ -107,9 +107,9 @@ public class TradeStatisticsManager {
         // remove duplicates in early trade stats due to bugs
         removeDuplicateStats(set);
 
-        synchronized (observableTradeStatisticsSet) {
-            observableTradeStatisticsSet.addAll(set);
-            priceFeedService.applyLatestHavenoMarketPrice(observableTradeStatisticsSet);
+        synchronized (observableTradeStatisticsList) {
+            observableTradeStatisticsList.addAll(set);
+            priceFeedService.applyLatestHavenoMarketPrice(observableTradeStatisticsList);
         }
         maybeDumpStatistics();
     }
@@ -195,8 +195,14 @@ public class TradeStatisticsManager {
         return isWithinFuzzedHours && isWithinFuzzedAmount;
     }
 
-    public ObservableSet<TradeStatistics3> getObservableTradeStatisticsSet() {
-        return observableTradeStatisticsSet;
+    public ObservableList<TradeStatistics3> getObservableTradeStatisticsList() {
+        return observableTradeStatisticsList;
+    }
+
+    public List<TradeStatistics3> getTradeStatisticsListCopy() {
+        synchronized (observableTradeStatisticsList) {
+            return new ArrayList<>(observableTradeStatisticsList);
+        }
     }
 
     private void maybeDumpStatistics() {
@@ -220,10 +226,13 @@ public class TradeStatisticsManager {
             jsonFileManager.writeToDiscThreaded(JsonUtil.objectToJson(cryptoCurrencyList), "crypto_currency_list");
 
             Instant yearAgo = Instant.ofEpochSecond(Instant.now().getEpochSecond() - TimeUnit.DAYS.toSeconds(365));
-            Set<String> activeCurrencies = observableTradeStatisticsSet.stream()
-                    .filter(e -> e.getDate().toInstant().isAfter(yearAgo))
-                    .map(p -> p.getCurrency())
-                    .collect(Collectors.toSet());
+            Set<String> activeCurrencies;
+            synchronized (observableTradeStatisticsList) {
+                activeCurrencies = observableTradeStatisticsList.stream()
+                        .filter(e -> e.getDate().toInstant().isAfter(yearAgo))
+                        .map(p -> p.getCurrency())
+                        .collect(Collectors.toSet());
+            }
 
             ArrayList<CurrencyTuple> activeTraditionalCurrencyList = traditionalCurrencyList.stream()
                     .filter(e -> activeCurrencies.contains(e.code))
@@ -238,10 +247,13 @@ public class TradeStatisticsManager {
             jsonFileManager.writeToDiscThreaded(JsonUtil.objectToJson(activeCryptoCurrencyList), "active_crypto_currency_list");
         }
 
-        List<TradeStatisticsForJson> list = observableTradeStatisticsSet.stream()
-                .map(TradeStatisticsForJson::new)
-                .sorted((o1, o2) -> (Long.compare(o2.tradeDate, o1.tradeDate)))
-                .collect(Collectors.toList());
+        List<TradeStatisticsForJson> list;
+        synchronized (observableTradeStatisticsList) {
+            list = observableTradeStatisticsList.stream()
+                    .map(TradeStatisticsForJson::new)
+                    .sorted((o1, o2) -> (Long.compare(o2.tradeDate, o1.tradeDate)))
+                    .collect(Collectors.toList());
+        }
         TradeStatisticsForJson[] array = new TradeStatisticsForJson[list.size()];
         list.toArray(array);
         jsonFileManager.writeToDiscThreaded(JsonUtil.objectToJson(array), "trade_statistics");

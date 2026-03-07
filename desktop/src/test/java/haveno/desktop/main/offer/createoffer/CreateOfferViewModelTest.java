@@ -26,6 +26,7 @@ import haveno.core.locale.Res;
 import haveno.core.offer.CreateOfferService;
 import haveno.core.offer.OfferDirection;
 import haveno.core.offer.OfferUtil;
+import haveno.core.offer.OpenOfferManager;
 import haveno.core.payment.PaymentAccount;
 import haveno.core.payment.payload.PaymentMethod;
 import haveno.core.payment.validation.SecurityDepositValidator;
@@ -77,6 +78,7 @@ public class CreateOfferViewModelTest {
         final AmountValidator4Decimals priceValidator4Decimals = new AmountValidator4Decimals();
 
         XmrAddressEntry addressEntry = mock(XmrAddressEntry.class);
+        OpenOfferManager openOfferManager = mock(OpenOfferManager.class);
         XmrWalletService xmrWalletService = mock(XmrWalletService.class);
         PriceFeedService priceFeedService = mock(PriceFeedService.class);
         User user = mock(User.class);
@@ -98,15 +100,15 @@ public class CreateOfferViewModelTest {
                         true));
         when(user.findFirstPaymentAccountWithCurrency(any())).thenReturn(paymentAccount);
         when(paymentAccount.getPaymentMethod()).thenReturn(PaymentMethod.ZELLE);
-        when(user.getPaymentAccountsAsObservable()).thenReturn(FXCollections.observableSet());
+        when(user.getPaymentAccountsAsObservable()).thenReturn(FXCollections.observableArrayList());
         when(securityDepositValidator.validate(any())).thenReturn(new InputValidator.ValidationResult(false));
         when(accountAgeWitnessService.getMyTradeLimit(any(), any(), any(), anyBoolean())).thenReturn(100000000L);
         when(preferences.getUserCountry()).thenReturn(new Country("ES", "Spain", null));
         when(createOfferService.getRandomOfferId()).thenReturn(UUID.randomUUID().toString());
-        when(tradeStats.getObservableTradeStatisticsSet()).thenReturn(FXCollections.observableSet());
+        when(tradeStats.getObservableTradeStatisticsList()).thenReturn(FXCollections.observableArrayList());
 
         CreateOfferDataModel dataModel = new CreateOfferDataModel(createOfferService,
-            null,
+            openOfferManager,
             offerUtil,
             xmrWalletService,
             empty,

@@ -19,8 +19,8 @@ package haveno.core.trade.protocol.tasks;
 
 import haveno.common.taskrunner.TaskRunner;
 import haveno.core.trade.Trade;
-import haveno.core.trade.messages.TradeMessage;
 import haveno.core.trade.protocol.TradePeer;
+import haveno.network.p2p.mailbox.MailboxMessage;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,7 +39,11 @@ public class BuyerSendPaymentSentMessageToSeller extends BuyerSendPaymentSentMes
     
     @Override
     protected void setStateSent() {
-        if (trade.getState().ordinal() < Trade.State.BUYER_SENT_PAYMENT_SENT_MSG.ordinal()) trade.setStateIfValidTransitionTo(Trade.State.BUYER_SENT_PAYMENT_SENT_MSG);
+        if (trade.getState().equals(Trade.State.BUYER_SEND_FAILED_PAYMENT_SENT_MSG)) {
+            trade.setState(Trade.State.BUYER_SENT_PAYMENT_SENT_MSG);
+        } else {
+            trade.advanceState(Trade.State.BUYER_SENT_PAYMENT_SENT_MSG); // do not revert previous send progress
+        }
         super.setStateSent();
     }
 
@@ -63,7 +67,7 @@ public class BuyerSendPaymentSentMessageToSeller extends BuyerSendPaymentSentMes
 
     // continue execution on fault so payment sent message is sent to arbitrator
     @Override
-    protected void onFault(String errorMessage, TradeMessage message) {
+    protected void onFault(String errorMessage, MailboxMessage message) {
         setStateFault();
         appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
         complete();

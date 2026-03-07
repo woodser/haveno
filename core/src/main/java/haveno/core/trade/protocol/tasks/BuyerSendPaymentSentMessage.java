@@ -38,16 +38,13 @@ import java.util.concurrent.TimeUnit;
 
 import haveno.common.Timer;
 import haveno.common.UserThread;
-import haveno.common.crypto.PubKeyRing;
 import haveno.common.taskrunner.TaskRunner;
 import haveno.core.network.MessageState;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.trade.Trade;
 import haveno.core.trade.messages.PaymentSentMessage;
 import haveno.core.trade.messages.TradeMailboxMessage;
-import haveno.core.trade.protocol.TradePeer;
 import haveno.core.util.JsonUtil;
-import haveno.network.p2p.NodeAddress;
 import javafx.beans.value.ChangeListener;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
@@ -67,23 +64,11 @@ public abstract class BuyerSendPaymentSentMessage extends SendMailboxMessageTask
     private ChangeListener<MessageState> listener;
     private Timer timer;
     private static final int MAX_RESEND_ATTEMPTS = 20;
-    private int delayInMin = 10;
+    private long delayInMin = -1;
     private int resendCounter = 0;
 
     public BuyerSendPaymentSentMessage(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
-    }
-
-    protected abstract TradePeer getReceiver();
-
-    @Override
-    protected NodeAddress getReceiverNodeAddress() {
-        return getReceiver().getNodeAddress();
-    }
-
-    @Override
-    protected PubKeyRing getReceiverPubKeyRing() {
-        return getReceiver().getPubKeyRing();
     }
 
     @Override
@@ -92,7 +77,7 @@ public abstract class BuyerSendPaymentSentMessage extends SendMailboxMessageTask
             runInterceptHook();
 
             // skip if already acked by receiver
-            if (isAckedByReceiver()) {
+            if (stopSending()) {
                 if (!isCompleted()) complete();
                 return;
             }
@@ -104,7 +89,7 @@ public abstract class BuyerSendPaymentSentMessage extends SendMailboxMessageTask
     }
 
     @Override
-    protected TradeMailboxMessage getTradeMailboxMessage(String tradeId) {
+    protected TradeMailboxMessage getMailboxMessage(String tradeId) {
         if (getReceiver().getPaymentSentMessage() == null) {
 
             // We do not use a real unique ID here as we want to be able to re-send the exact same message in case the
@@ -170,53 +155,57 @@ public abstract class BuyerSendPaymentSentMessage extends SendMailboxMessageTask
             timer.stop();
         }
         if (listener != null) {
-            trade.getSeller().getPaymentReceivedMessageStateProperty().removeListener(listener);
+            getReceiver().getPaymentReceivedMessageStateProperty().removeListener(listener);
         }
     }
 
     private void tryToSendAgainLater() {
 
-        // skip if already acked
-        if (isAckedByReceiver()) return;
+        // skip if stopped
+        if (stopSending()) return;
 
+        // stop after max attempts
         if (resendCounter >= MAX_RESEND_ATTEMPTS) {
             cleanup();
             log.warn("We never received an ACK message when sending the PaymentSentMessage to the peer. We stop trying to send the message.");
             return;
         }
 
-        if (timer != null) {
-            timer.stop();
-        }
-
-        timer = UserThread.runAfter(this::run, delayInMin, TimeUnit.MINUTES);
-
+        // register listeners once
         if (resendCounter == 0) {
             listener = (observable, oldValue, newValue) -> onMessageStateChange(newValue);
             getReceiver().getPaymentSentMessageStateProperty().addListener(listener);
             onMessageStateChange(getReceiver().getPaymentSentMessageStateProperty().get());
         }
 
-        // first re-send is after 2 minutes, then increase the delay exponentially
+        // set resend delay
         if (resendCounter == 0) {
-            int shortDelay = 2;
-            log.info("We will send the message again to the peer after a delay of {} min.", shortDelay);
-            timer = UserThread.runAfter(this::run, shortDelay, TimeUnit.MINUTES);
+            delayInMin = SendMailboxMessageTask.INITIAL_RESEND_DELAY_MINS_FIRST;
+        } else if (resendCounter == 1) {
+            delayInMin = SendMailboxMessageTask.INITIAL_RESEND_DELAY_MINS_SECOND;
         } else {
-            log.info("We will send the message again to the peer after a delay of {} min.", delayInMin);
-            timer = UserThread.runAfter(this::run, delayInMin, TimeUnit.MINUTES);
-            delayInMin = (int) ((double) delayInMin * 1.5);
+            delayInMin = Math.min(TimeUnit.MILLISECONDS.toMinutes(TradeMailboxMessage.TTL), delayInMin * SendMailboxMessageTask.RESEND_DELAY_MULTIPLIER);
         }
+
+        // use minimum delay if stored to mailbox
+        if (getReceiver().isPaymentSentMessageStored()) {
+            delayInMin = Math.max(delayInMin, SendMailboxMessageTask.INITIAL_RESEND_DELAY_MINS_MAILBOX);
+        }
+
+        // send again after delay
+        log.info("We will send the message again to the peer after a delay of {} min.", delayInMin);
+        if (timer != null) timer.stop();
+        timer = UserThread.runAfter(this::run, delayInMin, TimeUnit.MINUTES);
         resendCounter++;
     }
 
     private void onMessageStateChange(MessageState newValue) {
-        if (isAckedByReceiver()) {
+        if (stopSending()) {
             cleanup();
         }
     }
 
-    protected boolean isAckedByReceiver() {
+    protected boolean stopSending() {
         return getReceiver().isPaymentSentMessageAcked();
     }
 }

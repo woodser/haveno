@@ -1,5 +1,6 @@
 package haveno.core.util;
 
+import haveno.common.app.Version;
 import haveno.common.util.MathUtils;
 import haveno.core.locale.CurrencyUtil;
 import haveno.core.locale.GlobalSettings;
@@ -33,6 +34,10 @@ public class FormattingUtils {
     private static final MonetaryFormat priceFormat8Decimals = new MonetaryFormat().shift(0).minDecimals(8).repeatOptionalDecimals(0, 0);
     private static final MonetaryFormat cryptoFormat = new MonetaryFormat().shift(0).minDecimals(CryptoMoney.SMALLEST_UNIT_EXPONENT).repeatOptionalDecimals(0, 0);
     private static final DecimalFormat decimalFormat = new DecimalFormat("#.#");
+
+    public static String formatVersion() {
+        return Res.get("mainView.footer.version", Version.VERSION);
+    }
 
     public static String formatCoinWithCode(long value, MonetaryFormat coinFormat) {
         return formatCoinWithCode(Coin.valueOf(value), coinFormat);
@@ -208,6 +213,14 @@ public class FormattingUtils {
 
     public static String formatToRoundedPercentWithSymbol(double value) {
         return formatToPercent(value, new DecimalFormat("#")) + "%";
+    }
+
+    public static String formatToClampedRoundedPercentWithSymbol(double value) {
+        return formatToPercent(clampPercentTo99(value), new DecimalFormat("#")) + "%";
+    }
+
+    private static double clampPercentTo99(double value) {
+        return value >= 1.0 ? 1.0 : Math.min(value, 0.99);
     }
 
     public static String formatPercentagePrice(double value) {

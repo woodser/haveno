@@ -313,12 +313,6 @@ service XmrConnections {
     }
     rpc CheckConnection(CheckConnectionRequest) returns (CheckConnectionReply) {
     }
-    rpc CheckConnections(CheckConnectionsRequest) returns (CheckConnectionsReply) {
-    }
-    rpc StartCheckingConnection(StartCheckingConnectionRequest) returns (StartCheckingConnectionReply) {
-    }
-    rpc StopCheckingConnection(StopCheckingConnectionRequest) returns (StopCheckingConnectionReply) {
-    }
     rpc GetBestConnection(GetBestConnectionRequest) returns (GetBestConnectionReply) {
     }
     rpc SetAutoSwitch(SetAutoSwitchRequest) returns (SetAutoSwitchReply) {
@@ -383,22 +377,6 @@ message CheckConnectionRequest {}
 message CheckConnectionReply {
     UrlConnection connection = 1;
 }
-
-message CheckConnectionsRequest {}
-
-message CheckConnectionsReply {
-    repeated UrlConnection connections = 1;
-}
-
-message StartCheckingConnectionRequest {
-    int32 refresh_period = 1; // milliseconds
-}
-
-message StartCheckingConnectionReply {}
-
-message StopCheckingConnectionRequest {}
-
-message StopCheckingConnectionReply {}
 
 message GetBestConnectionRequest {}
 
@@ -475,6 +453,12 @@ service Offers {
     }
     rpc PostOffer (PostOfferRequest) returns (PostOfferReply) {
     }
+    rpc EditOffer (EditOfferRequest) returns (EditOfferReply) {
+    }
+    rpc DeactivateOffer (DeactivateOfferRequest) returns (DeactivateOfferReply) {
+    }
+    rpc ActivateOffer (ActivateOfferRequest) returns (ActivateOfferReply) {
+    }
     rpc CancelOffer (CancelOfferRequest) returns (CancelOfferReply) {
     }
 }
@@ -535,6 +519,35 @@ message PostOfferReply {
     OfferInfo offer = 1;
 }
 
+message EditOfferRequest {
+    string offer_id = 1;
+    string currency_code = 2;
+    string price = 3;
+    bool use_market_based_price = 4;
+    double market_price_margin_pct = 5;
+    string trigger_price = 6;
+    string payment_account_id = 7;
+    string extra_info = 8;
+}
+
+message EditOfferReply {
+    OfferInfo offer = 1;
+}
+
+message DeactivateOfferRequest {
+    string offer_id = 1;
+}
+
+message DeactivateOfferReply {
+}
+
+message ActivateOfferRequest {
+    string offer_id = 1;
+}
+
+message ActivateOfferReply {
+}
+
 message CancelOfferRequest {
     string id = 1;
 }
@@ -577,6 +590,9 @@ message OfferInfo {
     bool is_private_offer = 32;
     string challenge = 33;
     string extra_info = 34;
+    repeated string accepted_country_codes = 35;
+    string accepted_countries_string = 36;
+    string city = 37;
 }
 
 message AvailabilityResultWithDescription {
@@ -965,6 +981,8 @@ service Wallets {
     }
     rpc UnlockWallet (UnlockWalletRequest) returns (UnlockWalletReply) {
     }
+    rpc GetHeight (GetWalletHeightRequest) returns (GetWalletHeightReply) {
+    }
 }
 
 message GetBalancesRequest {
@@ -1138,4 +1156,12 @@ message AddressBalanceInfo {
     int64 balance = 2;
     int64 num_confirmations = 3;
     bool is_address_unused = 4;
+}
+
+message GetWalletHeightRequest {
+}
+
+message GetWalletHeightReply {
+    int64 height = 1;
+    int64 target_height = 2;
 }

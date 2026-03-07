@@ -19,8 +19,8 @@ package haveno.core.trade.protocol.tasks;
 
 import haveno.common.taskrunner.TaskRunner;
 import haveno.core.trade.Trade;
-import haveno.core.trade.messages.TradeMessage;
 import haveno.core.trade.protocol.TradePeer;
+import haveno.network.p2p.mailbox.MailboxMessage;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,31 +39,35 @@ public class SellerSendPaymentReceivedMessageToBuyer extends SellerSendPaymentRe
 
     @Override
     protected void setStateSent() {
-        trade.advanceState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
+        if (trade.getState().equals(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG)) {
+            trade.setState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG);
+        } else {
+            trade.advanceState(Trade.State.SELLER_SENT_PAYMENT_RECEIVED_MSG); // do not revert previous send progress
+        }
         super.setStateSent();
     }
 
     @Override
     protected void setStateFault() {
-        trade.advanceState(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfValidTransitionTo(Trade.State.SELLER_SEND_FAILED_PAYMENT_RECEIVED_MSG);
         super.setStateFault();
     }
 
     @Override
     protected void setStateStoredInMailbox() {
-        trade.advanceState(Trade.State.SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfValidTransitionTo(Trade.State.SELLER_STORED_IN_MAILBOX_PAYMENT_RECEIVED_MSG);
         super.setStateStoredInMailbox();
     }
 
     @Override
     protected void setStateArrived() {
-        trade.advanceState(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
+        trade.setStateIfValidTransitionTo(Trade.State.SELLER_SAW_ARRIVED_PAYMENT_RECEIVED_MSG);
         super.setStateArrived();
     }
 
     // continue execution on fault so payment received message is sent to arbitrator
     @Override
-    protected void onFault(String errorMessage, TradeMessage message) {
+    protected void onFault(String errorMessage, MailboxMessage message) {
         setStateFault();
         appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
         complete();

@@ -91,7 +91,6 @@ monerod2-local:
 		--rpc-bind-port 48081 \
 		--zmq-rpc-bind-port 48082 \
 		--log-level 0 \
-		--confirm-external-bind \
 		--add-exclusive-node 127.0.0.1:28080 \
 		--add-exclusive-node 127.0.0.1:58080 \
 		--rpc-access-control-origins http://localhost:8080 \
@@ -112,7 +111,6 @@ monerod3-local:
 		--rpc-bind-port 58081 \
 		--zmq-rpc-bind-port 58082 \
 		--log-level 0 \
-		--confirm-external-bind \
 		--add-exclusive-node 127.0.0.1:28080 \
 		--add-exclusive-node 127.0.0.1:48080 \
 		--rpc-access-control-origins http://localhost:8080 \
@@ -186,6 +184,7 @@ arbitrator-daemon-local:
 		--apiPort=9998 \
 		--passwordRequired=false \
 		--useNativeXmrWallet=false \
+	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator-desktop-local:
 	# Arbitrator needs to be registered before making trades
@@ -198,6 +197,7 @@ arbitrator-desktop-local:
 		--apiPassword=apitest \
 		--apiPort=9998 \
 		--useNativeXmrWallet=false \
+	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator2-daemon-local:
 	# Arbitrator needs to be registered before making trades
@@ -210,6 +210,7 @@ arbitrator2-daemon-local:
 		--apiPassword=apitest \
 		--apiPort=10001 \
 		--useNativeXmrWallet=false \
+	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator2-desktop-local:
 	# Arbitrator needs to be registered before making trades
@@ -222,6 +223,7 @@ arbitrator2-desktop-local:
 		--apiPassword=apitest \
 		--apiPort=10001 \
 		--useNativeXmrWallet=false \
+	    --xmrNode=http://127.0.0.1:48081 \
 
 user1-daemon-local:
 	./haveno-daemon$(APP_EXT) \

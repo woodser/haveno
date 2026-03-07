@@ -63,14 +63,18 @@ public class SellerProtocol extends DisputeProtocol {
     public SellerProtocol(SellerTrade trade) {
         super(trade);
     }
-    
+
     @Override
-    protected void onInitialized() {
-        super.onInitialized();
+    protected void onInitializeAfterMailboxMessages() {
+        super.onInitializeAfterMailboxMessages();
+        maybeResendPaymentReceivedMessage();
+    }
+
+    private void maybeResendPaymentReceivedMessage() {
 
         // re-send payment received message if not acked
+        if (!((SellerTrade) trade).needsToResendPaymentReceivedMessages()) return;
         ThreadUtils.execute(() -> {
-            if (!((SellerTrade) trade).needsToResendPaymentReceivedMessages()) return;
             synchronized (trade.getLock()) {
                 if (!((SellerTrade) trade).needsToResendPaymentReceivedMessages()) return;
                 latchTrade();
@@ -93,7 +97,6 @@ public class SellerProtocol extends DisputeProtocol {
             }
         }, trade.getId());
     }
-
 
     @Override
     protected void onTradeMessage(TradeMessage message, NodeAddress peer) {
@@ -119,8 +122,8 @@ public class SellerProtocol extends DisputeProtocol {
         log.info(TradeProtocol.LOG_HIGHLIGHT + "SellerProtocol.onPaymentReceived() for {} {}", trade.getClass().getSimpleName(), trade.getShortId());
 
         // advance trade state
-        if (trade.isPaymentSent() || trade.isPaymentReceived()) {
-            trade.advanceState(Trade.State.SELLER_CONFIRMED_PAYMENT_RECEIPT);
+        if (trade.isPaymentSentMessageProcessed()) {
+            trade.setStateIfValidTransitionTo(Trade.State.SELLER_CONFIRMED_PAYMENT_RECEIPT);
         } else {
             errorMessageHandler.handleErrorMessage("Cannot confirm payment received for " + trade.getClass().getSimpleName() + " " + trade.getShortId() + " in state " + trade.getState());
             return;

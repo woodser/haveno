@@ -37,6 +37,8 @@ package haveno.core.app;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+
+import haveno.common.ThreadUtils;
 import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.app.DevEnv;
@@ -102,7 +104,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.collections.SetChangeListener;
+import javafx.collections.ListChangeListener;
 import javax.annotation.Nullable;
 import lombok.Getter;
 import lombok.Setter;
@@ -312,8 +314,9 @@ public class HavenoSetup {
 
     public void start() {
         // If user tried to downgrade we require a shutdown
-        if (Config.baseCurrencyNetwork() == BaseCurrencyNetwork.XMR_MAINNET &&
-                hasDowngraded(downGradePreventionHandler)) {
+        if ((Config.baseCurrencyNetwork() == BaseCurrencyNetwork.XMR_MAINNET
+                || Config.baseCurrencyNetwork() == BaseCurrencyNetwork.XMR_STAGENET)
+                && hasDowngraded(downGradePreventionHandler)) {
             return;
         }
 
@@ -334,17 +337,21 @@ public class HavenoSetup {
     }
 
     private void step4() {
-        initDomainServices();
 
-        havenoSetupListeners.forEach(HavenoSetupListener::onSetupComplete);
+        // run off main thread so domain initialization does not block UI
+        ThreadUtils.submitToPool(() -> {
+            initDomainServices();
 
-        // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
-        // in MainViewModel
-        maybeShowSecurityRecommendation();
-        maybeShowLocalhostRunningInfo();
-        maybeShowAccountSigningStateInfo();
-        maybeShowTorAddressUpgradeInformation();
-        checkInboundConnections();
+            havenoSetupListeners.forEach(HavenoSetupListener::onSetupComplete);
+
+            // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
+            // in MainViewModel
+            maybeShowSecurityRecommendation();
+            maybeShowLocalhostRunningInfo();
+            maybeShowAccountSigningStateInfo();
+            maybeShowTorAddressUpgradeInformation();
+            checkInboundConnections();
+        });
     }
 
 
@@ -622,8 +629,8 @@ public class HavenoSetup {
     private void maybeShowSecurityRecommendation() {
         if (user.getPaymentAccountsAsObservable() == null) return;
         String key = "remindPasswordAndBackup";
-        user.getPaymentAccountsAsObservable().addListener((SetChangeListener<PaymentAccount>) change -> {
-            if (!walletsManager.areWalletsEncrypted() && !user.isPaymentAccountImport() && preferences.showAgain(key) && change.wasAdded() &&
+        user.getPaymentAccountsAsObservable().addListener((ListChangeListener<PaymentAccount>) change -> {
+            if (!walletsManager.areWalletsEncrypted() && !user.isPaymentAccountImport() && preferences.showAgain(key) && change.next() && change.wasAdded() &&
                     displaySecurityRecommendationHandler != null)
                 displaySecurityRecommendationHandler.accept(key);
         });

@@ -25,7 +25,6 @@ import haveno.core.trade.BuyerTrade;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.trade.MakerTrade;
 import haveno.core.trade.Trade;
-import haveno.core.trade.Trade.State;
 import haveno.core.trade.messages.SignContractRequest;
 import haveno.core.trade.protocol.TradeProtocol;
 import haveno.core.xmr.model.XmrAddressEntry;
@@ -99,9 +98,7 @@ public class MaybeSendSignContractRequest extends TradeTask {
                 }
 
                 // thaw reserved outputs
-                if (trade.getSelf().getReserveTxKeyImages() != null) {
-                    trade.getXmrWalletService().thawOutputs(trade.getSelf().getReserveTxKeyImages());
-                }
+                trade.getXmrWalletService().thawOutputs(trade.getSelf().getReserveTxKeyImages());
 
                 // attempt creating deposit tx
                 if (!trade.isBuyerAsTakerWithoutDeposit()) {
@@ -113,7 +110,7 @@ public class MaybeSendSignContractRequest extends TradeTask {
                                     depositTx = trade.getXmrWalletService().createDepositTx(trade, reserveExactAmount, subaddressIndex);
                                 } catch (Exception e) {
                                     log.warn("Error creating deposit tx, tradeId={}, attempt={}/{}, error={}", trade.getShortId(), i + 1, TradeProtocol.MAX_ATTEMPTS, e.getMessage());
-                                    trade.getXmrWalletService().handleWalletError(e, sourceConnection, i + 1);
+                                    trade.getXmrWalletService().handleMainWalletError(e, sourceConnection, i + 1);
                                     if (isTimedOut()) throw new RuntimeException("Trade protocol has timed out while creating deposit tx, tradeId=" + trade.getShortId());
                                     if (i == TradeProtocol.MAX_ATTEMPTS - 1) throw e;
                                     HavenoUtils.waitFor(TradeProtocol.REPROCESS_DELAY_MS); // wait before retrying
@@ -217,7 +214,7 @@ public class MaybeSendSignContractRequest extends TradeTask {
     }
 
     private void completeAux() {
-        trade.setState(State.CONTRACT_SIGNATURE_REQUESTED);
+        trade.setState(Trade.State.CONTRACT_SIGNATURE_REQUESTED);
         trade.addInitProgressStep();
         processModel.getTradeManager().requestPersistence();
         complete();

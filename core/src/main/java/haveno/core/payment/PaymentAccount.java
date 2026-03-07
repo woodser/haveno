@@ -50,7 +50,6 @@ import haveno.core.locale.Res;
 import haveno.core.locale.TradeCurrency;
 import haveno.core.payment.payload.PaymentAccountPayload;
 import haveno.core.payment.payload.PaymentMethod;
-import haveno.core.payment.validation.AccountNrValidator;
 import haveno.core.payment.validation.BICValidator;
 import haveno.core.payment.validation.BranchIdValidator;
 import haveno.core.payment.validation.EmailOrMobileNrValidator;
@@ -182,6 +181,9 @@ public abstract class PaymentAccount implements PersistablePayload {
                 .map(TradeCurrency::fromProto)
                 .collect(Collectors.toList());
 
+        // Remove deprecated currencies which are nullified
+        tradeCurrencies.removeIf(currency -> currency == null);
+
         // We need to remove NGN for Transferwise
         Optional<TradeCurrency> ngnTwOptional = tradeCurrencies.stream()
                 .filter(e -> paymentMethodId.equals(TRANSFERWISE_ID))
@@ -191,6 +193,9 @@ public abstract class PaymentAccount implements PersistablePayload {
         ngnTwOptional.ifPresent(tradeCurrencies::remove);
 
         try {
+            if (tradeCurrencies.isEmpty()) {
+                throw new RuntimeException("No trade currencies found for account: " + proto.getAccountName() + ", payment method id: " + paymentMethodId + ", account id: " + proto.getId());
+            }
             PaymentAccount account = PaymentAccountFactory.getPaymentAccount(PaymentMethod.getPaymentMethodOrNA(paymentMethodId));
             account.getTradeCurrencies().clear();
             account.setId(proto.getId());
@@ -396,7 +401,6 @@ public abstract class PaymentAccount implements PersistablePayload {
     @NonNull
     public abstract List<PaymentAccountFormField.FieldId> getInputFieldIds();
 
-    @SuppressWarnings("unchecked")
     public PaymentAccountForm toForm() {
 
         // convert to json map
@@ -429,7 +433,7 @@ public abstract class PaymentAccount implements PersistablePayload {
             processValidationResult(new LengthValidator(2, 100).validate(value));
             break;
         case ACCOUNT_NR:
-            processValidationResult(new AccountNrValidator("GB").validate(value));
+            processValidationResult(new LengthValidator(2, 100).validate(value));
             break;
         case ACCOUNT_OWNER:
             processValidationResult(new LengthValidator(2, 100).validate(value));
@@ -545,7 +549,8 @@ public abstract class PaymentAccount implements PersistablePayload {
             processValidationResult(new LengthValidator(2, 100).validate(value));
             break;
         case PIX_KEY:
-            throw new IllegalArgumentException("Not implemented");
+            processValidationResult(new LengthValidator(2, 100).validate(value));
+            break;
         case POSTAL_ADDRESS:
             processValidationResult(new InputValidator().validate(value));
             break;
@@ -603,9 +608,10 @@ public abstract class PaymentAccount implements PersistablePayload {
         PaymentAccountFormField field = new PaymentAccountFormField(fieldId);
         switch (fieldId) {
         case ACCEPTED_COUNTRY_CODES:
-            field.setComponent(PaymentAccountFormField.Component.SELECT_MULTIPLE);
             field.setLabel(Res.get("payment.accepted.countries"));
-            field.setSupportedCountries(((CountryBasedPaymentAccount) this).getSupportedCountries());
+            List<Country> supportedCountries = ((CountryBasedPaymentAccount) this).getSupportedCountries();
+            field.setSupportedCountries(supportedCountries);
+            field.setComponent(supportedCountries.size() == 1 ? PaymentAccountFormField.Component.SELECT_ONE : PaymentAccountFormField.Component.SELECT_MULTIPLE);
             break;
         case ACCOUNT_ID:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
@@ -623,7 +629,7 @@ public abstract class PaymentAccount implements PersistablePayload {
             break;
         case ACCOUNT_OWNER:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
-            field.setLabel(Res.get("payment.account.owner"));
+            field.setLabel(Res.get("payment.account.owner.fullname"));
             break;
         case ACCOUNT_TYPE:
             field.setComponent(PaymentAccountFormField.Component.SELECT_ONE);
@@ -635,7 +641,7 @@ public abstract class PaymentAccount implements PersistablePayload {
             break;
         case BANK_ACCOUNT_NAME:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
-            field.setLabel(Res.get("payment.account.owner"));
+            field.setLabel(Res.get("payment.account.owner.fullname"));
             field.setMinLength(2);
             field.setMaxLength(100);
             break;
@@ -687,7 +693,7 @@ public abstract class PaymentAccount implements PersistablePayload {
             break;
         case BENEFICIARY_NAME:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
-            field.setLabel(Res.get("payment.account.owner"));
+            field.setLabel(Res.get("payment.account.owner.fullname"));
             break;
         case BENEFICIARY_PHONE:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
@@ -733,7 +739,7 @@ public abstract class PaymentAccount implements PersistablePayload {
             throw new IllegalArgumentException("Not implemented");
         case HOLDER_NAME:
             field.setComponent(PaymentAccountFormField.Component.TEXT);
-            field.setLabel(Res.get("payment.account.owner"));
+            field.setLabel(Res.get("payment.account.owner.fullname"));
             field.setMinLength(2);
             field.setMaxLength(100);
             break;
@@ -776,7 +782,9 @@ public abstract class PaymentAccount implements PersistablePayload {
             field.setLabel(Res.get("payment.email.mobile"));
             break;
         case PIX_KEY:
-            throw new IllegalArgumentException("Not implemented");
+            field.setComponent(PaymentAccountFormField.Component.TEXT);
+            field.setLabel(Res.get("payment.pix.key"));
+            break;
         case POSTAL_ADDRESS:
             field.setComponent(PaymentAccountFormField.Component.TEXTAREA);
             field.setLabel(Res.get("payment.postal.address"));

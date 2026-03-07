@@ -35,6 +35,7 @@ import haveno.core.trade.MakerTrade;
 import haveno.core.trade.TakerTrade;
 import haveno.core.trade.Trade;
 import haveno.core.user.Preferences;
+import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.desktop.components.InfoTextField;
 import haveno.desktop.components.TitledGroupBg;
 import haveno.desktop.components.TxIdTextField;
@@ -47,6 +48,7 @@ import static haveno.desktop.util.FormBuilder.addCompactTopLabelTextField;
 import static haveno.desktop.util.FormBuilder.addMultilineLabel;
 import static haveno.desktop.util.FormBuilder.addTitledGroupBg;
 import static haveno.desktop.util.FormBuilder.addTopLabelTxIdTextField;
+
 import haveno.desktop.util.Layout;
 import haveno.network.p2p.BootstrapListener;
 import java.util.Optional;
@@ -77,7 +79,7 @@ public abstract class TradeStepView extends AnchorPane {
     protected final Preferences preferences;
     protected final GridPane gridPane;
 
-    private Subscription tradePeriodStateSubscription, tradeStateSubscription, disputeStateSubscription, mediationResultStateSubscription;
+    private Subscription tradePeriodStateSubscription, tradeStateSubscription, disputeStateSubscription, mediationResultStateSubscription, syncUpdateSubscription;
     protected int gridRow = 0;
     private TextField timeLeftTextField;
     private ProgressBar timeLeftProgressBar;
@@ -93,6 +95,10 @@ public abstract class TradeStepView extends AnchorPane {
     private BootstrapListener bootstrapListener;
     private TradeSubView.ChatCallback chatCallback;
     private ChangeListener<Boolean> pendingTradesInitializedListener;
+    protected Label statusLabel;
+    protected String syncStatus;
+    protected String tradeStatus;
+    private ChangeListener<Number> depositsListener;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -157,10 +163,6 @@ public abstract class TradeStepView extends AnchorPane {
                 updateTimeLeft();
             }
         };
-
-//        newBestBlockListener = block -> {
-//            checkIfLockTimeIsOver();
-//        };
     }
 
     public void activate() {
@@ -237,6 +239,13 @@ public abstract class TradeStepView extends AnchorPane {
             };
             initialized.addListener(pendingTradesInitializedListener);
         }
+
+        depositsListener = (observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                UserThread.execute(() -> onDepositTxsUpdate());
+            }
+        };
+        trade.getDepositTxsUpdateCounter().addListener(depositsListener);
     }
 
     protected void onPendingTradesInitialized() {
@@ -262,7 +271,35 @@ public abstract class TradeStepView extends AnchorPane {
             if (newValue) addTradeStateSubscription();
         });
 
+        syncUpdateSubscription = EasyBind.subscribe(trade.getSyncProgressListener().numUpdates(), newValue -> {
+            if (newValue != null) updateSyncProgress();
+        });
         UserThread.execute(() -> model.p2PService.removeP2PServiceListener(bootstrapListener));
+    }
+
+    protected void updateSyncProgress() {
+
+        // TODO: don't set sync status when 2 blocks behind or less after synced?
+        long blocksRemaining = trade.blocksRemainingProperty().get();
+        // if (trade.wasWalletSynced() && blocksRemaining <= 2) {
+        //     setSyncStatus("");
+        //     return;
+        // }
+
+        // set status with percentage and blocks remaining if available
+        double percent = trade.downloadPercentageProperty().get();
+        if (percent < 0.0 || percent >= 1.0) setSyncStatus("");
+        else {
+            if (trade.blocksRemainingProperty().get() < 0) {
+                setSyncStatus(Res.get("portfolio.pending.syncing"));
+            } else {
+                if (trade.blocksRemainingProperty().get() == 1) {
+                    setSyncStatus(Res.get("portfolio.pending.syncing.blockRemaining"));
+                } else {
+                    setSyncStatus(Res.get("portfolio.pending.syncing.blocksRemaining", blocksRemaining));
+                }
+            }
+        }
     }
 
     private void addTradeStateSubscription() {
@@ -286,40 +323,59 @@ public abstract class TradeStepView extends AnchorPane {
     }
 
     public void deactivate() {
-      if (selfTxIdSubscription != null)
-          selfTxIdSubscription.unsubscribe();
-      if (peerTxIdSubscription != null)
-          peerTxIdSubscription.unsubscribe();
+        if (selfTxIdSubscription != null)
+            selfTxIdSubscription.unsubscribe();
+        if (peerTxIdSubscription != null)
+            peerTxIdSubscription.unsubscribe();
 
-      if (selfTxIdTextField != null)
-          selfTxIdTextField.cleanup();
-      if (peerTxIdTextField != null)
-          peerTxIdTextField.cleanup();
+        if (selfTxIdTextField != null)
+            selfTxIdTextField.cleanup();
+        if (peerTxIdTextField != null)
+            peerTxIdTextField.cleanup();
 
-      if (errorMessageListener != null)
-          trade.errorMessageProperty().removeListener(errorMessageListener);
+        if (errorMessageListener != null)
+            trade.errorMessageProperty().removeListener(errorMessageListener);
 
-      if (disputeStateSubscription != null)
-          disputeStateSubscription.unsubscribe();
+        if (disputeStateSubscription != null)
+            disputeStateSubscription.unsubscribe();
 
-      if (mediationResultStateSubscription != null)
-          mediationResultStateSubscription.unsubscribe();
+        if (mediationResultStateSubscription != null)
+            mediationResultStateSubscription.unsubscribe();
 
-      if (tradePeriodStateSubscription != null)
-          tradePeriodStateSubscription.unsubscribe();
-      if (tradeStateSubscription != null)
-          tradeStateSubscription.unsubscribe();
+        if (syncUpdateSubscription != null)
+            syncUpdateSubscription.unsubscribe();
 
-      if (clockListener != null)
-          model.clockWatcher.removeListener(clockListener);
+        if (tradePeriodStateSubscription != null)
+            tradePeriodStateSubscription.unsubscribe();
 
-      if (tradeStepInfo != null)
-          tradeStepInfo.setOnAction(null);
+        if (tradeStateSubscription != null)
+            tradeStateSubscription.unsubscribe();
 
-      if (acceptMediationResultPopup != null) {
-          acceptMediationResultPopup.hide();
-          acceptMediationResultPopup = null;
-      }
+        if (clockListener != null)
+            model.clockWatcher.removeListener(clockListener);
+
+        if (tradeStepInfo != null)
+            tradeStepInfo.setOnAction(null);
+
+        if (acceptMediationResultPopup != null) { 
+            acceptMediationResultPopup.hide();
+            acceptMediationResultPopup = null;
+        }
+
+        if (depositsListener != null) {
+            trade.getDepositTxsUpdateCounter().removeListener(depositsListener);
+            depositsListener = null;
+        }
+    }
+
+    protected void onDepositTxsUpdate() {
+        // no default action
+    }
+
+    protected long getNumMinutesToUnlock() {
+        long numDepositConfirmations = trade.getNumDepositConfirmations() == null ? 0 : trade.getNumDepositConfirmations();
+        long numMinutesToUnlock = (Math.max(0, XmrWalletService.NUM_BLOCKS_UNLOCK - numDepositConfirmations)) * 2;
+        return numMinutesToUnlock;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -405,6 +461,9 @@ public abstract class TradeStepView extends AnchorPane {
 
         infoLabel = addMultilineLabel(gridPane, gridRow, "", Layout.COMPACT_FIRST_ROW_AND_COMPACT_GROUP_DISTANCE);
         GridPane.setColumnSpan(infoLabel, 2);
+
+        statusLabel = new Label();
+        gridPane.add(statusLabel, 0, ++gridRow, 2, 1);
     }
 
     protected String getInfoText() {
@@ -431,8 +490,10 @@ public abstract class TradeStepView extends AnchorPane {
             String remainingTime = model.getRemainingTradeDurationAsWords();
             timeLeftProgressBar.setProgress(model.getRemainingTradeDurationAsPercentage());
             if (!remainingTime.isEmpty()) {
-                timeLeftTextField.setText(Res.get("portfolio.pending.remainingTimeDetail",
-                        remainingTime, model.getDateForOpenDispute()));
+                boolean isDepositsFinalized = trade.isDepositsFinalized();
+                timeLeftTextField.setText(isDepositsFinalized ?
+                        Res.get("portfolio.pending.remainingTimeDetail", remainingTime, model.getDateForOpenDispute()) :
+                        Res.get("portfolio.pending.remainingTimeDetail.startsAfter", Trade.NUM_BLOCKS_DEPOSITS_FINALIZED));
                 if (model.showWarning() || model.showDispute()) {
                     timeLeftTextField.getStyleClass().add("error-text");
                     timeLeftProgressBar.getStyleClass().add("error");
@@ -799,6 +860,7 @@ public abstract class TradeStepView extends AnchorPane {
     }
 
     private void updateTradeState(Trade.State tradeState) {
+        updateTimeLeft();
         if (!trade.getDisputeState().isOpen() && trade.isDepositTxMissing()) {
             tradeStepInfo.setState(TradeStepInfo.State.DEPOSIT_MISSING);
         }
@@ -842,7 +904,7 @@ public abstract class TradeStepView extends AnchorPane {
         infoGridPane.setHgap(5);
         infoGridPane.setVgap(10);
         infoGridPane.setPadding(new Insets(10, 10, 10, 10));
-        Label label = addMultilineLabel(infoGridPane, rowIndex++, Res.get("portfolio.pending.tradePeriodInfo"));
+        Label label = addMultilineLabel(infoGridPane, rowIndex++, Res.get("portfolio.pending.tradePeriodInfo", Trade.NUM_BLOCKS_DEPOSITS_FINALIZED));
         label.setMaxWidth(450);
 
         HBox warningBox = new HBox();
@@ -868,5 +930,28 @@ public abstract class TradeStepView extends AnchorPane {
 
     public void setChatCallback(TradeSubView.ChatCallback chatCallback) {
         this.chatCallback = chatCallback;
+    }
+
+    protected void setSyncStatus(String text) {
+        syncStatus = text;
+        updateStatus();
+    }
+
+    protected void setTradeStatus(String text) {
+        tradeStatus = text;
+        updateStatus();
+    }
+
+    protected void updateStatus() {
+        String text = getStatusText();
+         if (statusLabel != null) statusLabel.setText(text == null ? "" : text);
+    }
+
+    private String getStatusText() {
+        if (syncStatus == null || syncStatus.isEmpty()) {
+            return tradeStatus;
+        } else {
+            return syncStatus;
+        }
     }
 }

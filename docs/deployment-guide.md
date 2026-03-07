@@ -29,7 +29,7 @@ On Linux and macOS, install Java JDK 21:
 
 ```
 curl -s "https://get.sdkman.io" | bash
-sdk install java 21.0.2.fx-librca
+sdk install java 21.0.9.fx-librca
 ```
 
 Alternatively, on Ubuntu 22.04:
@@ -47,7 +47,7 @@ On Windows, install MSYS2 and Java JDK 21:
 
     32-bit: `pacman -S mingw-w64-i686-toolchain make mingw-w64-i686-cmake git`
 6. `curl -s "https://get.sdkman.io" | bash`
-7. `sdk install java 21.0.2.fx-librca`
+7. `sdk install java 21.0.9.fx-librca`
 
 ## Fork and build Haveno
 
@@ -133,8 +133,8 @@ Each seed node requires a locally running Monero node. You can use the default p
 Rebuild all seed nodes any time the list of registered seed nodes changes.
 
 > [!note]
-> * Avoid all seed nodes going offline at the same time. If all seed nodes go offline at the same time, the network will be reset, including registered arbitrators, the network filter object, and trade history. In that case, arbitrators need to restart or re-register, and the network filter object needs to be re-applied. This should be done immediately or clients will cancel their offers due to the signing arbitrators being unregistered and no replacements being available to re-sign.
 > * At least 2 seed nodes should be run because the seed nodes restart once per day.
+> * Avoid all seed nodes going offline at the same time. If all seed nodes go offline at the same time, network information like registered arbitrators and the network filter object will be reset. In that case, re-apply the network filter object (ctrl+f) and restart the arbitrators in order to re-register them with the seed nodes.
 
 ## Register keypairs with privileges
 
@@ -206,6 +206,12 @@ For example, change "Haveno" to "HavenoX", which will use this application folde
 To avoid interference with other networks, change `P2P_NETWORK_VERSION` in [Version.java](https://github.com/haveno-dex/haveno/blob/a7e90395d24ec3d33262dd5d09c5faec61651a51/common/src/main/java/haveno/common/app/Version.java#L83).
 
 For example, change it to `"B"`.
+
+## Set your fork's version
+
+Optionally add a fourth digit to `Version.VERSION` to represent your fork’s build version.
+
+For example, upstream Haveno may use version `1.2.3`, while your fork may use `1.2.3.0` and increment the last version digit as needed.
 
 ## Set the network's release date
 

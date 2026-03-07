@@ -99,7 +99,7 @@ public class CreateOfferService {
                                    BigInteger minAmount,
                                    Price fixedPrice,
                                    boolean useMarketBasedPrice,
-                                   double marketPriceMargin,
+                                   double marketPriceMarginPct,
                                    double securityDepositPct,
                                    PaymentAccount paymentAccount,
                                    boolean isPrivateOffer,
@@ -110,7 +110,7 @@ public class CreateOfferService {
                         "direction={}, " +
                         "fixedPrice={}, " +
                         "useMarketBasedPrice={}, " +
-                        "marketPriceMargin={}, " +
+                        "marketPriceMarginPct={}, " +
                         "amount={}, " +
                         "minAmount={}, " +
                         "securityDepositPct={}, " +
@@ -122,13 +122,13 @@ public class CreateOfferService {
                 direction,
                 fixedPrice == null ? null : fixedPrice.getValue(),
                 useMarketBasedPrice,
-                marketPriceMargin,
+                marketPriceMarginPct,
                 amount,
                 minAmount,
                 securityDepositPct,
                 isPrivateOffer,
                 buyerAsTakerWithoutDeposit,
-                extraInfo);
+                extraInfo == null ? null : "\"" + extraInfo + "\"");
 
         // must nullify empty string so contracts match
         if ("".equals(extraInfo)) extraInfo = null;
@@ -141,10 +141,15 @@ public class CreateOfferService {
             if (!isPrivateOffer) throw new IllegalArgumentException("Must set offer to private for buyer as taker without deposit");
         }
 
+        // verify payment account supports trade currency
+        if (paymentAccount.getTradeCurrencies().stream().noneMatch(tradeCurrency -> tradeCurrency.getCode().equals(currencyCode))) {
+            throw new IllegalArgumentException("Payment account does not support trade currency: " + currencyCode);
+        }
+
         // verify fixed price xor market price with margin
         if (fixedPrice != null) {
             if (useMarketBasedPrice) throw new IllegalArgumentException("Can create offer with fixed price or floating market price but not both");
-            if (marketPriceMargin != 0) throw new IllegalArgumentException("Cannot set market price margin with fixed price");
+            if (marketPriceMarginPct != 0) throw new IllegalArgumentException("Cannot set market price margin with fixed price");
         }
 
         // verify price
@@ -156,10 +161,16 @@ public class CreateOfferService {
             throw new IllegalArgumentException("Must provide fixed price");
         }
 
-        // adjust amount and min amount
+        // verify offer amounts
         BigInteger maxTradeLimit = offerUtil.getMaxTradeLimitForRelease(paymentAccount, currencyCode, direction, buyerAsTakerWithoutDeposit);
-        amount = CoinUtil.getRoundedAmount(amount, fixedPrice, Restrictions.getMinTradeAmount(), maxTradeLimit, currencyCode, paymentAccount.getPaymentMethod().getId());
-        minAmount = CoinUtil.getRoundedAmount(minAmount, fixedPrice, Restrictions.getMinTradeAmount(), maxTradeLimit, currencyCode, paymentAccount.getPaymentMethod().getId());
+        BigInteger minTradeLimit = Restrictions.getMinTradeAmount();
+        if (amount.compareTo(maxTradeLimit) > 0) throw new IllegalArgumentException("Amount must be below maximum amount of " + HavenoUtils.atomicUnitsToXmr(maxTradeLimit) + " XMR");
+        if (minAmount.compareTo(minTradeLimit) < 0) throw new IllegalArgumentException("Amount must be above minimum amount of " + HavenoUtils.atomicUnitsToXmr(minTradeLimit) + " XMR");
+        if (amount.compareTo(minAmount) < 0) throw new IllegalArgumentException("Minimum amount is larger than amount");
+
+        // adjust amount and min amount
+        amount = CoinUtil.getRoundedAmount(amount, fixedPrice, minTradeLimit, maxTradeLimit, currencyCode, paymentAccount.getPaymentMethod().getId());
+        minAmount = CoinUtil.getRoundedAmount(minAmount, fixedPrice, minTradeLimit, maxTradeLimit, currencyCode, paymentAccount.getPaymentMethod().getId());
 
         // generate one-time challenge for private offer
         String challenge = null;
@@ -172,7 +183,7 @@ public class CreateOfferService {
         long creationTime = new Date().getTime();
         NodeAddress makerAddress = p2PService.getAddress();
         long priceAsLong = fixedPrice != null ? fixedPrice.getValue() : 0L;
-        double marketPriceMarginParam = useMarketBasedPriceValue ? marketPriceMargin : 0;
+        double marketPriceMarginParam = useMarketBasedPriceValue ? marketPriceMarginPct : 0;
         long amountAsLong = amount != null ? amount.longValueExact() : 0L;
         long minAmountAsLong = minAmount != null ? minAmount.longValueExact() : 0L;
         String baseCurrencyCode = Res.getBaseCurrencyCode();
@@ -247,21 +258,25 @@ public class CreateOfferService {
                             double marketPriceMargin,
                             PaymentAccount paymentAccount,
                             String extraInfo) {
-        log.info("Cloning offer with sourceId={}, " +
+        String newOfferId = OfferUtil.getRandomOfferId();
+        log.info("Creating cloned offer with sourceId={}, " +
+                        "newOfferId={}, " +
                         "currencyCode={}, " +
                         "fixedPrice={}, " +
                         "useMarketBasedPrice={}, " +
                         "marketPriceMargin={}, " +
+                        "paymentAccountId={}, " +
                         "extraInfo={}",
                 sourceOffer.getId(),
+                newOfferId,
                 currencyCode,
                 fixedPrice == null ? null : fixedPrice.getValue(),
                 useMarketBasedPrice,
                 marketPriceMargin,
+                paymentAccount.getId(),
                 extraInfo);
 
         OfferPayload sourceOfferPayload = sourceOffer.getOfferPayload();
-        String newOfferId = OfferUtil.getRandomOfferId();
         Offer editedOffer = createAndGetOffer(newOfferId,
                 sourceOfferPayload.getDirection(),
                 currencyCode,
@@ -275,6 +290,12 @@ public class CreateOfferService {
                 sourceOfferPayload.isPrivateOffer(),
                 sourceOfferPayload.isBuyerAsTakerWithoutDeposit(),
                 extraInfo);
+
+        // maker fee cannot change
+        double newMakerFee = HavenoUtils.getMakerFeePct(currencyCode, sourceOfferPayload.isBuyerAsTakerWithoutDeposit());
+        if (sourceOfferPayload.getMakerFeePct() != newMakerFee) {
+            throw new IllegalArgumentException("Cannot clone offer with different maker fee, source maker fee: " + sourceOfferPayload.getMakerFeePct() + ", new maker fee: " + newMakerFee);
+        }
 
         // generate one-time challenge for private offer
         String challenge = null;
@@ -297,7 +318,7 @@ public class CreateOfferService {
                 sourceOfferPayload.getAmount(),
                 sourceOfferPayload.getMinAmount(),
                 sourceOfferPayload.getMakerFeePct(),
-                sourceOfferPayload.getTakerFeePct(),
+                HavenoUtils.getTakerFeePct(currencyCode, sourceOfferPayload.isBuyerAsTakerWithoutDeposit()),
                 sourceOfferPayload.getPenaltyFeePct(),
                 sourceOfferPayload.getBuyerSecurityDepositPct(),
                 sourceOfferPayload.getSellerSecurityDepositPct(),

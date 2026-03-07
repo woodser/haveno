@@ -53,6 +53,7 @@ import haveno.core.user.DontShowAgainLookup;
 import haveno.core.user.Preferences;
 import haveno.core.user.Preferences.UseTorForXmr;
 import haveno.core.user.User;
+import haveno.core.util.FormattingUtils;
 import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.desktop.Navigation;
 import haveno.desktop.app.HavenoApp;
@@ -422,12 +423,6 @@ public class MainViewModel implements ViewModel, HavenoSetup.HavenoSetupListener
         havenoSetup.setDisplayTorNetworkSettingsHandler(show -> {
             if (show) {
                 torNetworkSettingsWindow.show();
-
-                // bring connection error popup to front if displayed
-                if (moneroConnectionErrorPopup != null && moneroConnectionErrorPopup.isDisplayed()) {
-                    moneroConnectionErrorPopup.hide();
-                    moneroConnectionErrorPopup.show();
-                }
             } else if (torNetworkSettingsWindow.isDisplayed()) {
                 torNetworkSettingsWindow.hide();
             }
@@ -526,12 +521,12 @@ public class MainViewModel implements ViewModel, HavenoSetup.HavenoSetupListener
 
         havenoSetup.setFilterWarningHandler(warning -> new Popup().warning(warning).show());
 
-        this.footerVersionInfo.setValue("v" + Version.VERSION);
+        this.footerVersionInfo.setValue(FormattingUtils.formatVersion());
         this.getNewVersionAvailableProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue) {
-                this.footerVersionInfo.setValue("v" + Version.VERSION + " " + Res.get("mainView.version.update"));
+                this.footerVersionInfo.setValue(FormattingUtils.formatVersion() + " " + Res.get("mainView.version.update"));
             } else {
-                this.footerVersionInfo.setValue("v" + Version.VERSION);
+                this.footerVersionInfo.setValue(FormattingUtils.formatVersion());
             }
         });
 

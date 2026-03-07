@@ -28,6 +28,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -131,7 +133,7 @@ public class KeyStorage {
      * @param secretKey  The symmetric key that protects the key entry file
      */
     public KeyPair loadKeyPair(KeyEntry keyEntry, SecretKey secretKey) {
-        FileUtil.rollingBackup(storageDir, keyEntry.getFileName() + ".key", 20);
+        FileUtil.rollingBackup(storageDir, keyEntry.getFileName(), 20);
         try {
             KeyFactory keyFactory = KeyFactory.getInstance(keyEntry.getAlgorithm());
             byte[] encodedPrivateKey = loadKeyBytes(keyEntry, secretKey);
@@ -168,10 +170,15 @@ public class KeyStorage {
      * @param password Optional password that protects the key
      */
     public SecretKey loadSecretKey(KeyEntry keyEntry, String password) throws IncorrectPasswordException {
+        FileUtil.rollingBackup(storageDir, keyEntry.getFileName(), 20);
         char[] passwordChars = password == null ? new char[0] : password.toCharArray();
         try {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(new FileInputStream(storageDir + "/" + keyEntry.getFileName()), passwordChars);
+
+            try (FileInputStream fileInputStream = new FileInputStream(storageDir + "/" + keyEntry.getFileName())) {
+                keyStore.load(fileInputStream, passwordChars);
+            }
+
             Key key = keyStore.getKey(keyEntry.getAlias(), passwordChars);
             return (SecretKey) key;
         } catch (UnrecoverableKeyException e) { // null password when password is required
@@ -255,17 +262,22 @@ public class KeyStorage {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
             // load from existing file or initialize new
-            try {
-                keyStore.load(new FileInputStream(path), oldPasswordChars);
-            } catch (Exception e) {
+            if (Files.exists(Path.of(path))) {
+                try (FileInputStream fileInputStream = new FileInputStream(path)) {
+                    keyStore.load(fileInputStream, oldPasswordChars);
+                }
+            }
+            else {
                 keyStore.load(null, null);
             }
 
             // store in the keystore
             keyStore.setKeyEntry(alias, key, passwordChars, null);
 
-            // save the keystore
-            keyStore.store(new FileOutputStream(path), passwordChars);
+            try (FileOutputStream fileOutputStream = new FileOutputStream(path)) {
+                // save the keystore
+                keyStore.store(fileOutputStream, passwordChars);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Could not save key " + alias, e);
         }

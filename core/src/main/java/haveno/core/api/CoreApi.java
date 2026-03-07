@@ -49,9 +49,7 @@ import haveno.core.api.model.MarketPriceInfo;
 import haveno.core.api.model.PaymentAccountForm;
 import haveno.core.api.model.PaymentAccountFormField;
 import haveno.core.app.AppStartupState;
-import haveno.core.monetary.Price;
 import haveno.core.offer.Offer;
-import haveno.core.offer.OfferDirection;
 import haveno.core.offer.OpenOffer;
 import haveno.core.payment.PaymentAccount;
 import haveno.core.payment.payload.PaymentMethod;
@@ -60,15 +58,14 @@ import haveno.core.support.dispute.Dispute;
 import haveno.core.support.dispute.DisputeResult;
 import haveno.core.support.messages.ChatMessage;
 import haveno.core.trade.Trade;
-import haveno.core.trade.statistics.TradeStatistics3;
 import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.core.xmr.XmrNodeSettings;
 import haveno.proto.grpc.NotificationMessage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -227,18 +224,6 @@ public class CoreApi {
         return xmrConnectionService.checkConnection();
     }
 
-    public List<MoneroRpcConnection> checkXmrConnections() {
-        return xmrConnectionService.checkConnections();
-    }
-
-    public void startCheckingXmrConnection(Long refreshPeriod) {
-        xmrConnectionService.startCheckingConnection(refreshPeriod);
-    }
-
-    public void stopCheckingXmrConnection() {
-        xmrConnectionService.stopCheckingConnection();
-    }
-
     public MoneroRpcConnection getBestXmrConnection() {
         return xmrConnectionService.getBestConnection();
     }
@@ -339,12 +324,16 @@ public class CoreApi {
         walletsService.removeWalletPassword(password);
     }
 
-    public List<TradeStatistics3> getTradeStatistics() {
-        return new ArrayList<>(tradeStatisticsManager.getObservableTradeStatisticsSet());
-    }
-
     public int getNumConfirmationsForMostRecentTransaction(String addressString) {
         return walletsService.getNumConfirmationsForMostRecentTransaction(addressString);
+    }
+
+    public long getHeight() {
+        return walletsService.getHeight();
+    }
+
+    public long getTargetHeight() {
+        return Objects.requireNonNullElse(xmrConnectionService.getTargetHeight(), 0L);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +409,7 @@ public class CoreApi {
                             String directionAsString,
                             String priceAsString,
                             boolean useMarketBasedPrice,
-                            double marketPriceMargin,
+                            double marketPriceMarginPct,
                             long amountAsLong,
                             long minAmountAsLong,
                             double securityDepositPct,
@@ -437,7 +426,7 @@ public class CoreApi {
                 directionAsString,
                 priceAsString,
                 useMarketBasedPrice,
-                marketPriceMargin,
+                marketPriceMarginPct,
                 amountAsLong,
                 minAmountAsLong,
                 securityDepositPct,
@@ -452,32 +441,34 @@ public class CoreApi {
                 errorMessageHandler);
     }
 
-    public Offer editOffer(String offerId,
-                           String currencyCode,
-                           OfferDirection direction,
-                           Price price,
-                           boolean useMarketBasedPrice,
-                           double marketPriceMargin,
-                           BigInteger amount,
-                           BigInteger minAmount,
-                           double securityDepositPct,
-                           PaymentAccount paymentAccount,
-                           boolean isPrivateOffer,
-                           boolean buyerAsTakerWithoutDeposit,
-                           String extraInfo) {
-        return coreOffersService.editOffer(offerId,
+    public void editOffer(String offerId,
+                          String currencyCode,
+                          String priceAsString,
+                          boolean useMarketBasedPrice,
+                          double marketPriceMarginPct,
+                          String triggerPriceAsString,
+                          String paymentAccountId,
+                          String extraInfo,
+                          Consumer<Offer> resultHandler,
+                          ErrorMessageHandler errorMessageHandler) {
+        coreOffersService.editOffer(offerId,
                 currencyCode,
-                direction,
-                price,
+                priceAsString,
                 useMarketBasedPrice,
-                marketPriceMargin,
-                amount,
-                minAmount,
-                securityDepositPct,
-                paymentAccount,
-                isPrivateOffer,
-                buyerAsTakerWithoutDeposit,
-                extraInfo);
+                marketPriceMarginPct,
+                triggerPriceAsString,
+                paymentAccountId,
+                extraInfo,
+                resultHandler,
+                errorMessageHandler);
+    }
+
+    public void deactivateOffer(String offerId, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {
+        coreOffersService.deactivateOffer(offerId, resultHandler, errorMessageHandler);
+    }
+
+    public void activateOffer(String offerId, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {
+        coreOffersService.activateOffer(offerId, resultHandler, errorMessageHandler);
     }
 
     public void cancelOffer(String id, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {

@@ -69,12 +69,16 @@ public class BuyerProtocol extends DisputeProtocol {
     }
 
     @Override
-    protected void onInitialized() {
-        super.onInitialized();
+    protected void onInitializeAfterMailboxMessages() {
+        super.onInitializeAfterMailboxMessages();
+        maybeResendPaymentSentMessage();
+    }
+
+    private void maybeResendPaymentSentMessage() {
 
         // re-send payment sent message if not acked
+        if (trade.isShutDownStarted() || trade.isPayoutPublished()) return;
         ThreadUtils.execute(() -> {
-            if (trade.isShutDownStarted() || trade.isPayoutPublished()) return;
             synchronized (trade.getLock()) {
                 if (trade.isShutDownStarted() || trade.isPayoutPublished()) return;
                 if (trade.getState().ordinal() >= Trade.State.BUYER_SENT_PAYMENT_SENT_MSG.ordinal() && trade.getState().ordinal() < Trade.State.SELLER_RECEIVED_PAYMENT_SENT_MSG.ordinal()) {
@@ -123,7 +127,7 @@ public class BuyerProtocol extends DisputeProtocol {
 
         // advance trade state
         if (trade.isDepositsUnlocked() || trade.isDepositsFinalized() || trade.isPaymentSent()) {
-            trade.advanceState(Trade.State.BUYER_CONFIRMED_PAYMENT_SENT);
+            trade.setStateIfValidTransitionTo(Trade.State.BUYER_CONFIRMED_PAYMENT_SENT);
         } else {
             errorMessageHandler.handleErrorMessage("Cannot confirm payment sent for " + trade.getClass().getSimpleName() + " " + trade.getShortId() + " in state " + trade.getState());
             return;

@@ -87,7 +87,7 @@ public class ProcessInitTradeRequest extends TradeTask {
 
             // handle request as arbitrator
             else if (trade instanceof ArbitratorTrade) {
-                trade.getMaker().setPubKeyRing((trade.getOffer().getPubKeyRing())); // TODO: why initializing this here fields here and 
+                trade.getMaker().setPubKeyRing((trade.getOffer().getPubKeyRing())); // TODO: why initializing this here?
                 trade.getArbitrator().setPubKeyRing(processModel.getPubKeyRing()); // TODO: why duplicating field in process model?
                 if (!trade.getArbitrator().getNodeAddress().equals(request.getArbitratorNodeAddress())) throw new RuntimeException("Trade's arbitrator node address does not match request");
 
@@ -132,6 +132,7 @@ public class ProcessInitTradeRequest extends TradeTask {
                 if (request.getTradePrice() != trade.getPrice().getValue()) throw new RuntimeException("Trade price does not match request's trade price");
                 Arbitrator arbitrator = processModel.getUser().getAcceptedArbitratorByAddress(request.getArbitratorNodeAddress());
                 if (arbitrator == null) throw new RuntimeException("Arbitrator is not accepted by taker");
+                if (trade.getArbitrator().getNodeAddress() != null && !trade.getArbitrator().getNodeAddress().equals(request.getArbitratorNodeAddress())) throw new RuntimeException("Trade's arbitrator node address does not match request");
                 trade.getArbitrator().setNodeAddress(request.getArbitratorNodeAddress());
                 trade.getArbitrator().setPubKeyRing(arbitrator.getPubKeyRing());
                 sender = trade.getTradePeer(processModel.getTempTradePeerNodeAddress());

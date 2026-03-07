@@ -22,6 +22,8 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.Inject;
+
+import haveno.common.ThreadUtils;
 import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.handlers.FaultHandler;
@@ -54,7 +56,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -91,6 +92,7 @@ public class PriceFeedService {
     @Nullable
     private PriceRequest priceRequest;
     private String requestAllPricesError = null;
+    private static final String THREAD_ID = PriceFeedService.class.getSimpleName();
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -240,14 +242,16 @@ public class PriceFeedService {
 
             long delay = PERIOD_SEC + new Random().nextInt(5);
             requestTimer = UserThread.runAfter(() -> {
-                // If we have not received a result from the last request. We try a new provider.
-                if (baseUrlOfRespondingProvider == null) {
-                    final String oldBaseUrl = priceProvider.getBaseUrl();
-                    setNewPriceProvider();
-                    log.warn("We did not receive a response from provider {}. " +
-                            "We select the new provider {} and use that for a new request.", oldBaseUrl, priceProvider.getBaseUrl());
-                }
-                request(true);
+                ThreadUtils.execute(() -> {
+                    // If we have not received a result from the last request. We try a new provider.
+                    if (baseUrlOfRespondingProvider == null) {
+                        final String oldBaseUrl = priceProvider.getBaseUrl();
+                        setNewPriceProvider();
+                        log.warn("We did not receive a response from provider {}. " +
+                                "We select the new provider {} and use that for a new request.", oldBaseUrl, priceProvider.getBaseUrl());
+                    }
+                    request(true);
+                }, THREAD_ID);
             }, delay);
         }
     }
@@ -346,10 +350,10 @@ public class PriceFeedService {
         return new Date(epochInMillisAtLastRequest);
     }
 
-    public void applyLatestHavenoMarketPrice(Set<TradeStatistics3> tradeStatisticsSet) {
+    public void applyLatestHavenoMarketPrice(List<TradeStatistics3> tradeStatisticsList) {
         // takes about 10 ms for 5000 items
         Map<String, List<TradeStatistics3>> mapByCurrencyCode = new HashMap<>();
-        tradeStatisticsSet.forEach(e -> {
+        tradeStatisticsList.forEach(e -> {
             List<TradeStatistics3> list;
             String currencyCode = e.getCurrency();
             if (mapByCurrencyCode.containsKey(currencyCode)) {
@@ -382,9 +386,9 @@ public class PriceFeedService {
         requestAllPricesError = null;
         requestPrices();
         UserThread.runAfter(() -> {
-            if (latch.getCount() > 0) requestAllPricesError = "Timeout fetching market prices within 20 seconds";
+            if (latch.getCount() > 0) requestAllPricesError = "Timeout fetching market prices within 30 seconds";
             UserThread.execute(() -> latch.countDown());
-        }, 20);
+        }, 30);
         try {
             latch.await();
         } catch (InterruptedException e) {
