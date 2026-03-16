@@ -28,11 +28,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class Version {
 
     // The application version.
-    // We use a three-digit versioning scheme to distinguish between upstream changes and network-specific builds:
-    // 1st digit: Mandatory protocol or consensus changes from upstream.
-    // 2nd digit: Non-mandatory updates, patches, or minor improvements from upstream.
-    // 3rd digit: Network-specific builds. This is reserved for forks and is never set by upstream.
-    public static final String VERSION = "1.2.3"; // TODO: this will become 1.3.0 for the next version
+    // We use semantic versioning with major, minor and patch.
+    // Optionally supports a fourth digit for fork-specific build versions (e.g. 1.2.3.0).
+    public static final String VERSION = "1.2.3.1";
 
     /**
      * Holds a list of the tagged resource files for optimizing the getData requests.
