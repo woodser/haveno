@@ -121,6 +121,10 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
     public static final int POSSIBLE_DOS_THRESHOLD = 5;
     public static final String POSSIBLE_DOS_MESSAGE = "Possible DoS attack detected";
 
+    // Throttle network envelope limits for incoming connections
+    private LeakyBucket envelopeRateBucket = new LeakyBucket(config.peerEnvelopeRate, config.peerEnvelopeMaxBurst, config.peerEnvelopeMaxStrikes);
+    private static final EventThrottler closeConnectionLogThrottler = new EventThrottler(60, TimeUnit.SECONDS);
+
     public static int getPermittedMessageSize() {
         return PERMITTED_MESSAGE_SIZE;
     }
@@ -409,13 +413,27 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
     public void onMessage(NetworkEnvelope networkEnvelope, Connection connection) {
         checkArgument(connection.equals(this));
         if (networkEnvelope instanceof BundleOfEnvelopes) {
-            onBundleOfEnvelopes((BundleOfEnvelopes) networkEnvelope, connection);
+            onBundleOfEnvelopes((BundleOfEnvelopes) networkEnvelope);
         } else {
-            ThreadUtils.execute(() -> messageListeners.forEach(e -> e.onMessage(networkEnvelope, connection)), THREAD_ID);
+            if (envelopeRateBucket.isSpamming(1)) {
+                Tuple2<Boolean, Long> throttleResult = closeConnectionLogThrottler.onEvent();
+                if (!throttleResult.first) {
+                    log.warn("Closing connection with too many envelopes: peer={}, uid={}", getPeersNodeAddressOptional().map(NodeAddress::getFullAddress).orElse("null"), uid);
+                    if (throttleResult.second > 0) log.warn("We throttled {} warnings about closing connections since the last log entry" + (throttleResult.second >= POSSIBLE_DOS_THRESHOLD ? ". " + POSSIBLE_DOS_MESSAGE : ""), throttleResult.second);
+                }
+                ruleViolation = RuleViolation.THROTTLE_LIMIT_EXCEEDED;
+                shutDown(CloseConnectionReason.RULE_VIOLATION);
+                return;
+            }
+            announceEnvelope(networkEnvelope);
         }
     }
 
-    private void onBundleOfEnvelopes(BundleOfEnvelopes bundleOfEnvelopes, Connection connection) {
+    private void announceEnvelope(NetworkEnvelope networkEnvelope) {
+        ThreadUtils.execute(() -> messageListeners.forEach(e -> e.onMessage(networkEnvelope, this)), THREAD_ID);
+    }
+
+    private void onBundleOfEnvelopes(BundleOfEnvelopes bundleOfEnvelopes) {
         Map<P2PDataStorage.ByteArray, Set<NetworkEnvelope>> itemsByHash = new HashMap<>();
         Set<NetworkEnvelope> envelopesToProcess = new HashSet<>();
         List<NetworkEnvelope> networkEnvelopes = bundleOfEnvelopes.getEnvelopes();
@@ -447,10 +465,21 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
                 envelopesToProcess.add(networkEnvelope);
             }
         }
+    
+        // check if peer is spamming messages
+        if (envelopeRateBucket.isSpamming(envelopesToProcess.size())) {
+            Tuple2<Boolean, Long> throttleResult = closeConnectionLogThrottler.onEvent();
+            if (!throttleResult.first) {
+                log.warn("Closing connection with too many bundled envelopes: numEnvelopes={}, peer={}, uid={}", envelopesToProcess.size(), getPeersNodeAddressOptional().map(NodeAddress::getFullAddress).orElse("null"), uid);
+                if (throttleResult.second > 0) log.warn("We throttled {} warnings about closing connections since the last log entry" + (throttleResult.second >= POSSIBLE_DOS_THRESHOLD ? ". " + POSSIBLE_DOS_MESSAGE : ""), throttleResult.second);
+            }
+            ruleViolation = RuleViolation.THROTTLE_LIMIT_EXCEEDED;
+            shutDown(CloseConnectionReason.RULE_VIOLATION, null);
+            return;
+        }
+
         ThreadUtils.execute(() -> {
-            envelopesToProcess.forEach(envelope -> {
-                messageListeners.forEach(listener -> listener.onMessage(envelope, connection));
-            });
+            envelopesToProcess.forEach(envelope -> announceEnvelope(envelope));
         }, THREAD_ID);
     }
 

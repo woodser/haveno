@@ -80,6 +80,9 @@ public class Config {
     public static final String HIDDEN_SERVICE_ADDRESS = "hiddenServiceAddress";
     public static final String USE_LOCALHOST_FOR_P2P = "useLocalhostForP2P";
     public static final String MAX_CONNECTIONS = "maxConnections";
+    public static final String PEER_ENVELOPE_RATE = "peerEnvelopeRate";
+    public static final String PEER_ENVELOPE_MAX_BURST = "peerEnvelopeMaxBurst";
+    public static final String PEER_ENVELOPE_MAX_STRIKES = "peerEnvelopeMaxStrikes";
     public static final String SOCKS_5_PROXY_XMR_ADDRESS = "socks5ProxyXmrAddress";
     public static final String SOCKS_5_PROXY_HTTP_ADDRESS = "socks5ProxyHttpAddress";
     public static final String USE_TOR_FOR_XMR = "useTorForXmr";
@@ -176,6 +179,9 @@ public class Config {
     public final List<String> banList;
     public final boolean useLocalhostForP2P;
     public final int maxConnections;
+    public final int peerEnvelopeRate;
+    public final int peerEnvelopeMaxBurst;
+    public final int peerEnvelopeMaxStrikes;
     public final String socks5ProxyXmrAddress;
     public final String socks5ProxyHttpAddress;
     public final File torrcFile;
@@ -435,6 +441,24 @@ public class Config {
                         .withRequiredArg()
                         .ofType(int.class)
                         .defaultsTo(12);
+
+        ArgumentAcceptingOptionSpec<Integer> peerEnvelopeRateOpt =
+                parser.accepts(PEER_ENVELOPE_RATE, "Sustained number of network envelopes allowed per second per peer")
+                        .withRequiredArg()
+                        .ofType(int.class)
+                        .defaultsTo(50);
+
+        ArgumentAcceptingOptionSpec<Integer> peerEnvelopeMaxBurstOpt =
+                parser.accepts(PEER_ENVELOPE_MAX_BURST, "Maximum number of network envelopes allowed in a single burst (e.g. for sync)")
+                        .withRequiredArg()
+                        .ofType(int.class)
+                        .defaultsTo(25000);
+                        
+        ArgumentAcceptingOptionSpec<Integer> peerEnvelopeMaxStrikesOpt =
+                parser.accepts(PEER_ENVELOPE_MAX_STRIKES, "Number of times a peer can exceed the burst limit before being disconnected")
+                        .withRequiredArg()
+                        .ofType(int.class)
+                        .defaultsTo(2);
 
         ArgumentAcceptingOptionSpec<String> socks5ProxyXmrAddressOpt =
                 parser.accepts(SOCKS_5_PROXY_XMR_ADDRESS, "A proxy address to be used for Bitcoin network.")
@@ -736,6 +760,9 @@ public class Config {
             this.banList = options.valuesOf(banListOpt);
             this.useLocalhostForP2P = !this.baseCurrencyNetwork.isMainnet() && options.valueOf(useLocalhostForP2POpt);
             this.maxConnections = options.valueOf(maxConnectionsOpt);
+            this.peerEnvelopeRate = options.valueOf(peerEnvelopeRateOpt);
+            this.peerEnvelopeMaxBurst = options.valueOf(peerEnvelopeMaxBurstOpt);
+            this.peerEnvelopeMaxStrikes = options.valueOf(peerEnvelopeMaxStrikesOpt);
             this.socks5ProxyXmrAddress = options.valueOf(socks5ProxyXmrAddressOpt);
             this.socks5ProxyHttpAddress = options.valueOf(socks5ProxyHttpAddressOpt);
             this.msgThrottlePerSec = options.valueOf(msgThrottlePerSecOpt);
