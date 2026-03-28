@@ -535,7 +535,7 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
                     + "\nuid=" + uid
                     + "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
 
-            if (closeConnectionReason.sendCloseMessage) {
+            if (closeConnectionReason.sendCloseMessage && peersNodeAddressOptional.isPresent()) {
                 new Thread(() -> {
                     try {
                         String reason = closeConnectionReason == CloseConnectionReason.RULE_VIOLATION ?
@@ -977,7 +977,7 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
         boolean throttleLogs = throttlerResult.first;
         if (!throttleLogs) {
             log.info(msg);
-            if (throttlerResult.second > 0) log.info("We received {} throttled info logs since the last log entry" + (throttlerResult.second >= POSSIBLE_DOS_THRESHOLD ? ". " + POSSIBLE_DOS_MESSAGE : ""), throttlerResult.second);
+            if (throttlerResult.second > 0) log.warn("We received {} throttled info logs since the last log entry" + (throttlerResult.second >= POSSIBLE_DOS_THRESHOLD ? ". " + POSSIBLE_DOS_MESSAGE : ""), throttlerResult.second);
         }
     }
 }
