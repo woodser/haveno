@@ -18,7 +18,7 @@
 package haveno.network.p2p.network;
 
 import haveno.network.p2p.NodeAddress;
-
+import haveno.common.ThreadUtils;
 import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.app.Capabilities;
@@ -69,6 +69,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public abstract class NetworkNode implements MessageListener {
     private static final Logger log = LoggerFactory.getLogger(NetworkNode.class);
     private static final int CREATE_SOCKET_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(120);
+    private static final String THREAD_ID = NetworkNode.class.getSimpleName();
 
     final int servicePort;
     private final NetworkProtoResolver networkProtoResolver;
@@ -238,12 +239,12 @@ public abstract class NetworkNode implements MessageListener {
             if (timeoutSeconds != null) future.orTimeout(timeoutSeconds, TimeUnit.SECONDS);
             future.exceptionally(throwable -> {
                 log.debug("onFailure at sendMessage: peersNodeAddress={}\n\tmessage={}\n\tthrowable={}", peersNodeAddress, networkEnvelope.getClass().getSimpleName(), throwable.toString());
-                UserThread.execute(() -> {
+                ThreadUtils.execute(() -> {
                     if (!resultFuture.setException(throwable)) {
                         // In case the setException returns false we need to cancel the future.
                         resultFuture.cancel(true);
                     }
-                });
+                }, THREAD_ID);
                 return null;
             });
             future.thenAccept(resultFuture::set);
@@ -312,18 +313,18 @@ public abstract class NetworkNode implements MessageListener {
 
             Futures.addCallback(future, new FutureCallback<>() {
                 public void onSuccess(Connection connection) {
-                    UserThread.execute(() -> resultFuture.set(connection));
+                    ThreadUtils.execute(() -> resultFuture.set(connection), THREAD_ID);
                 }
 
                 public void onFailure(@NotNull Throwable throwable) {
-                    UserThread.execute(() -> resolveWithException(resultFuture, throwable));
+                    ThreadUtils.execute(() -> resolveWithException(resultFuture, throwable), THREAD_ID);
                 }
             }, MoreExecutors.directExecutor());
 
         } catch (RejectedExecutionException exception) {
             if (!executor.isShutdown()) {
                 log.error("RejectedExecutionException at sendMessage: ", exception);
-                UserThread.execute(() -> resolveWithException(resultFuture, exception));
+                ThreadUtils.execute(() -> resolveWithException(resultFuture, exception), THREAD_ID);
             }
         }
         return resultFuture;
