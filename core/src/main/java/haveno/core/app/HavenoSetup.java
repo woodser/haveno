@@ -340,17 +340,22 @@ public class HavenoSetup {
 
         // run off main thread so domain initialization does not block UI
         ThreadUtils.submitToPool(() -> {
-            initDomainServices();
+            try {
+                initDomainServices();
 
-            havenoSetupListeners.forEach(HavenoSetupListener::onSetupComplete);
+                havenoSetupListeners.forEach(HavenoSetupListener::onSetupComplete);
 
-            // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
-            // in MainViewModel
-            maybeShowSecurityRecommendation();
-            maybeShowLocalhostRunningInfo();
-            maybeShowAccountSigningStateInfo();
-            maybeShowTorAddressUpgradeInformation();
-            checkInboundConnections();
+                // We set that after calling the setupCompleteHandler to not trigger a popup from the dev dummy accounts
+                // in MainViewModel
+                maybeShowSecurityRecommendation();
+                maybeShowLocalhostRunningInfo();
+                maybeShowAccountSigningStateInfo();
+                maybeShowTorAddressUpgradeInformation();
+                checkInboundConnections();
+            } catch (Throwable t) {
+                log.error("Error during haveno setup: {}", t.getMessage(), t);
+                throw t;
+            }
         });
     }
 
@@ -475,7 +480,7 @@ public class HavenoSetup {
     }
 
     private void initDomainServices() {
-        log.info("initDomainServices");
+        log.info("Initializing domain services");
 
         domainInitialisation.initDomainServices(rejectedTxErrorMessageHandler,
                 displayPrivateNotificationHandler,
@@ -489,6 +494,7 @@ public class HavenoSetup {
 
         allBasicServicesInitialized = true;
 
+        log.info("Done initializing domain services");
         appStartupState.onDomainServicesInitialized();
     }
 

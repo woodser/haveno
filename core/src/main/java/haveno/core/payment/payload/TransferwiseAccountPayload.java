@@ -19,6 +19,7 @@ package haveno.core.payment.payload;
 
 import com.google.protobuf.Message;
 
+import haveno.common.crypto.Hash;
 import haveno.common.util.JsonExclude;
 import haveno.core.locale.Res;
 import lombok.EqualsAndHashCode;
@@ -91,6 +92,22 @@ public final class TransferwiseAccountPayload extends PaymentAccountPayload {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public byte[] getHash() {
+        protobuf.PaymentAccountPayload payload = (protobuf.PaymentAccountPayload) this.toProtoMessage();
+        protobuf.TransferwiseAccountPayload.Builder hashBuilder = payload.getTransferwiseAccountPayload().toBuilder();
+        hashBuilder.clearHolderName(); // ignore holder name
+        return Hash.getRipemd160hash(hashBuilder.build().toByteArray());
+    }
+
+    /**
+     * @deprecated Legacy hash used to maintain compatibility with a bug in v1.2.3.
+     * TODO: Remove once the network has transitioned.
+     */
+    @Deprecated
+    public byte[] getLegacyHash() {
+        return super.getHash();
+    }
 
     @Override
     public String getPaymentDetails() {

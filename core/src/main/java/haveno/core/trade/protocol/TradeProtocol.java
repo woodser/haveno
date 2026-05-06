@@ -98,7 +98,7 @@ import java.util.concurrent.CountDownLatch;
 @Slf4j
 public abstract class TradeProtocol implements DecryptedDirectMessageListener, DecryptedMailboxListener {
 
-    public static final int TRADE_STEP_TIMEOUT_SECONDS = Config.baseCurrencyNetwork().isTestnet() ? 60 : 180;
+    public static final int TRADE_STEP_TIMEOUT_SECONDS = Config.baseCurrencyNetwork().isTestnet() ? 90 : 180;
     private static final String TIMEOUT_REACHED = "Timeout reached.";
     public static final int MAX_ATTEMPTS = 5; // max attempts to create txs and other protocol functions
     public static final int REQUEST_CONNECTION_SWITCH_EVERY_NUM_ATTEMPTS = 2; // request connection switch on even attempts
@@ -246,10 +246,6 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     protected void onInitialized() {
-
-        // reset pools for trade ids
-        ThreadUtils.reset(getInitId());
-        ThreadUtils.reset(trade.getId());
 
         // listen for direct messages unless finished (assumes this is called before mailbox message service is intialized)
         MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
@@ -657,6 +653,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                         (errorMessage) -> {
                                             log.warn("Error processing payment sent message: " + errorMessage);
                                             processModel.getTradeManager().requestPersistence();
+                                            if (trade.isShutDownStarted()) {
+                                                log.warn("Skipping error handling for PaymentSentMessage for {} {} because trade is shutting down", trade.getClass().getSimpleName(), trade.getId());
+                                                unlatchTrade();
+                                                return;
+                                            }
             
                                             // schedule to reprocess message unless deleted
                                             if (trade.getBuyer().getPaymentSentMessage() != null) {
@@ -769,6 +770,11 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                     errorMessage -> {
                                         log.warn("Error processing payment received message: " + errorMessage);
                                         processModel.getTradeManager().requestPersistence();
+                                        if (trade.isShutDownStarted()) {
+                                            log.warn("Skipping error handling for PaymentReceivedMessage for {} {} because trade is shutting down", trade.getClass().getSimpleName(), trade.getId());
+                                            unlatchTrade();
+                                            return;
+                                        }
 
                                         // schedule to reprocess message or nack
                                         if (trade.getSeller().getPaymentReceivedMessage() != null) {

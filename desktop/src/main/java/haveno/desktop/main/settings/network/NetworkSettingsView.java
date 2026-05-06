@@ -19,6 +19,7 @@ package haveno.desktop.main.settings.network;
 
 import com.google.inject.Inject;
 import haveno.common.ClockWatcher;
+import haveno.common.ThreadUtils;
 import haveno.common.UserThread;
 import haveno.core.api.XmrConnectionService;
 import haveno.core.api.XmrLocalNode;
@@ -44,6 +45,9 @@ import haveno.desktop.main.overlays.windows.TorNetworkSettingsWindow;
 import haveno.desktop.util.GUIUtil;
 import haveno.network.p2p.P2PService;
 import haveno.network.p2p.network.Statistic;
+import haveno.network.utils.EventThrottler;
+import haveno.network.utils.EventThrottler.ThrottleResult;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import static javafx.beans.binding.Bindings.createStringBinding;
@@ -62,6 +66,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+
 import org.fxmisc.easybind.EasyBind;
 import org.fxmisc.easybind.Subscription;
 
@@ -124,6 +131,9 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     private ChangeListener<Toggle> useTorForXmrToggleGroupListener;
     private ChangeListener<Toggle> moneroPeersToggleGroupListener;
     private ChangeListener<Filter> filterPropertyListener;
+
+    private static EventThrottler p2pTableUpdateThrottler = new EventThrottler(1000, TimeUnit.MILLISECONDS);
+    private static final String THREAD_ID = NetworkSettingsView.class.getSimpleName();
 
     @Inject
     public NetworkSettingsView(WalletsSetup walletsSetup,
@@ -207,7 +217,8 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         moneroConnectionsTableView.getSortOrder().add(moneroConnectionConnectedColumn);
 
         p2pPeersTableView.setMinHeight(180);
-        p2pPeersTableView.setPrefHeight(180);
+        p2pPeersTableView.setPrefHeight(250);
+        VBox.setVgrow(p2pPeersTableView, Priority.SOMETIMES);
         p2pPeersTableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         p2pPeersTableView.setPlaceholder(new AutoTooltipLabel(Res.get("table.placeholder.noData")));
         p2pPeersTableView.getSortOrder().add(creationDateColumn);
@@ -515,14 +526,19 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     }
 
     private void updateP2PTable() {
-        UserThread.execute(() -> {
-            if (connectionService.isShutDownStarted()) return; // ignore if shutting down
-            p2pPeersTableView.getItems().forEach(P2pNetworkListItem::cleanup);
-            p2pNetworkListItems.clear();
-            p2pNetworkListItems.setAll(p2PService.getNetworkNode().getAllConnections().stream()
+        ThrottleResult throttleResult = p2pTableUpdateThrottler.onEvent();
+        if (throttleResult.throttled) return; // update is throttled (avoids dos with many peer connections)
+        ThreadUtils.execute(() -> {
+            List<P2pNetworkListItem> list = p2PService.getNetworkNode().getAllConnections().stream()
                     .map(connection -> new P2pNetworkListItem(connection, clockWatcher))
-                    .collect(Collectors.toList()));
-        });
+                    .collect(Collectors.toList());
+            UserThread.execute(() -> {
+                if (connectionService.isShutDownStarted()) return; // ignore if shutting down
+                p2pPeersTableView.getItems().forEach(P2pNetworkListItem::cleanup);
+                p2pNetworkListItems.clear();
+                p2pNetworkListItems.setAll(list);
+            });
+        }, THREAD_ID);
     }
 
     private void updateMoneroConnectionsTable() {

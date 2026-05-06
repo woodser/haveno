@@ -15,9 +15,15 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package haveno.desktop.main.offer;
+package haveno.asset.coins;
 
-public interface ClosableView {
-    public void setCloseHandler(OfferView.CloseHandler closeHandler);
-    public void close();
+import haveno.asset.Coin;
+import haveno.asset.RegexAddressValidator;
+
+public class Zcash extends Coin {
+
+    public Zcash() {
+        super("Zcash", "ZEC", new RegexAddressValidator("^t.*", "validation.altcoin.zAddressesNotSupported"));
+    }
+
 }

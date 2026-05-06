@@ -24,15 +24,16 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 @EqualsAndHashCode
 public class PeerList implements PersistableEnvelope {
     @Getter
-    private final Set<Peer> set = new HashSet<>();
+    private final Map<String, Peer> map = new ConcurrentHashMap<>();
 
     public PeerList() {
     }
@@ -42,16 +43,14 @@ public class PeerList implements PersistableEnvelope {
     }
 
     public int size() {
-        synchronized (set) {
-            return set.size();
-        }
+        return map.size();
     }
 
     @Override
     public Message toProtoMessage() {
         return protobuf.PersistableEnvelope.newBuilder()
                 .setPeerList(protobuf.PeerList.newBuilder()
-                        .addAllPeer(set.stream().map(Peer::toProtoMessage).collect(Collectors.toList())))
+                        .addAllPeer(map.values().stream().map(Peer::toProtoMessage).collect(Collectors.toList())))
                 .build();
     }
 
@@ -62,16 +61,21 @@ public class PeerList implements PersistableEnvelope {
     }
 
     public void setAll(Collection<Peer> collection) {
-        synchronized (set) {
-            this.set.clear();
-            this.set.addAll(collection);
+        synchronized (map) {
+            addAll(collection);
+        }
+    }
+
+    public void addAll(Collection<Peer> collection) {
+        synchronized (map) {
+            collection.forEach(peer -> this.map.put(peer.getNodeAddress().toString(), peer));
         }
     }
 
     @Override
     public String toString() {
         return "PeerList{" +
-                "\n     set=" + set +
+                "\n     set=" + map.values() +
                 "\n}";
     }
 }

@@ -142,7 +142,6 @@ import org.slf4j.LoggerFactory;
 public class TradeManager implements PersistedDataHost, DecryptedDirectMessageListener {
 
     private static final Logger log = LoggerFactory.getLogger(TradeManager.class);
-    private static final int INIT_TRADE_RANDOM_DELAY_MS = 10000; // random delay to initialize trades
 
     private boolean isShutDownStarted;
     private boolean isShutDown;
@@ -261,8 +260,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
         failedTradesManager.setUnFailTradeCallback(this::unFailTrade);
 
-        // TODO: better way to set references
-        xmrWalletService.setTradeManager(this); // TODO: set reference in HavenoUtils for consistency
+        HavenoUtils.tradeManager = this; // TODO: better way to share references?
         HavenoUtils.notificationService = notificationService;
     }
 
@@ -297,21 +295,26 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         TradeMessage tradeMessage = (TradeMessage) networkEnvelope;
         String tradeId = tradeMessage.getOfferId();
         log.info("TradeManager received {} for tradeId={}, sender={}, uid={}", networkEnvelope.getClass().getSimpleName(), tradeId, sender, tradeMessage.getUid());
-        ThreadUtils.execute(() -> {
-            if (networkEnvelope instanceof InitTradeRequest) {
-                handleInitTradeRequest((InitTradeRequest) networkEnvelope, sender);
-            } else if (networkEnvelope instanceof InitMultisigRequest) {
-                handleInitMultisigRequest((InitMultisigRequest) networkEnvelope, sender);
-            } else if (networkEnvelope instanceof SignContractRequest) {
-                handleSignContractRequest((SignContractRequest) networkEnvelope, sender);
-            } else if (networkEnvelope instanceof SignContractResponse) {
-                handleSignContractResponse((SignContractResponse) networkEnvelope, sender);
-            } else if (networkEnvelope instanceof DepositRequest) {
-                handleDepositRequest((DepositRequest) networkEnvelope, sender);
-            } else if (networkEnvelope instanceof DepositResponse) {
-                handleDepositResponse((DepositResponse) networkEnvelope, sender);
-            }
-        }, tradeId);
+        try {
+            ThreadUtils.execute(() -> {
+                if (networkEnvelope instanceof InitTradeRequest) {
+                    handleInitTradeRequest((InitTradeRequest) networkEnvelope, sender);
+                } else if (networkEnvelope instanceof InitMultisigRequest) {
+                    handleInitMultisigRequest((InitMultisigRequest) networkEnvelope, sender);
+                } else if (networkEnvelope instanceof SignContractRequest) {
+                    handleSignContractRequest((SignContractRequest) networkEnvelope, sender);
+                } else if (networkEnvelope instanceof SignContractResponse) {
+                    handleSignContractResponse((SignContractResponse) networkEnvelope, sender);
+                } else if (networkEnvelope instanceof DepositRequest) {
+                    handleDepositRequest((DepositRequest) networkEnvelope, sender);
+                } else if (networkEnvelope instanceof DepositResponse) {
+                    handleDepositResponse((DepositResponse) networkEnvelope, sender);
+                }
+            }, tradeId);
+        } catch (Throwable t) {
+            log.warn("Error handling direct message on trade thread. That should never happen. tradeId=" + tradeId + ", error: " + t.getMessage(), t);
+            return;
+        }
     }
 
 
@@ -365,7 +368,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
         // skip trade shut down if not initialized
         if (!HavenoUtils.isSeedNode() && !tradesInitialized.get()) {
-            log.warn("Skipping trade shut down because trades were not initialized");
+            log.warn("Skipping start trade shut down because trades were not initialized");
             return;
         }
 
@@ -397,6 +400,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     private void closeAllTrades() {
+
+        // skip trade shut down if not initialized
+        if (!HavenoUtils.isSeedNode() && !tradesInitialized.get()) {
+            log.warn("Skipping trade shut down because trades were not initialized");
+            return;
+        }
 
         // collect trades to shutdown
         List<Trade> trades = getAllTrades();
@@ -602,7 +611,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             }
   
             // ensure trade does not already exist
-            Optional<Trade> tradeOptional = getOpenTrade(request.getOfferId());
+            Optional<Trade> tradeOptional = getOpenOrClosedTrade(request.getOfferId());
             if (tradeOptional.isPresent()) {
                 log.warn("Ignoring InitTradeRequest to maker because trade already exists with id " + request.getOfferId() + ". This should never happen.");
                 return;
@@ -695,7 +704,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
             // handle trade
             Trade trade;
-            Optional<Trade> tradeOptional = getOpenTrade(offer.getId());
+            Optional<Trade> tradeOptional = getOpenOrClosedTrade(offer.getId());
             if (tradeOptional.isPresent()) {
                 trade = tradeOptional.get();
 
@@ -903,7 +912,6 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         // check offer availability and create trade if available
         checkOfferAvailability(offer, isTakerApiUser, paymentAccountId, tradeAmount, () -> {
             if (offer.getState() == Offer.State.AVAILABLE) {
-                if (ThreadUtils.isShutDown(offer.getId())) ThreadUtils.reset(offer.getId());
                 ThreadUtils.execute(() -> {
                     try {
 
@@ -1120,9 +1128,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
             ThreadUtils.submitToPool(() -> {
                 try {
                     trade.shutDown();
-                    unregisterTradeProtocol(trade);
                 } catch (Exception e) {
                     log.warn("Error shutting down {} {} on move to failed trades", trade.getClass().getSimpleName(), trade.getShortId(), e);
+                } finally {
+                    unregisterTradeProtocol(trade);
                 }
             });
         }
@@ -1413,6 +1422,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     public Optional<Trade> getClosedTrade(String tradeId) {
+        return closedTradableManager.getTradeById(tradeId);
+    }
+
+    public Optional<Trade> getOpenOrClosedTrade(String tradeId) {
+        Optional<Trade> tradeOptional = getOpenTrade(tradeId);
+        if (tradeOptional.isPresent()) return tradeOptional;
         return closedTradableManager.getTradeById(tradeId);
     }
 

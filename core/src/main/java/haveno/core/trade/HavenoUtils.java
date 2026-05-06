@@ -37,6 +37,10 @@ import haveno.core.app.HavenoSetup;
 import haveno.core.locale.CurrencyUtil;
 import haveno.core.offer.OfferPayload;
 import haveno.core.offer.OpenOfferManager;
+import haveno.core.payment.payload.MoneyBeamAccountPayload;
+import haveno.core.payment.payload.PaymentAccountPayload;
+import haveno.core.payment.payload.PixAccountPayload;
+import haveno.core.payment.payload.TransferwiseAccountPayload;
 import haveno.core.support.dispute.arbitration.ArbitrationManager;
 import haveno.core.support.dispute.arbitration.arbitrator.Arbitrator;
 import haveno.core.trade.messages.PaymentReceivedMessage;
@@ -61,6 +65,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -111,8 +116,9 @@ public class HavenoUtils {
     public static final long LOG_MONEROD_NOT_SYNCED_WARN_PERIOD_MS = 1000 * 30; // log warnings when daemon not synced once every 30s
     public static final int PRIVATE_OFFER_PASSPHRASE_NUM_WORDS = 8; // number of words in a private offer passphrase
     public static final boolean RECOMMEND_CONFIRMATIONS_BEFORE_SENDING_PAYMENT = true; // recommend waiting additional confirmations before sending payment
+    public static final long ARBITRATOR_IDLE_SYNC_PERIOD_MS = Config.baseCurrencyNetwork().isTestnet() ? 75000 : 12 * 60 * 60 * 1000; // refresh arbitrator trade wallets once every 12 hours
 
-    // synchronize requests to the daemon
+    // synchronize requests to monerod
     private static boolean SYNC_DAEMON_REQUESTS = false; // sync long requests to daemon (e.g. refresh, update pool) // TODO: performance suffers by syncing daemon requests, but otherwise we sometimes get sporadic errors?
     private static boolean SYNC_WALLET_REQUESTS = false; // additionally sync wallet functions to daemon (e.g. create txs)
     private static boolean SYNC_IMPORT_MULTISIG_REQUESTS = false; // sync import multisig requests to avoid concurrent imports
@@ -150,6 +156,7 @@ public class HavenoUtils {
     public static CorePaymentAccountsService corePaymentAccountService;
     public static TradeStatisticsManager tradeStatisticsManager;
     public static Preferences preferences;
+    public static TradeManager tradeManager;
 
     public static boolean isSeedNode() {
         return havenoSetup == null;
@@ -611,6 +618,23 @@ public class HavenoUtils {
         return CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, underscore);
     }
 
+    public static String capitalizeFirstLetter(String input) {
+        if (input == null || input.isEmpty()) return input;
+        return Character.toUpperCase(input.charAt(0)) + input.substring(1);
+    }
+
+    public static String formatSentence(String input) {
+        if (input == null || input.isEmpty()) return input;
+
+        // capitalize first letter
+        String formatted = capitalizeFirstLetter(input);
+
+        // add period if necessary
+        char lastChar = formatted.charAt(formatted.length() - 1);
+        if (lastChar != '.' && lastChar != '!' && lastChar != '?') formatted += ".";
+        return formatted;
+    }
+
     public static boolean connectionConfigsEqual(MoneroRpcConnection c1, MoneroRpcConnection c2) {
         if (c1 == c2) return true;
         if (c1 == null) return false;
@@ -642,49 +666,61 @@ public class HavenoUtils {
         havenoSetup.getTopErrorMsg().set(msg);
     }
 
-    public static boolean isConnectionRefused(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("Connection refused");
+    public static boolean isConnectionRefused(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("Connection refused");
     }
 
-    public static boolean isReadTimeout(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("Read timed out");
+    public static boolean isReadTimeout(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("Read timed out");
     }
 
-    public static boolean isUnresponsive(Throwable e) {
-        return isConnectionRefused(e) || isReadTimeout(e) || XmrWalletBase.isSyncWithProgressTimeout(e);
+    public static boolean isUnresponsive(Throwable t) {
+        return isConnectionRefused(t) || isReadTimeout(t) || XmrWalletBase.isSyncWithProgressTimeout(t);
     }
 
-    private static boolean isNotEnoughSigners(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("Not enough signers");
+    private static boolean isNotEnoughSigners(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("Not enough signers");
     }
 
-    private static boolean isFailedToParse(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("Failed to parse");
+    private static boolean isFailedToParse(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("Failed to parse");
     }
 
-    private static boolean isStaleData(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("stale data");
+    private static boolean isStaleData(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("stale data");
     }
 
-    private static boolean isNoTransactionCreated(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("No transaction created");
+    private static boolean isNoTransactionCreated(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("No transaction created");
     }
 
-    private static boolean isLRNotFound(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("LR not found for enough participants");
+    private static boolean isLRNotFound(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("LR not found for enough participants");
     }
 
     // TODO: handling specific error messages is brittle, inverse so all errors are illegal except known local issues?
-    public static boolean isMultisigError(Throwable e) {
-        return isLRNotFound(e) || isNotEnoughSigners(e) || isNoTransactionCreated(e) || isFailedToParse(e) || isStaleData(e);
+    public static boolean isMultisigError(Throwable t) {
+        return isLRNotFound(t) || isNotEnoughSigners(t) || isNoTransactionCreated(t) || isFailedToParse(t) || isStaleData(t);
     }
 
-    public static boolean isTransactionRejected(Throwable e) {
-        return e != null && e.getMessage() != null && e.getMessage().contains("was rejected");
+    public static boolean isInvalidTx(Throwable t) {
+        return isNotEnoughMoney(t) || isTxNotPossible(t) || isMultisigError(t);
     }
 
-    public static boolean isIllegal(Throwable e) {
-        return e instanceof IllegalArgumentException || e instanceof IllegalStateException;
+    public static boolean isNotEnoughMoney(Throwable t) {
+        return t.getMessage() != null && t.getMessage().toLowerCase().contains("not enough");
+    }
+
+    public static boolean isTxNotPossible(Throwable t) {
+        return t.getMessage() != null && t.getMessage().toLowerCase().contains("tx not possible");
+    }
+
+    public static boolean isTransactionRejected(Throwable t) {
+        return t != null && t.getMessage() != null && t.getMessage().contains("was rejected");
+    }
+
+    public static boolean isIllegal(Throwable t) {
+        return t instanceof IllegalArgumentException || t instanceof IllegalStateException;
     }
     
     public static void playChimeSound() {
@@ -752,6 +788,25 @@ public class HavenoUtils {
         double factor = divide(max, min);
         if (factor > MINER_FEE_TOLERANCE_FACTOR) {
             throw new IllegalArgumentException("Miner fees are not within " + MINER_FEE_TOLERANCE_FACTOR + "x of each other. Expected=" + expected + ", actual=" + actual + ", factor=" + factor);
+        }
+    }
+
+    public static void verifyPaymentAccountPayloadHash(PaymentAccountPayload payload, byte[] contractHash, String owner) {
+        if (!Arrays.equals(payload.getHash(), contractHash)) {
+
+            // TODO: Due to a bug in v1.2.3, the hash of some payloads may not match the hash in the contract.
+            // We verify against the legacy uncorrected hash to maintain compatibility.
+            // This can be removed once all trades have transitioned to the fixed version.
+            boolean isLegacyHash = false;
+            if (payload instanceof TransferwiseAccountPayload && Arrays.equals(((TransferwiseAccountPayload) payload).getLegacyHash(), contractHash)) isLegacyHash = true;
+            if (payload instanceof PixAccountPayload && Arrays.equals(((PixAccountPayload) payload).getLegacyHash(), contractHash)) isLegacyHash = true;
+            if (payload instanceof MoneyBeamAccountPayload && Arrays.equals(((MoneyBeamAccountPayload) payload).getLegacyHash(), contractHash)) isLegacyHash = true;
+
+            if (isLegacyHash) {
+                log.warn("Hash of {}'s payment account payload does not match contract but matches legacy hash", owner);
+            } else {
+                throw new IllegalArgumentException("Hash of " + owner + "'s payment account payload does not match contract, expected=" + Utilities.bytesAsHexString(contractHash) + ", actual=" + Utilities.bytesAsHexString(payload.getHash()));
+            }
         }
     }
 }

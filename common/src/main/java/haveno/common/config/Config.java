@@ -80,11 +80,18 @@ public class Config {
     public static final String HIDDEN_SERVICE_ADDRESS = "hiddenServiceAddress";
     public static final String USE_LOCALHOST_FOR_P2P = "useLocalhostForP2P";
     public static final String MAX_CONNECTIONS = "maxConnections";
+    public static final String ENVELOPE_LIMITS_GLOBAL_DEFAULT = "envelopeLimitsGlobalDefault";
+    public static final String ENVELOPE_LIMITS_GLOBAL_UNKNOWN_PEERS = "envelopeLimitsGlobalUnknownPeers";
+    public static final String ENVELOPE_LIMITS_GLOBAL_OVERRIDES = "envelopeLimitsGlobalOverrides";
+    public static final String ENVELOPE_LIMITS_CONNECTION_DEFAULT = "envelopeLimitsConnectionDefault";
+    public static final String ENVELOPE_LIMITS_CONNECTION_OVERRIDES = "envelopeLimitsConnectionOverrides";
     public static final String SOCKS_5_PROXY_XMR_ADDRESS = "socks5ProxyXmrAddress";
     public static final String SOCKS_5_PROXY_HTTP_ADDRESS = "socks5ProxyHttpAddress";
     public static final String USE_TOR_FOR_XMR = "useTorForXmr";
     public static final String TORRC_FILE = "torrcFile";
     public static final String TORRC_OPTIONS = "torrcOptions";
+    public static final String HIDDEN_SERVICE_FLAGS = "hiddenServiceFlags";
+    public static final String HIDDEN_SERVICE_PARAMS = "hiddenServiceParams";
     public static final String TOR_CONTROL_HOST = "torControlHost";
     public static final String TOR_CONTROL_PORT = "torControlPort";
     public static final String TOR_CONTROL_PASSWORD = "torControlPassword";
@@ -176,10 +183,17 @@ public class Config {
     public final List<String> banList;
     public final boolean useLocalhostForP2P;
     public final int maxConnections;
+    public final String envelopeLimitsGlobalDefault;
+    public final String envelopeLimitsGlobalUnknownPeers;
+    public final String envelopeLimitsGlobalOverrides;
+    public final String envelopeLimitsConnectionDefault;
+    public final String envelopeLimitsConnectionOverrides;
     public final String socks5ProxyXmrAddress;
     public final String socks5ProxyHttpAddress;
     public final File torrcFile;
     public final String torrcOptions;
+    public final String hiddenServiceFlags;
+    public final String hiddenServiceParams;
     public final String torControlHost;
     public final int torControlPort;
     public final String torControlPassword;
@@ -436,6 +450,36 @@ public class Config {
                         .ofType(int.class)
                         .defaultsTo(12);
 
+        ArgumentAcceptingOptionSpec<String> envelopeLimitsGlobalDefaultOpt =
+                parser.accepts(ENVELOPE_LIMITS_GLOBAL_DEFAULT, "Default global rate limits for all envelope types. " +
+                        "Format: ratePerSec,burstCapacity,numStrikes. Set to '0' for no limit.")
+                        .withRequiredArg()
+                        .defaultsTo("0");
+
+        ArgumentAcceptingOptionSpec<String> envelopeLimitsGlobalUnknownPeersOpt =
+                parser.accepts(ENVELOPE_LIMITS_GLOBAL_UNKNOWN_PEERS, "Global rate limits applied only to messages from unknown peers. " +
+                        "Format: ratePerSec,burstCapacity,numStrikes.")
+                        .withRequiredArg()
+                        .defaultsTo("50,10000,0");
+
+        ArgumentAcceptingOptionSpec<String> envelopeLimitsGlobalOverridesOpt =
+                parser.accepts(ENVELOPE_LIMITS_GLOBAL_OVERRIDES, "Global rate limit overrides for specific envelope types. " +
+                        "Format: EnvelopeName=ratePerSec,burstCapacity,numStrikes[;...]")
+                        .withRequiredArg()
+                        .defaultsTo("");
+
+        ArgumentAcceptingOptionSpec<String> envelopeLimitsConnectionDefaultOpt =
+                parser.accepts(ENVELOPE_LIMITS_CONNECTION_DEFAULT, "Default rate limits applied per individual peer connection. " +
+                        "Format: ratePerSec,burstCapacity,numStrikes. Set to '0' for no limit.")
+                        .withRequiredArg()
+                        .defaultsTo("0");
+
+        ArgumentAcceptingOptionSpec<String> envelopeLimitsConnectionOverridesOpt =
+                parser.accepts(ENVELOPE_LIMITS_CONNECTION_OVERRIDES, "Per-connection rate limit overrides for specific envelope types. " +
+                        "Format: EnvelopeName=ratePerSec,burstCapacity,numStrikes[;...]")
+                        .withRequiredArg()
+                        .defaultsTo("");
+
         ArgumentAcceptingOptionSpec<String> socks5ProxyXmrAddressOpt =
                 parser.accepts(SOCKS_5_PROXY_XMR_ADDRESS, "A proxy address to be used for Bitcoin network.")
                         .withRequiredArg()
@@ -462,6 +506,16 @@ public class Config {
                         "[torrc options line, torrc option, ...]")
                         .withRequiredArg()
                         .withValuesConvertedBy(RegexMatcher.regex("^([^\\s,]+\\s[^,]+,?\\s*)+$"))
+                        .defaultsTo("");
+
+        ArgumentAcceptingOptionSpec<String> hiddenServiceFlagsOpt =
+                parser.accepts(HIDDEN_SERVICE_FLAGS, "Flags for the dynamic Tor hidden service (added via ADD_ONION).")
+                        .withRequiredArg()
+                        .defaultsTo("");
+
+        ArgumentAcceptingOptionSpec<String> hiddenServiceParamsOpt =
+                parser.accepts(HIDDEN_SERVICE_PARAMS, "Parameters for the dynamic Tor hidden service (added via ADD_ONION).")
+                        .withRequiredArg()
                         .defaultsTo("");
 
         ArgumentAcceptingOptionSpec<String> torControlHostOpt =
@@ -718,6 +772,8 @@ public class Config {
             this.bitcoinRegtestHost = options.valueOf(bitcoinRegtestHostOpt);
             this.torrcFile = options.has(torrcFileOpt) ? options.valueOf(torrcFileOpt).toFile() : null;
             this.torrcOptions = options.valueOf(torrcOptionsOpt);
+            this.hiddenServiceFlags = options.valueOf(hiddenServiceFlagsOpt);
+            this.hiddenServiceParams = options.valueOf(hiddenServiceParamsOpt);
             this.torControlHost = options.valueOf(torControlHostOpt);
             this.torControlPort = options.valueOf(torControlPortOpt);
             this.torControlPassword = options.valueOf(torControlPasswordOpt);
@@ -736,6 +792,11 @@ public class Config {
             this.banList = options.valuesOf(banListOpt);
             this.useLocalhostForP2P = !this.baseCurrencyNetwork.isMainnet() && options.valueOf(useLocalhostForP2POpt);
             this.maxConnections = options.valueOf(maxConnectionsOpt);
+            this.envelopeLimitsGlobalDefault = options.valueOf(envelopeLimitsGlobalDefaultOpt);
+            this.envelopeLimitsGlobalUnknownPeers = options.valueOf(envelopeLimitsGlobalUnknownPeersOpt);
+            this.envelopeLimitsGlobalOverrides = options.valueOf(envelopeLimitsGlobalOverridesOpt);
+            this.envelopeLimitsConnectionDefault = options.valueOf(envelopeLimitsConnectionDefaultOpt);
+            this.envelopeLimitsConnectionOverrides = options.valueOf(envelopeLimitsConnectionOverridesOpt);
             this.socks5ProxyXmrAddress = options.valueOf(socks5ProxyXmrAddressOpt);
             this.socks5ProxyHttpAddress = options.valueOf(socks5ProxyHttpAddressOpt);
             this.msgThrottlePerSec = options.valueOf(msgThrottlePerSecOpt);

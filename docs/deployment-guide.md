@@ -72,10 +72,7 @@ You can also start the Monero node in your current terminal session by running `
 
 ## Add seed nodes
 
-### Seed nodes without Proof of Work (PoW)
-
-> [!note]
-> Using PoW is suggested. See next section for PoW setup.
+### Seed nodes with inbuilt Tor and Proof of Work (PoW)
 
 For each seed node:
 
@@ -88,7 +85,7 @@ For each seed node:
 7. Add the `.onion` address to `core/src/main/resources/xmr_<network>.seednodes` along with the port specified in the haveno-seednode.service file(s) `(ex: example.onion:1002)`. Be careful to record full addresses correctly.
 8. Update all seed nodes, arbitrators, and user applications for the change to take effect.
 
-### Seed nodes with Proof of Work (PoW)
+### Seed nodes with external Tor and Proof of Work (PoW)
 
 > [!note]
 > These instructions were written for Ubuntu with an Intel/AMD 64-bit CPU so changes may be needed for your distribution.
@@ -203,15 +200,26 @@ For example, change "Haveno" to "HavenoX", which will use this application folde
 
 ## Change the P2P network version
 
-To avoid interference with other networks, change `P2P_NETWORK_VERSION` in [Version.java](https://github.com/haveno-dex/haveno/blob/a7e90395d24ec3d33262dd5d09c5faec61651a51/common/src/main/java/haveno/common/app/Version.java#L83).
+To avoid interference with other networks, change `P2P_NETWORK_VERSION` in [Version.java](https://github.com/haveno-dex/haveno/blob/4eb98ffdd0a40cbe75ad2e8a376cacc815959bbc/common/src/main/java/haveno/common/app/Version.java#L121).
 
 For example, change it to `"B"`.
 
 ## Set your fork's version
 
-Optionally add a fourth digit to `Version.VERSION` to represent your fork’s build version.
+Haveno uses a three-digit versioning scheme to distinguish between upstream changes and network-specific builds:
 
-For example, upstream Haveno may use version `1.2.3`, while your fork may use `1.2.3.0` and increment the last version digit as needed.
+- 1st digit: Mandatory protocol or consensus changes from upstream.
+- 2nd digit: Non-mandatory updates, patches, or minor improvements from upstream.
+- 3rd digit: Network-specific builds. This is reserved for forks and is never set by upstream.
+
+For example, if upstream Haveno is at 1.3.0, a fork may increment the third digit for its own mandatory or optional updates as needed.
+
+Update your fork's version number in the following locations:
+
+- [Version.java](https://github.com/haveno-dex/haveno/blob/4eb98ffdd0a40cbe75ad2e8a376cacc815959bbc/common/src/main/java/haveno/common/app/Version.java#L35): The `VERSION` constant.
+- [build.gradle](https://github.com/haveno-dex/haveno/blob/4eb98ffdd0a40cbe75ad2e8a376cacc815959bbc/build.gradle#L619): The `version` attribute under `:desktop`.
+- [exchange.haveno.Haveno.metainfo.xml](https://github.com/haveno-dex/haveno/blob/4eb98ffdd0a40cbe75ad2e8a376cacc815959bbc/desktop/package/linux/exchange.haveno.Haveno.metainfo.xml#L63): The `release` attribute.
+- [Info.plist](https://github.com/haveno-dex/haveno/blob/4eb98ffdd0a40cbe75ad2e8a376cacc815959bbc/desktop/package/macosx/Info.plist#L7): The `CFBundleVersion` and `CFBundleShortVersionString` attributes.
 
 ## Set the network's release date
 
