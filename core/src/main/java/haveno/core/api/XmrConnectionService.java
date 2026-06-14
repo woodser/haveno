@@ -24,6 +24,7 @@ import haveno.common.UserThread;
 import haveno.common.app.DevEnv;
 import haveno.common.config.BaseCurrencyNetwork;
 import haveno.common.config.Config;
+import haveno.common.util.NetworkUtils;
 import haveno.core.locale.Res;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.user.Preferences;
@@ -227,8 +228,7 @@ public final class XmrConnectionService {
     public String getProxyUri() {
         if (socks5ProxyProvider.getSocks5Proxy() == null) return null;
         String host = socks5ProxyProvider.getSocks5Proxy().getInetAddress().getHostAddress();
-        if (host.contains(":")) host = "[" + host + "]";
-        return host + ":" + socks5ProxyProvider.getSocks5Proxy().getPort();
+        return NetworkUtils.formatHostAndPort(host, socks5ProxyProvider.getSocks5Proxy().getPort());
     }
 
     public void addConnectionListener(XmrConnectionListener listener) {
@@ -772,7 +772,7 @@ public final class XmrConnectionService {
 
     protected static boolean isProxyApplied(MoneroRpcConnection connection) {
         if (connection == null) return false;
-        return connection.isOnion() || (HavenoUtils.preferences.getUseTorForXmr().isUseTorForXmr() && !HavenoUtils.isPrivateIp(connection.getUri()));
+        return connection.isOnion() || (HavenoUtils.preferences.getUseTorForXmr().isUseTorForXmr() && !NetworkUtils.isPrivateIp(connection.getUri()));
     }
 
     protected static void checkConnection(MoneroRpcConnection connection) {
@@ -803,7 +803,7 @@ public final class XmrConnectionService {
     }
 
     protected static long getTimeoutMs(MoneroRpcConnection connection) {
-        if (HavenoUtils.isLocalHost(connection.getUri())) {
+        if (NetworkUtils.isLocalHost(connection.getUri())) {
             return XmrLocalNode.REFRESH_PERIOD_LOCAL_MS;
         } else if (isProxyApplied(connection)) {
             return REFRESH_PERIOD_ONION_MS;
@@ -831,7 +831,7 @@ public final class XmrConnectionService {
     }
 
     private boolean isConnectionLocalHost(MoneroRpcConnection connection) {
-        return connection != null && HavenoUtils.isLocalHost(connection.getUri());
+        return connection != null && NetworkUtils.isLocalHost(connection.getUri());
     }
 
     private long getDefaultRefreshPeriodMs(boolean internal, Boolean isProxyApplied) {
@@ -1244,7 +1244,7 @@ public final class XmrConnectionService {
     }
 
     private boolean isFixedConnection() {
-        return !"".equals(config.xmrNode) && !(HavenoUtils.isLocalHost(config.xmrNode) && xmrLocalNode.shouldBeIgnored()) && !fallbackApplied;
+        return !"".equals(config.xmrNode) && !(NetworkUtils.isLocalHost(config.xmrNode) && xmrLocalNode.shouldBeIgnored()) && !fallbackApplied;
     }
 
     private boolean isCustomConnections() {

@@ -20,6 +20,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import haveno.common.config.BaseCurrencyNetwork;
 import haveno.common.config.Config;
+import haveno.common.util.NetworkUtils;
 import haveno.common.util.Utilities;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.user.Preferences;
@@ -71,7 +72,7 @@ public class XmrLocalNode {
         MONEROD_ARGS.add("--no-igd");
         MONEROD_ARGS.add("--hide-my-port");
         MONEROD_ARGS.add("--p2p-bind-ip");
-        MONEROD_ARGS.add(HavenoUtils.LOOPBACK_HOST);
+        MONEROD_ARGS.add(NetworkUtils.LOOPBACK_HOST);
         if (!Config.baseCurrencyNetwork().isMainnet()) MONEROD_ARGS.add("--" + Config.baseCurrencyNetwork().getNetwork().toLowerCase());
     }
 
@@ -122,7 +123,7 @@ public class XmrLocalNode {
     }
 
     public String getUri() {
-        return "http://" + HavenoUtils.LOOPBACK_HOST + ":" + HavenoUtils.getDefaultMoneroPort();
+        return "http://" + NetworkUtils.LOOPBACK_HOST + ":" + HavenoUtils.getDefaultMoneroPort();
     }
 
     /**
@@ -142,7 +143,7 @@ public class XmrLocalNode {
         if (config.ignoreLocalXmrNode) return true;
 
         // ignore if fixed connection is not local
-        if (!"".equals(config.xmrNode)) return !HavenoUtils.isLocalHost(config.xmrNode);
+        if (!"".equals(config.xmrNode)) return !NetworkUtils.isLocalHost(config.xmrNode);
 
         // check if local node is within configuration
         boolean hasConfiguredLocalNode = false;
@@ -172,7 +173,7 @@ public class XmrLocalNode {
 
     public boolean equalsUri(String uri) {
         try {
-            return HavenoUtils.isLocalHost(uri) && HavenoUtils.parseUri(uri).getPort() == HavenoUtils.getDefaultMoneroPort();
+            return NetworkUtils.isLocalHost(uri) && NetworkUtils.parseUri(uri).getPort() == HavenoUtils.getDefaultMoneroPort();
         } catch (Exception e) {
             return false;
         }

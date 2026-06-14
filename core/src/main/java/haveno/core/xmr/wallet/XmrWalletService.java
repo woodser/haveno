@@ -28,6 +28,7 @@ import haveno.common.Timer;
 import haveno.common.UserThread;
 import haveno.common.config.Config;
 import haveno.common.file.FileUtil;
+import haveno.common.util.NetworkUtils;
 import haveno.common.util.Utilities;
 import haveno.core.api.AccountServiceListener;
 import haveno.core.api.CoreAccountService;
@@ -1738,7 +1739,7 @@ public class XmrWalletService extends XmrWalletBase {
                 boolean supportsSocks5ProxyScheme = walletRpcSupportsSocks5ProxyScheme();
                 cmd.add("--proxy");
                 cmd.add(WalletRpc.getProxyUri(connection.getProxyUri(), supportsSocks5ProxyScheme));
-                if (!supportsSocks5ProxyScheme && HavenoUtils.isIpv6Uri(connection.getUri())) {
+                if (!supportsSocks5ProxyScheme && NetworkUtils.isIpv6Uri(connection.getUri())) {
                     log.warn("monero-wallet-rpc does not advertise SOCKS5 proxy URI support; IPv6 monerod connections through proxy may fail: monerod={}", connection.getUri());
                 }
                 if (!connection.isOnion()) cmd.add("--daemon-ssl-allow-any-cert"); // necessary to use proxy with clearnet monerod

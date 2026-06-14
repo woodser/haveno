@@ -151,7 +151,7 @@ public class XmrNodes {
          * @return XmrNode instance
          */
         public static XmrNode fromFullAddress(String fullAddress) {
-            NetworkUtils.HostAndPort hostAndPort = HavenoUtils.parseHostAndPort(fullAddress, HavenoUtils.getDefaultMoneroPort());
+            NetworkUtils.HostAndPort hostAndPort = NetworkUtils.parseHostAndPort(fullAddress, HavenoUtils.getDefaultMoneroPort());
             String host = hostAndPort.getHost();
             int port = hostAndPort.getPort();
 
@@ -184,7 +184,7 @@ public class XmrNodes {
 
         public String getHostNameOrAddressWithPort() {
             if (!hasClearNetAddress()) throw new IllegalStateException("XmrNode does not have clearnet address");
-            return HavenoUtils.formatHostAndPort(getHostNameOrAddress(), port);
+            return NetworkUtils.formatHostAndPort(getHostNameOrAddress(), port);
         }
 
         public String getOnionAddressWithPort() {

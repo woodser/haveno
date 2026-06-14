@@ -21,10 +21,88 @@ import com.google.common.net.InetAddresses;
 
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.URI;
+import java.util.Locale;
 
 public class NetworkUtils {
 
+    public static final String LOOPBACK_HOST = "127.0.0.1"; // local loopback address
+    public static final String LOCALHOST = "localhost";
+
     private NetworkUtils() {
+    }
+
+    /**
+     * Parse a URI, defaulting to http when no scheme is present.
+     */
+    public static URI parseUri(String uriString) {
+        if (uriString != null && uriString.length() > 0 && !uriString.toLowerCase(Locale.ROOT).matches("^[a-z][a-z0-9+.-]*://.+")) {
+            String trimmedUriString = uriString.trim();
+            if (trimmedUriString.startsWith("[") || trimmedUriString.indexOf(':') != trimmedUriString.lastIndexOf(':')) {
+                try {
+                    HostAndPort hostAndPort = parseHostAndPort(trimmedUriString, -1);
+                    if (isIpv6Literal(hostAndPort.getHost())) {
+                        uriString = "http://" + (hostAndPort.hasPort() ? formatHostAndPort(hostAndPort.getHost(), hostAndPort.getPort()) : formatHost(hostAndPort.getHost()));
+                    } else {
+                        uriString = "http://" + uriString;
+                    }
+                } catch (IllegalArgumentException e) {
+                    uriString = "http://" + uriString;
+                }
+            } else {
+                uriString = "http://" + uriString;
+            }
+        }
+        try {
+            return new URI(uriString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid URI: " + uriString, e);
+        }
+    }
+
+    /**
+     * Check if the given URI is on local host.
+     */
+    public static boolean isLocalHost(String uriString) {
+        try {
+            String host = parseUri(uriString).getHost();
+            return LOOPBACK_HOST.equals(host) || LOCALHOST.equals(host) || (isLiteralIp(host) && getLiteralIpAddress(host).isLoopbackAddress());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check if the given URI is local or a private IP address.
+     */
+    public static boolean isPrivateIp(String uriString) {
+        if (uriString == null || uriString.isEmpty()) return false;
+        if (isLocalHost(uriString)) return true;
+        try {
+            String host = stripIpv6Brackets(parseUri(uriString).getHost());
+            if (host == null) return false;
+
+            // check if private IP address
+            if (!isLiteralIp(host)) return false;
+            InetAddress addr = getLiteralIpAddress(host);
+            return addr.isAnyLocalAddress()
+                        || addr.isLoopbackAddress()
+                        || addr.isLinkLocalAddress()
+                        || addr.isSiteLocalAddress();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check if the given URI's host is an IPv6 literal.
+     */
+    public static boolean isIpv6Uri(String uriString) {
+        try {
+            return isIpv6Literal(parseUri(uriString).getHost());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static HostAndPort parseHostAndPort(String address, int defaultPort) {
@@ -73,7 +151,12 @@ public class NetworkUtils {
         return new HostAndPort(stripIpv6Brackets(host), port);
     }
 
-    public static int parsePort(String portString) {
+    public static String formatHostAndPort(String host, int port) {
+        if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port: " + port);
+        return formatHost(host) + ":" + port;
+    }
+
+    private static int parsePort(String portString) {
         try {
             int port = Integer.parseInt(portString);
             if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port: " + portString);
@@ -83,31 +166,26 @@ public class NetworkUtils {
         }
     }
 
-    public static String formatHost(String host) {
+    private static String formatHost(String host) {
         host = stripIpv6Brackets(host);
         return isIpv6Literal(host) ? "[" + host + "]" : host;
     }
 
-    public static String formatHostAndPort(String host, int port) {
-        if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port: " + port);
-        return formatHost(host) + ":" + port;
-    }
-
-    public static String stripIpv6Brackets(String host) {
+    private static String stripIpv6Brackets(String host) {
         return host != null && host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
     }
 
-    public static boolean isLiteralIp(String host) {
+    private static boolean isLiteralIp(String host) {
         host = stripIpv6Brackets(host);
         return host != null && InetAddresses.isInetAddress(host);
     }
 
-    public static boolean isIpv6Literal(String host) {
+    private static boolean isIpv6Literal(String host) {
         host = stripIpv6Brackets(host);
         return host != null && host.indexOf(':') >= 0 && InetAddresses.isInetAddress(host) && InetAddresses.forString(host) instanceof Inet6Address;
     }
 
-    public static InetAddress getLiteralIpAddress(String host) {
+    private static InetAddress getLiteralIpAddress(String host) {
         host = stripIpv6Brackets(host);
         if (!isLiteralIp(host)) throw new IllegalArgumentException("Host is not a literal IP address: " + host);
         return InetAddresses.forString(host);
