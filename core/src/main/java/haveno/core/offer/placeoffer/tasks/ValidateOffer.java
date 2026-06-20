@@ -68,7 +68,6 @@ public class ValidateOffer extends Task<PlaceOfferModel> {
         checkBINotNullOrZero(offer.getMaxTradeLimit(), "MaxTradeLimit");
         if (offer.getMakerFeePct() < 0) throw new IllegalArgumentException("Maker fee must be >= 0% but was " + offer.getMakerFeePct());
         if (offer.getTakerFeePct() < 0) throw new IllegalArgumentException("Taker fee must be >= 0% but was " + offer.getTakerFeePct());
-        offer.isPrivateOffer();
         if (offer.isPrivateOffer()) {
             boolean isBuyerMaker = offer.getDirection() == OfferDirection.BUY;
             if (isBuyerMaker) {
@@ -81,6 +80,11 @@ public class ValidateOffer extends Task<PlaceOfferModel> {
         } else {
             if (offer.getBuyerSecurityDepositPct() <= 0) throw new IllegalArgumentException("Buyer security deposit percent must be positive but was " + offer.getBuyerSecurityDepositPct());
             if (offer.getSellerSecurityDepositPct() <= 0) throw new IllegalArgumentException("Seller security deposit percent must be positive but was " + offer.getSellerSecurityDepositPct());
+        }
+
+        // remove private offers with a buyer deposit if disabled
+        if (!HavenoUtils.isGeneralPrivateOffersEnabled() && offer.isPrivateOffer() && !offer.hasBuyerAsTakerWithoutDeposit()) {
+            throw new IllegalArgumentException("Private offers with a buyer deposit are not enabled on this network");
         }
 
         // validate there is no confirmed trade with same id

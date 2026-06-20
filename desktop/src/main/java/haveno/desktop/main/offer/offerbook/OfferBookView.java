@@ -123,6 +123,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
     private AutoTooltipTextField filterInputField;
     private ToggleButton matchingOffersToggleButton;
     private ToggleButton noDepositOffersToggleButton;
+    private ToggleButton privateOffersToggleButton;
     private AutoTooltipTableColumn<OfferBookListItem, OfferBookListItem> amountColumn;
     private AutoTooltipTableColumn<OfferBookListItem, OfferBookListItem> volumeColumn;
     private AutoTooltipTableColumn<OfferBookListItem, OfferBookListItem> marketColumn;
@@ -192,7 +193,16 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         Tooltip noDepositOffersTooltip = new Tooltip(Res.get("offerbook.noDepositOffers"));
         Tooltip.install(noDepositOffersToggleButton, noDepositOffersTooltip);
 
-        matchingOffersToggleButton = AwesomeDude.createIconToggleButton(AwesomeIcon.USER, null, "1.5em", null);
+        privateOffersToggleButton = new ToggleButton();
+        privateOffersToggleButton.setGraphic(GUIUtil.getLockIcon(privateOffersToggleButton, "1.4em"));
+        privateOffersToggleButton.getStyleClass().add("toggle-button-no-slider");
+        // lock filter is shown only when enabled on the network
+        privateOffersToggleButton.setManaged(HavenoUtils.isGeneralPrivateOffersEnabled());
+        privateOffersToggleButton.setVisible(HavenoUtils.isGeneralPrivateOffersEnabled());
+        Tooltip privateOffersTooltip = new Tooltip(Res.get("offerbook.privateOffers"));
+        Tooltip.install(privateOffersToggleButton, privateOffersTooltip);
+
+        matchingOffersToggleButton = AwesomeDude.createIconToggleButton(AwesomeIcon.USER, null, "1.4em", null);
         matchingOffersToggleButton.getStyleClass().add("toggle-button-no-slider");
         Tooltip matchingOffersTooltip = new Tooltip(Res.get("offerbook.matchingOffers"));
         Tooltip.install(matchingOffersToggleButton, matchingOffersTooltip);
@@ -220,7 +230,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         filterInputField.getStyleClass().add("input-with-border");
 
         offerToolsBox.getChildren().addAll(currencyBoxTuple.first, paymentBoxTuple.first,
-                filterBox, noDepositOffersToggleButton, matchingOffersToggleButton, getSpacer(), createOfferVBox);
+                filterBox, matchingOffersToggleButton, privateOffersToggleButton, noDepositOffersToggleButton, getSpacer(), createOfferVBox);
 
         GridPane.setHgrow(offerToolsBox, Priority.ALWAYS);
         GridPane.setRowIndex(offerToolsBox, gridRow);
@@ -363,8 +373,26 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         matchingOffersToggleButton.disableProperty().bind(model.disableMatchToggle);
         matchingOffersToggleButton.setOnAction(e -> model.onShowOffersMatchingMyAccounts(matchingOffersToggleButton.isSelected()));
 
-        noDepositOffersToggleButton.setSelected(model.showPrivateOffers);
-        noDepositOffersToggleButton.setOnAction(e -> model.onShowPrivateOffers(noDepositOffersToggleButton.isSelected()));
+        // the no-deposit and private-offers filters are mutually exclusive, so enabling one clears the other
+        noDepositOffersToggleButton.setSelected(model.showNoDepositOffers);
+        noDepositOffersToggleButton.setOnAction(e -> {
+            boolean selected = noDepositOffersToggleButton.isSelected();
+            model.onShowNoDepositOffers(selected);
+            if (selected && privateOffersToggleButton.isSelected()) {
+                privateOffersToggleButton.setSelected(false);
+                model.onShowPrivateOffers(false);
+            }
+        });
+
+        privateOffersToggleButton.setSelected(model.showPrivateOffers);
+        privateOffersToggleButton.setOnAction(e -> {
+            boolean selected = privateOffersToggleButton.isSelected();
+            model.onShowPrivateOffers(selected);
+            if (selected && noDepositOffersToggleButton.isSelected()) {
+                noDepositOffersToggleButton.setSelected(false);
+                model.onShowNoDepositOffers(false);
+            }
+        });
 
         model.getOfferList().comparatorProperty().bind(tableView.comparatorProperty());
 
@@ -470,6 +498,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         matchingOffersToggleButton.disableProperty().unbind();
         noDepositOffersToggleButton.setOnAction(null);
         noDepositOffersToggleButton.disableProperty().unbind();
+        privateOffersToggleButton.setOnAction(null);
         model.getOfferList().comparatorProperty().unbind();
 
         volumeColumn.sortableProperty().unbind();
@@ -589,10 +618,12 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         createOfferButton.setContentDisplay(ContentDisplay.RIGHT);
         createOfferButton.setId(direction == OfferDirection.SELL ? "sell-button-big" : "buy-button-big");
         avatarColumn.setTitle(direction == OfferDirection.SELL ? Res.get("shared.buyerUpperCase") : Res.get("shared.sellerUpperCase"));
+
+        // no-deposit offers are sell offers taken by a buyer, so the filter only applies to the buy book
         if (direction == OfferDirection.SELL) {
             noDepositOffersToggleButton.setVisible(false);
             noDepositOffersToggleButton.setManaged(false);
-        } 
+        }
     }
 
     public void setOfferActionHandler(OfferView.OfferActionHandler offerActionHandler) {

@@ -42,6 +42,7 @@ import haveno.common.crypto.PubKeyRing;
 import haveno.common.handlers.ErrorMessageHandler;
 import haveno.common.proto.network.NetworkEnvelope;
 import haveno.common.taskrunner.Task;
+import haveno.core.offer.Offer;
 import haveno.core.offer.OpenOffer;
 import haveno.core.support.messages.ChatMessage;
 import haveno.core.trade.ArbitratorTrade;
@@ -177,8 +178,25 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
         TradePeer verifiedPeer = trade.getVerifiedTradePeer(decryptedMessageWithPubKey);
         if (networkEnvelope instanceof TradeMessage) {
 
+            // InitTradeRequest bootstraps the trade's pub key rings and is only processed in TradeManager
+            if (networkEnvelope instanceof InitTradeRequest) {
+                return;
+            }
+
+            // every other trade message requires an authenticated sender (matched by signature pub key)
+            if (verifiedPeer == null) {
+                log.warn("Ignoring {} for {} {} from {} because the sender could not be verified against the trade's pub key rings", networkEnvelope.getClass().getSimpleName(), trade.getClass().getSimpleName(), trade.getId(), sender);
+                return;
+            }
+
+            // a deposit response must come from the arbitrator
+            if (networkEnvelope instanceof DepositResponse && verifiedPeer != trade.getArbitrator()) {
+                log.warn("Ignoring DepositResponse for {} {} because it was not sent by the arbitrator", trade.getClass().getSimpleName(), trade.getId());
+                return;
+            }
+
             // update verified peer node address if changed
-            if (verifiedPeer != null && sender != null && !sender.equals(verifiedPeer.getNodeAddress())) {
+            if (sender != null && !sender.equals(verifiedPeer.getNodeAddress())) {
                 log.info("Updating verified peer node address from {} to {} based on direct message of type {}", verifiedPeer.getNodeAddress(), sender, networkEnvelope.getClass().getSimpleName());
                 try {
                     trade.updateNodeAddress(verifiedPeer, sender);
@@ -222,8 +240,14 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     private void handleMailboxMessage(MailboxMessage mailboxMessage, TradePeer verifiedPeer) {
         if (mailboxMessage instanceof TradeMessage) {
 
+            // require an authenticated sender for every trade message
+            if (verifiedPeer == null) {
+                log.warn("Ignoring {} for {} {} from {} because the sender could not be verified against the trade's pub key rings", mailboxMessage.getClass().getSimpleName(), trade.getClass().getSimpleName(), trade.getId(), mailboxMessage.getSenderNodeAddress());
+                return;
+            }
+
             // update verified peer node address if changed
-            if (verifiedPeer != null && mailboxMessage.getSenderNodeAddress() != null && !mailboxMessage.getSenderNodeAddress().equals(verifiedPeer.getNodeAddress())) {
+            if (mailboxMessage.getSenderNodeAddress() != null && !mailboxMessage.getSenderNodeAddress().equals(verifiedPeer.getNodeAddress())) {
                 log.info("Updating verified peer node address from {} to {} based on mailbox message of type {}", verifiedPeer.getNodeAddress(), mailboxMessage.getSenderNodeAddress(), mailboxMessage.getClass().getSimpleName());
                 try {
                     trade.updateNodeAddress(verifiedPeer, mailboxMessage.getSenderNodeAddress());
@@ -689,10 +713,10 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                                                     reprocessPaymentSentMessageCount++;
                                                     maybeReprocessPaymentSentMessage(reprocessOnError);
                                                 }, trade.getReprocessDelayInSeconds(reprocessPaymentSentMessageCount));
+                                                unlatchTrade();
                                             } else {
                                                 handleTaskRunnerFault(peer, message, errorMessage); // otherwise send nack
                                             }
-                                            unlatchTrade();
                                         })))
                                 .executeTasks(true);
                         awaitTradeLatch();
@@ -942,9 +966,13 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             }
         }
 
-        // handle nack of deposit request
+        // handle nack of DepositRequest from arbitrator to buyer or seller
         if (ackMessage.getSourceMsgClassName().equals(DepositRequest.class.getSimpleName())) {
             if (!ackMessage.isSuccess()) {
+                if (verifiedPeer != trade.getArbitrator()) {
+                    log.warn("Ignoring DepositRequest NACK from non-arbitrator peer for {} {}, sender={}", trade.getClass().getSimpleName(), trade.getId(), sender);
+                    return;
+                }
                 trade.setStateIfValidTransitionTo(Trade.State.PUBLISH_DEPOSIT_TX_REQUEST_FAILED);
                 processModel.getTradeManager().requestPersistence();
             }
@@ -1106,13 +1134,27 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     private void handleSecondMakerInitTradeRequestNack(AckMessage ackMessage) {
         log.warn("Maker received 2nd NACK to InitTradeRequest from arbitrator for {} {}, messageUid={}, errorMessage={}", trade.getClass().getSimpleName(), trade.getId(), ackMessage.getSourceUid(), ackMessage.getErrorMessage());
+
+        // skip removing offer if nack is acceptable
+        if (isAcceptableInitTradeRequestNack(ackMessage)) {
+            log.warn("Not removing offer {} on 2nd InitTradeRequest NACK from arbitrator because the NACK is for an acceptable reason, errorMessage={}", trade.getOffer().getShortId(), ackMessage.getErrorMessage());
+            return;
+        }
+
+        // remove offer on unacceptable 2nd nack
         String warningMessage = "Your offer (" + trade.getOffer().getShortId() + ") has been removed because there was a problem taking the trade.\n\nError message: " + ackMessage.getErrorMessage();
         OpenOffer openOffer = HavenoUtils.openOfferManager.getOpenOffer(trade.getId()).orElse(null);
         if (openOffer != null) {
-            HavenoUtils.openOfferManager.cancelOpenOffer(openOffer, null, null);
+            HavenoUtils.openOfferManager.removeOpenOffer(openOffer, null, null);
             HavenoUtils.setTopError(warningMessage);
         }
         log.warn(warningMessage);
+    }
+
+    private static boolean isAcceptableInitTradeRequestNack(AckMessage ackMessage) {
+        String errorMessage = ackMessage.getErrorMessage();
+        if (errorMessage == null) return false;
+        return errorMessage.contains(Offer.TRADE_PRICE_OUT_OF_TOLERANCE_MSG) || errorMessage.contains(Offer.MARKET_PRICE_NOT_AVAILABLE_MSG);
     }
 
     protected void sendAckMessage(NodeAddress peer, TradeMessage message, boolean result, @Nullable String errorMessage) {

@@ -1126,16 +1126,14 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
     }
 
     @Override
-    public void saveWallet() {
-        synchronized (walletLock) {
-            if (!walletExists()) {
-                log.warn("Cannot save wallet for {} {} because it does not exist", getClass().getSimpleName(), getShortId());
-                return;
-            }
-            if (wallet == null) throw new IllegalStateException("Cannot save trade wallet because it's not open for " + getClass().getSimpleName() + " " + getShortId());
-            wallet.save();
-            lastSaveTimeMs = System.currentTimeMillis();
+    protected void saveWalletNoSync() {
+        if (!walletExistsNoSync()) {
+            log.warn("Cannot save wallet for {} {} because it does not exist", getClass().getSimpleName(), getShortId());
+            return;
         }
+        if (wallet == null) throw new IllegalStateException("Cannot save trade wallet because it's not open for " + getClass().getSimpleName() + " " + getShortId());
+        wallet.save();
+        lastSaveTimeMs = System.currentTimeMillis();
     }
 
     private boolean isWalletOpen() {
@@ -1683,7 +1681,8 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         Optional<Dispute> disputeOptional = HavenoUtils.arbitrationManager.findDispute(getId());
         if (!disputeOptional.isPresent()) throw new IllegalArgumentException("Trader has no dispute when signing dispute payout tx. This should never happen. TradeId = " + getId());
         Dispute dispute = disputeOptional.get();
-        Contract contract = dispute.getContract();
+        Contract contract = getContract();
+        if (!contract.equals(dispute.getContract())) throw new IllegalArgumentException("Dispute contract does not match trade contract for trade " + getId());
         DisputeResult disputeResult = dispute.getDisputeResultProperty().get();
         String unsignedPayoutTxHex = getArbitrator().getDisputeClosedMessage().getUnsignedPayoutTxHex();
 
@@ -1758,7 +1757,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
             MoneroTxWallet feeEstimateTx = null;
             try {
                 log.info("Creating dispute fee estimate tx for {} {}", getClass().getSimpleName(), getShortId());
-                feeEstimateTx = createDisputePayoutTx(dispute.getContract(), disputeResult, false);
+                feeEstimateTx = createDisputePayoutTx(contract, disputeResult, false);
             } catch (Exception e) {
                 if (isPayoutPublished()) log.warn("Payout tx already published for {} {}, skipping fee verification", getClass().getSimpleName(), getShortId());
                 else throw new RuntimeException("Could not recreate dispute payout tx to verify fee: " + e.getMessage(), e);
@@ -2110,8 +2109,8 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
             return;
         }
 
-        // remove if deposit not requested or is failed
-        if (!isDepositRequested() || isDepositRequestFailed()) {
+        // remove immediately if deposit not requested
+        if (!isDepositRequested()) {
             removeTradeOnError();
             return;
         }
@@ -2720,7 +2719,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         MoneroTxWallet takerDepositTx = getTakerDepositTx();
         boolean hasUnlockedDepositTx = (makerDepositTx != null && Boolean.FALSE.equals(makerDepositTx.isLocked())) || (takerDepositTx != null && Boolean.FALSE.equals(takerDepositTx.isLocked()));
         if (!hasUnlockedDepositTx) return false;
-        boolean hasMissingDepositTx = makerDepositTx == null || (!hasBuyerAsTakerWithoutDeposit() && takerDepositTx == null);
+        boolean hasMissingDepositTx = (makerDepositTx == null || !makerDepositTx.isConfirmed()) || (!hasBuyerAsTakerWithoutDeposit() && (takerDepositTx == null || !takerDepositTx.isConfirmed()));
         return hasMissingDepositTx;
     }
 
@@ -3597,7 +3596,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         log.info("Ingesting multisig hexes for {} {}, count={}", getClass().getSimpleName(), getShortId(), multisigHexes.size());
         long startTime = System.currentTimeMillis();
         setUnknownSyncProgress();
-        int numOutputsImported = wallet.importMultisigHex(multisigHexes);
+        int numOutputsImported = wallet.importMultisigHex(multisigHexes, false); // import without refreshing, which is handled later
         log.info("Done ingesting multisig hexes for {} {} in {} ms, count={}, numOutputsImported={}", getClass().getSimpleName(), getShortId(), System.currentTimeMillis() - startTime, multisigHexes.size(), numOutputsImported);
 
         // sync from new wallet height

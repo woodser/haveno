@@ -252,12 +252,10 @@ public class XmrWalletService extends XmrWalletBase {
     }
 
     @Override
-    public void saveWallet() {
-        synchronized (walletLock) {
-            if (wallet == null) throw new IllegalStateException("Cannot save main wallet because it's not open");
-            wallet.save();
-            lastSaveTimeMs = System.currentTimeMillis();
-        }
+    protected void saveWalletNoSync() {
+        if (wallet == null) throw new IllegalStateException("Cannot save main wallet because it's not open");
+        wallet.save();
+        lastSaveTimeMs = System.currentTimeMillis();
     }
 
     public boolean isWalletAvailable() {
@@ -1732,10 +1730,14 @@ public class XmrWalletService extends XmrWalletBase {
         if (connection != null) {
             cmd.add("--daemon-address");
             cmd.add(connection.getUri());
+            boolean allowAnyCert = !connection.getSslVerify() && !connection.isOnion();
             if (connection.getProxyUri() != null) { // TODO: remove this when wallet server is not started with proxy uri
                 cmd.add("--proxy");
                 cmd.add(connection.getProxyUri());
-                if (!connection.isOnion()) cmd.add("--daemon-ssl-allow-any-cert"); // necessary to use proxy with clearnet monerod
+                if (!connection.isOnion()) allowAnyCert = true; // necessary to use proxy with clearnet monerod
+            }
+            if (allowAnyCert) {
+                cmd.add("--daemon-ssl-allow-any-cert");
             }
             if (connection.getUsername() != null) {
                 cmd.add("--daemon-login");
@@ -2066,8 +2068,8 @@ public class XmrWalletService extends XmrWalletBase {
                 }
             }
 
-            // handle first wallet sync
-            if (isFirstSync) onFirstSync();
+            // handle sucessful sync before wallet service initialized
+            if (isFirstSync || (wasWalletSynced && !isWalletServiceInitialized())) onFirstSync();
         } catch (Exception e) {
 
             // skip error handling if shut down or another thread force restarts while polling
@@ -2118,7 +2120,10 @@ public class XmrWalletService extends XmrWalletBase {
 
     private void onFirstSync() {
         wasWalletSynced = true;
-        if (walletInitListener != null) xmrConnectionService.downloadPercentageProperty().removeListener(walletInitListener);
+        if (walletInitListener != null) {
+            xmrConnectionService.downloadPercentageProperty().removeListener(walletInitListener);
+            walletInitListener = null;
+        }
 
         // log wallet balances
         if (getMoneroNetworkType() != MoneroNetworkType.MAINNET) {
@@ -2142,6 +2147,7 @@ public class XmrWalletService extends XmrWalletBase {
     }
 
     private void onWalletServiceInitialized() {
+        if (isWalletServiceInitialized()) return;
 
         // monitor wallet height updates to request connection change
         walletHeight.addListener((obs, oldVal, newVal) -> {

@@ -55,8 +55,6 @@ import haveno.network.p2p.NodeAddress;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.InetAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.PrivateKey;
@@ -71,7 +69,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
-import java.util.regex.Pattern;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -115,8 +112,13 @@ public class HavenoUtils {
     public static final long LOG_POLL_ERROR_PERIOD_MS = 1000 * 60 * 4; // log poll errors up to once every 4 minutes
     public static final long LOG_MONEROD_NOT_SYNCED_WARN_PERIOD_MS = 1000 * 30; // log warnings when daemon not synced once every 30s
     public static final int PRIVATE_OFFER_PASSPHRASE_NUM_WORDS = 8; // number of words in a private offer passphrase
+    private static final boolean GENERAL_PRIVATE_OFFERS_ENABLED = true; // allow private offers with a buyer deposit (false = no-deposit sell offers only); requires a mandatory update to change
     public static final boolean RECOMMEND_CONFIRMATIONS_BEFORE_SENDING_PAYMENT = true; // recommend waiting additional confirmations before sending payment
     public static final long ARBITRATOR_IDLE_SYNC_PERIOD_MS = Config.baseCurrencyNetwork().isTestnet() ? 75000 : 12 * 60 * 60 * 1000; // refresh arbitrator trade wallets once every 12 hours
+
+    public static boolean isGeneralPrivateOffersEnabled() {
+        return GENERAL_PRIVATE_OFFERS_ENABLED;
+    }
 
     // synchronize requests to monerod
     private static boolean SYNC_DAEMON_REQUESTS = false; // sync long requests to daemon (e.g. refresh, update pool) // TODO: performance suffers by syncing daemon requests, but otherwise we sometimes get sporadic errors?
@@ -137,9 +139,6 @@ public class HavenoUtils {
     // non-configurable
     public static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS = DecimalFormatSymbols.getInstance(Locale.US); // use the US locale as a base for all DecimalFormats (commas should be omitted from number strings)
     public static int XMR_SMALLEST_UNIT_EXPONENT = 12;
-    public static final String LOOPBACK_HOST = "127.0.0.1"; // local loopback address to host Monero node
-    public static final String LOCALHOST = "localhost";
-    private static final Pattern IPV4 = Pattern.compile("^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$");
     private static final long CENTINEROS_AU_MULTIPLIER = 10000;
     private static final BigInteger XMR_AU_MULTIPLIER = new BigInteger("1000000000000");
     public static final DecimalFormat XMR_FORMATTER = new DecimalFormat("##############0.000000000000", DECIMAL_FORMAT_SYMBOLS);
@@ -547,50 +546,6 @@ public class HavenoUtils {
         default:
             throw new RuntimeException("Unhandled base currency network: " + Config.baseCurrencyNetwork());
         }
-    }
-
-    /**
-     * Check if the given URI is on local host.
-     */
-    public static boolean isLocalHost(String uriString) {
-        try {
-            String host = new URI(uriString).getHost();
-            return LOOPBACK_HOST.equals(host) || LOCALHOST.equals(host);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if the given URI is local or a private IP address.
-     */
-    public static boolean isPrivateIp(String uriString) {
-        if (uriString == null || uriString.isEmpty()) return false;
-        if (isLocalHost(uriString)) return true;
-        try {
-            URI uri = new URI(uriString);
-            String host = uri.getHost();
-            if (host == null) return false;
-
-            // strip IPv6 brackets
-            if (host.startsWith("[") && host.endsWith("]")) {
-                host = host.substring(1, host.length() - 1);
-            }
-
-            // check if private IP address
-            if (!isLiteralIp(host)) return false;
-            InetAddress addr = InetAddress.getByName(host); // does not perform DNS check if using literal IP
-            return addr.isAnyLocalAddress()
-                        || addr.isLoopbackAddress()
-                        || addr.isLinkLocalAddress()
-                        || addr.isSiteLocalAddress();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private static boolean isLiteralIp(String host) {
-        return IPV4.matcher(host).matches() || host.indexOf(':') >= 0;
     }
 
     /**

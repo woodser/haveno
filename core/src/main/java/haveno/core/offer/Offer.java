@@ -72,6 +72,9 @@ public class Offer implements NetworkPayload, PersistablePayload {
     // from one provider.
     private final static double PRICE_TOLERANCE = 0.005;
 
+    public static final String TRADE_PRICE_OUT_OF_TOLERANCE_MSG = "Trade price is too far away from our calculated offer price based on the market price.";
+    public static final String MARKET_PRICE_NOT_AVAILABLE_MSG = "Market price required for calculating trade price is not available.";
+
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Enums
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -121,6 +124,12 @@ public class Offer implements NetworkPayload, PersistablePayload {
     @Setter
     @Nullable
     transient private String challenge;
+
+    @JsonExclude
+    @Getter
+    @Setter
+    @Nullable
+    transient private AvailabilityResult availabilityResult;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -224,19 +233,19 @@ public class Offer implements NetworkPayload, PersistablePayload {
         Price tradePrice = Price.valueOf(getCounterCurrencyCode(), price);
         Price offerPrice = getPrice();
         if (offerPrice == null)
-            throw new MarketPriceNotAvailableException("Market price required for calculating trade price is not available.");
+            throw new MarketPriceNotAvailableException(MARKET_PRICE_NOT_AVAILABLE_MSG);
 
-        checkArgument(price > 0, "takersTradePrice must be positive");
+        checkArgument(price > 0, "tradePrice must be positive");
 
         double relation = (double) price / (double) offerPrice.getValue();
         double deviation = Math.abs(1 - relation);
-        log.info("Price at take-offer time: id={}, currency={}, takersPrice={}, makersPrice={}, deviation={}",
+        log.info("Price at take-offer time: id={}, currency={}, tradePrice={}, offerPrice={}, deviation={}",
                 getShortId(), getCounterCurrencyCode(), price, offerPrice.getValue(),
                 deviation * 100 + "%");
         if (deviation > PRICE_TOLERANCE) {
-            String msg = "Taker's trade price is too far away from our calculated price based on the market price.\n" +
-                    "takersPrice=" + tradePrice.getValue() + "\n" +
-                    "makersPrice=" + offerPrice.getValue();
+            String msg = TRADE_PRICE_OUT_OF_TOLERANCE_MSG + "\n" +
+                    "tradePrice=" + tradePrice.getValue() + "\n" +
+                    "offerPrice=" + offerPrice.getValue();
             log.warn(msg);
             throw new TradePriceOutOfToleranceException(msg);
         }
