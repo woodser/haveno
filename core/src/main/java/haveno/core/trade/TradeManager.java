@@ -342,6 +342,39 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 // handled in XmrWalletService
             }
         });
+
+        // periodically delete retained trade wallets whose finalized payout has reached the deletion threshold
+        clockWatcher.addListener(new ClockWatcher.Listener() {
+            @Override
+            public void onSecondTick() {
+            }
+
+            @Override
+            public void onMinuteTick() {
+                ThreadUtils.submitToPool(() -> maybeDeleteExpiredTradeWallets());
+            }
+        });
+    }
+
+    private final Set<String> deletedTradeWalletIds = new HashSet<String>(); // cache of trade ids whose wallets have been deleted
+    private void maybeDeleteExpiredTradeWallets() {
+        if (isShutDownStarted) return;
+        for (Trade trade : getAllTrades()) {
+            if (isShutDownStarted) return;
+            try {
+                if (deletedTradeWalletIds.contains(trade.getId())) continue;
+                if (!trade.isPayoutDeletable()) continue;
+                if (!trade.walletExists()) {
+                    deletedTradeWalletIds.add(trade.getId());
+                    continue;
+                }
+                log.info("Deleting retained trade wallet for {} {} because finalized payout reached deletion threshold", trade.getClass().getSimpleName(), trade.getId());
+                trade.deleteWallet();
+                if (!trade.walletExists()) deletedTradeWalletIds.add(trade.getId());
+            } catch (Exception e) {
+                log.warn("Error deleting expired trade wallet for {}: {}", trade.getId(), e.getMessage(), e);
+            }
+        }
     }
 
     public void onShutDownStarted() {
