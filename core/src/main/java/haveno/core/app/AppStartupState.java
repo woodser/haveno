@@ -61,9 +61,19 @@ public class AppStartupState {
             public void onDataReceived() {
                 updatedDataReceived.set(true);
             }
+
+            @Override
+            public void onUpdatedDataReceived() {
+                updatedDataReceived.set(true);
+            }
         });
 
         xmrConnectionService.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
+            if (xmrConnectionService.isDownloadComplete())
+                isBlockDownloadComplete.set(true);
+        });
+
+        xmrConnectionService.numUpdatesProperty().addListener((observable, oldValue, newValue) -> {
             if (xmrConnectionService.isDownloadComplete())
                 isBlockDownloadComplete.set(true);
         });
@@ -89,7 +99,7 @@ public class AppStartupState {
                     } else if (!wasWalletSynced()) {
                         walletAndNetworkReady.set(false);
                     }
-                    return a && c && e;
+                    return a && b && c && e;
                 });
         p2pNetworkAndWalletInitialized.subscribe((observable, oldValue, newValue) -> {
             if (newValue) {
