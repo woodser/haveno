@@ -2143,6 +2143,18 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                     !OfferRestrictions.hasOfferMandatoryCapability(originalOffer, Capability.REFUND_AGENT) ||
                     !originalOfferPayload.getOwnerNodeAddress().equals(p2PService.getAddress())) {
 
+                // rebuilding forces the arbitrator to re-sign, which validates fees against current rates; if the offer's fees changed its reserved funds no longer match, so cancel it and let the maker recreate it
+                boolean hasBuyerAsTakerWithoutDeposit = originalOffer.hasBuyerAsTakerWithoutDeposit();
+                String counterCurrencyCode = originalOfferPayload.getCounterCurrencyCode();
+                if (originalOfferPayload.getMakerFeePct() != HavenoUtils.getMakerFeePct(counterCurrencyCode, hasBuyerAsTakerWithoutDeposit) ||
+                        originalOfferPayload.getTakerFeePct() != HavenoUtils.getTakerFeePct(counterCurrencyCode, hasBuyerAsTakerWithoutDeposit) ||
+                        originalOfferPayload.getPenaltyFeePct() != HavenoUtils.PENALTY_FEE_PCT) {
+                    log.warn("Canceling outdated offer {} because its fees changed and it cannot be re-signed; the maker must recreate it", originalOffer.getId());
+                    originalOffer.setErrorMessage("Offer was canceled because trade fees changed and it could not be re-signed. Please recreate the offer.");
+                    doCancelOffer(originalOpenOffer);
+                    return;
+                }
+
                 // preserve existing funding tx if possible
                 boolean preserveFundingTx = true;
 
