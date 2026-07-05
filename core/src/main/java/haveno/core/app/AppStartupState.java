@@ -60,12 +60,37 @@ public class AppStartupState {
         p2PService.addP2PServiceListener(new BootstrapListener() {
             @Override
             public void onDataReceived() {
-                UserThread.execute(() -> updatedDataReceived.set(true));
+                onP2pBootstrapComplete("onDataReceived");
             }
 
             @Override
             public void onUpdatedDataReceived() {
-                UserThread.execute(() -> updatedDataReceived.set(true));
+                onP2pBootstrapComplete("onUpdatedDataReceived");
+            }
+
+            // The P2P network can finish bootstrapping without a full initial data download: when no
+            // seed node or no peers are available it still reports the network as initialized. See
+            // P2PNetworkSetup, which sets p2pNetworkInitialized=true on onDataReceived, onNoSeedNodeAvailable
+            // and onNoPeersAvailable alike (and the app proceeds to init domain services on that basis).
+            // We must treat those paths the same here, otherwise updatedDataReceived stays false forever
+            // on daemons that bootstrap via the no-seed/no-peers path (e.g. when started before the seed
+            // nodes are serving data), so the app never reports initialized even though everything else
+            // (wallet synced, block download complete, domain services) is ready.
+            @Override
+            public void onNoSeedNodeAvailable() {
+                onP2pBootstrapComplete("onNoSeedNodeAvailable");
+            }
+
+            @Override
+            public void onNoPeersAvailable() {
+                onP2pBootstrapComplete("onNoPeersAvailable");
+            }
+
+            private void onP2pBootstrapComplete(String source) {
+                UserThread.execute(() -> {
+                    if (!updatedDataReceived.get()) log.warn("[READINESS-TRACE WOMBATTRACE] server P2P bootstrap complete via {} -> setting updatedDataReceived=true", source);
+                    updatedDataReceived.set(true);
+                });
             }
         });
 
