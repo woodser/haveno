@@ -100,6 +100,14 @@ public class ArbitratorProcessDepositRequest extends TradeTask {
             trade.stateProperty().addListener((obs, oldState, newState) -> {
                 if (oldState == newState) return;
                 if (newState == Trade.State.PUBLISH_DEPOSIT_TX_REQUEST_FAILED) {
+
+                    // do not nack when the relay outcome is unknown (e.g. timeout during relay), since traders delete
+                    // their multisig wallets on nack with unpublished deposits; they fall back to scheduled error
+                    // handling and restore the trade if the deposit txs are published
+                    if (processModel.isDepositTxsRelayUncertain()) {
+                        log.warn("Not sending deposit response nack for trade {} because the deposit txs may have been relayed", trade.getId());
+                        return;
+                    }
                     sendDepositResponsesOnce(trade.getProcessModel().error == null ? "Arbitrator failed to publish deposit txs within timeout for trade " + trade.getId() : trade.getProcessModel().error.getMessage());
                 } else if (newState.ordinal() >= Trade.State.ARBITRATOR_PUBLISHED_DEPOSIT_TXS.ordinal()) {
                     sendDepositResponsesOnce(null);
@@ -162,9 +170,10 @@ public class ArbitratorProcessDepositRequest extends TradeTask {
             if (isTimedOut()) throw new RuntimeException("Trade protocol has timed out before relaying deposit txs for {} {}" + trade.getClass().getSimpleName() + " " + trade.getShortId());
             trade.addInitProgressStep();
 
-            // relay deposit txs
+            // relay deposit txs, marking the outcome uncertain until known so a concurrent nack cannot be sent
             boolean depositTxsRelayed = false;
             List<String> txHashes = new ArrayList<>();
+            processModel.setDepositTxsRelayUncertain(true);
             try {
 
                 // submit maker tx to pool but do not relay
@@ -194,9 +203,10 @@ public class ArbitratorProcessDepositRequest extends TradeTask {
                 log.warn("Arbitrator error publishing deposit txs for trade {} {}: {}\n", trade.getClass().getSimpleName(), trade.getShortId(), e.getMessage(), e);
                 if (!depositTxsRelayed) {
 
-                    // flush txs from pool
+                    // flush txs from pool, which confirms they are unpublished
                     try {
                         monerod.flushTxPool(txHashes);
+                        processModel.setDepositTxsRelayUncertain(false);
                     } catch (Exception e2) {
                         log.warn("Error flushing deposit txs from pool for trade {}: {}\n", trade.getId(), e2.getMessage(), e2);
                     }

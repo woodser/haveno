@@ -2158,6 +2158,20 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
             return;
         }
 
+        // remove immediately on deposit request nack if the deposit txs are verified unpublished with the daemon,
+        // since they are only relayed on ack, otherwise fall through to scheduled error handling
+        if (isDepositRequestFailed() && !(this instanceof ArbitratorTrade)) {
+            try {
+                if (!hasPublishedDepositTx()) {
+                    removeTradeOnError();
+                    return;
+                }
+                log.warn("Deposit tx published for {} {} despite deposit request nack, scheduling error handling", getClass().getSimpleName(), getShortId());
+            } catch (Exception e) {
+                log.warn("Could not verify deposit txs unpublished for {} {} on deposit request nack, scheduling error handling: {}", getClass().getSimpleName(), getShortId(), e.getMessage());
+            }
+        }
+
         // done if wallet already deleted
         if (!walletExists()) {
             removeTradeOnError();
@@ -2196,12 +2210,8 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
             ThreadUtils.execute(() -> {
                 try {
 
-                    // get trade's deposit txs from daemon
-                    MoneroTx makerDepositTx = getMaker().getDepositTxHash() == null ? null : xmrWalletService.getMonerod().getTx(getMaker().getDepositTxHash());
-                    MoneroTx takerDepositTx = getTaker().getDepositTxHash() == null ? null : xmrWalletService.getMonerod().getTx(getTaker().getDepositTxHash());
-
-                    // remove trade and wallet if neither deposit tx published
-                    if (makerDepositTx == null && takerDepositTx == null) {
+                    // remove trade and wallet if no deposit tx published
+                    if (!hasPublishedDepositTx()) {
                         log.warn("Deleting {} {} after protocol error", getClass().getSimpleName(), getId());
                         if (this instanceof ArbitratorTrade && (getMaker().getReserveTxHash() != null || getTaker().getReserveTxHash() != null)) {
                             processModel.getTradeManager().onMoveInvalidTradeToFailedTrades(this); // arbitrator retains trades with reserved funds for analysis and penalty
@@ -2233,6 +2243,13 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
 
     public boolean isProtocolErrorHandlingScheduled() {
         return processModel.getTradeProtocolErrorHeight() > 0;
+    }
+
+    // checks the daemon directly since the trade state is not authoritative after errors
+    private boolean hasPublishedDepositTx() {
+        MoneroTx makerDepositTx = getMaker().getDepositTxHash() == null ? null : xmrWalletService.getMonerod().getTx(getMaker().getDepositTxHash());
+        MoneroTx takerDepositTx = getTaker().getDepositTxHash() == null ? null : xmrWalletService.getMonerod().getTx(getTaker().getDepositTxHash());
+        return makerDepositTx != null || takerDepositTx != null;
     }
 
     private void restoreDepositsPublishedTrade() {
