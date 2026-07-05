@@ -22,6 +22,7 @@ import com.google.inject.Singleton;
 import haveno.core.api.XmrConnectionService;
 import haveno.core.api.CoreNotificationService;
 import haveno.core.xmr.wallet.XmrWalletService;
+import haveno.common.UserThread;
 import haveno.network.p2p.BootstrapListener;
 import haveno.network.p2p.P2PService;
 import javafx.beans.property.BooleanProperty;
@@ -59,12 +60,12 @@ public class AppStartupState {
         p2PService.addP2PServiceListener(new BootstrapListener() {
             @Override
             public void onDataReceived() {
-                updatedDataReceived.set(true);
+                UserThread.execute(() -> updatedDataReceived.set(true));
             }
 
             @Override
             public void onUpdatedDataReceived() {
-                updatedDataReceived.set(true);
+                UserThread.execute(() -> updatedDataReceived.set(true));
             }
         });
 
@@ -115,7 +116,7 @@ public class AppStartupState {
     }
 
     public void onDomainServicesInitialized() {
-        allDomainServicesInitialized.set(true);
+        UserThread.execute(() -> allDomainServicesInitialized.set(true));
     }
 
 
