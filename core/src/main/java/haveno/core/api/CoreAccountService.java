@@ -108,6 +108,7 @@ public class CoreAccountService {
         if (!accountExists()) throw new IllegalStateException("Cannot open account if account does not exist");
         if (keyRing.unlockKeys(password, false)) {
             this.password = password;
+            log.warn("[READINESS-TRACE WOMBATTRACE] server (RE)OPENING ACCOUNT (thread={}) -- wallet must re-sync before walletAndNetworkReady returns TRUE; requests in this window are rejected", Thread.currentThread().getName());
             synchronized (listeners) {
                 for (AccountServiceListener listener : new ArrayList<>(listeners)) listener.onAccountOpened();
             }
@@ -141,6 +142,9 @@ public class CoreAccountService {
 
     public void closeAccount() {
         if (!isAccountOpen()) throw new IllegalStateException("Cannot close unopened account");
+        // [READINESS-TRACE WOMBATTRACE] closing the account resets wasWalletSynced -> walletAndNetworkReady=false.
+        // Log the caller stack so CI reveals what triggers the close on this daemon.
+        log.warn("[READINESS-TRACE WOMBATTRACE] server CLOSING ACCOUNT (thread={}) -- this resets wasWalletSynced and will drive walletAndNetworkReady=false until the wallet re-syncs after reopen", Thread.currentThread().getName(), new Throwable("closeAccount() caller stack"));
         keyRing.lockKeys(); // closed account means the keys are locked
         synchronized (listeners) {
             for (AccountServiceListener listener : new ArrayList<>(listeners)) listener.onAccountClosed();

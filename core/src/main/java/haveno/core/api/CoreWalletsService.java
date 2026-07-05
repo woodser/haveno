@@ -393,8 +393,24 @@ class CoreWalletsService {
 
     // Throws a RuntimeException if wallets and network are not ready.
     void verifyWalletAndNetworkIsReady() {
-        if (!appStartupState.isWalletAndNetworkReady())
+        if (!appStartupState.isWalletAndNetworkReady()) {
+            // Diagnostic: the readiness state machine (AppStartupState) says walletAndNetworkReady
+            // should only be false before first wallet sync or after an account close. Dump the full
+            // state (and the wallet's actual sync field vs. the AppStartupState mirror) so CI docker
+            // logs reveal which sub-state is false when this throws.
+            log.warn("[READINESS-TRACE WOMBATTRACE] server REJECTING client request 'wallet and network is not yet initialized' (client believed the app was initialized): walletAndNetworkReady={}, applicationFullyInitialized={}, updatedDataReceived={}, isBlockDownloadComplete={}, wasWalletSynced(mirror)={}, wasWalletSynced(wallet)={}, hasSufficientPeersForBroadcast={}, allDomainServicesInitialized={}, accountOpen={}, thread={}",
+                    appStartupState.isWalletAndNetworkReady(),
+                    appStartupState.isApplicationFullyInitialized(),
+                    appStartupState.isUpdatedDataReceived(),
+                    appStartupState.isBlockDownloadComplete(),
+                    appStartupState.wasWalletSynced(),
+                    xmrWalletService.wasWalletSynced(),
+                    appStartupState.isHasSufficientPeersForBroadcast(),
+                    appStartupState.isAllDomainServicesInitialized(),
+                    accountService.isAccountOpen(),
+                    Thread.currentThread().getName());
             throw new IllegalStateException("wallet and network is not yet initialized");
+        }
     }
 
     // Throws a RuntimeException if application is not fully initialized.

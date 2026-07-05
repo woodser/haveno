@@ -94,23 +94,26 @@ public class AppStartupState {
                 hasSufficientPeersForBroadcast, // TODO: consider sufficient number of peers?
                 allDomainServicesInitialized,
                 (a, b, c, d, e) -> {
-                    log.info("Combined initialized state = {} = updatedDataReceived={} && isBlockDownloadComplete={} && isWalletSynced={} && hasSufficientPeersForBroadcast={} && allDomainServicesInitialized={}", (a && b && c && d && e), updatedDataReceived.get(), isBlockDownloadComplete.get(), wasWalletSynced.get(), hasSufficientPeersForBroadcast.get(), allDomainServicesInitialized.get());
+                    boolean prevReady = walletAndNetworkReady.get();
                     if (a && b && c) {
+                        if (!prevReady) log.warn("[READINESS-TRACE WOMBATTRACE] server walletAndNetworkReady: false -> TRUE (updatedDataReceived={}, isBlockDownloadComplete={}, wasWalletSynced={}, thread={})", a, b, c, Thread.currentThread().getName());
                         walletAndNetworkReady.set(true);
                     } else if (!wasWalletSynced()) {
+                        if (prevReady) log.warn("[READINESS-TRACE WOMBATTRACE] server walletAndNetworkReady: TRUE -> false (updatedDataReceived={}, isBlockDownloadComplete={}, wasWalletSynced(mirror)={}, thread={}) -- clients that already believe the app is initialized will now be rejected", a, b, c, Thread.currentThread().getName());
                         walletAndNetworkReady.set(false);
                     }
+                    log.info("[READINESS-TRACE WOMBATTRACE] Combined initialized state = {} = updatedDataReceived={} && isBlockDownloadComplete={} && isWalletSynced={} && hasSufficientPeersForBroadcast={} && allDomainServicesInitialized={} (walletAndNetworkReady={}, thread={})", (a && b && c && d && e), updatedDataReceived.get(), isBlockDownloadComplete.get(), wasWalletSynced.get(), hasSufficientPeersForBroadcast.get(), allDomainServicesInitialized.get(), walletAndNetworkReady.get(), Thread.currentThread().getName());
                     return a && b && c && e;
                 });
         p2pNetworkAndWalletInitialized.subscribe((observable, oldValue, newValue) -> {
             if (newValue) {
                 applicationFullyInitialized.set(true);
                 notificationService.sendAppInitializedNotification();
-                log.info("Application fully initialized");
+                log.warn("[READINESS-TRACE WOMBATTRACE] server reporting APP_INITIALIZED=TRUE to clients (walletAndNetworkReady={}, thread={}) -- clients waiting on awaitAppInitialized() will now proceed", walletAndNetworkReady.get(), Thread.currentThread().getName());
             } else {
                 applicationFullyInitialized.set(false);
                 notificationService.sendAppInitializedNotification();
-                log.info("Application is not fully initialized");
+                log.warn("[READINESS-TRACE WOMBATTRACE] server reporting APP_INITIALIZED=false to clients (walletAndNetworkReady={}, thread={}) -- note: same APP_INITIALIZED notification type is sent whether true or false", walletAndNetworkReady.get(), Thread.currentThread().getName());
             }
         });
     }
