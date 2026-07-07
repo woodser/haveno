@@ -129,7 +129,7 @@ public class CoreAccountService {
         }
 
         // commit new account password
-        keyStorage.saveKeyRing(keyRing, oldPassword, newPassword);
+        keyStorage.saveKeyRing(keyRing, newPassword);
         this.password = newPassword;
     }
 
