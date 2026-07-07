@@ -82,6 +82,10 @@ public class TradeStatisticsManager {
 
     public void shutDown() {
         shutDownRequested = true;
+        // flush a pending batched dump so the json includes the final statistics
+        if (dumpStatisticsScheduled.getAndSet(false)) {
+            dumpStatistics();
+        }
         if (jsonFileManager != null) {
             jsonFileManager.shutDown();
         }
