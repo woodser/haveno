@@ -215,4 +215,22 @@ public class PersistenceManagerTest {
         assertTrue(new File(dir, "backup_of_corrupted_data/CorruptStore").exists(),
                 "corrupt file should be preserved in backup_of_corrupted_data");
     }
+
+    @Test
+    public void testCorruptV2FileWithIntactMagicIsMovedToBackup() throws Exception {
+        NavigationPath data = largeNavigationPath();
+        persistAndWait(data, "CorruptV2Store");
+
+        // Flip one ciphertext byte but keep the v2 magic, so the failure surfaces in the v2 read path.
+        File storageFile = new File(dir, "CorruptV2Store");
+        byte[] bytes = java.nio.file.Files.readAllBytes(storageFile.toPath());
+        bytes[bytes.length / 2] ^= 0x01;
+        java.nio.file.Files.write(storageFile.toPath(), bytes);
+
+        NavigationPath read = persistenceManager.getPersisted("CorruptV2Store");
+        assertNull(read, "corrupt file must not return data");
+        assertFalse(storageFile.exists(), "corrupt file should be moved out of place");
+        assertTrue(new File(dir, "backup_of_corrupted_data/CorruptV2Store").exists(),
+                "corrupt file should be preserved in backup_of_corrupted_data");
+    }
 }
