@@ -179,8 +179,22 @@ public class EncryptedAppendLog {
             File logFile = logFile();
             List<byte[]> records = new ArrayList<>();
             if (!logFile.exists()) {
-                knownGoodLength = 0;
-                return records;
+                // Salvage a rewrite whose final swap was interrupted: the temp is fully written and
+                // fsynced before the swap begins, so with no log present it is the newest copy. (A
+                // partial temp can only coexist with the intact log, which takes precedence; a torn
+                // temp is self-repaired by the replay below like any torn tail.)
+                File tempFile = tempFile();
+                if (tempFile.exists()) {
+                    log.warn("{} is missing but its rewrite temp exists; recovering the temp.", fileName);
+                    try {
+                        FileUtil.renameFile(tempFile, logFile);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Could not recover " + fileName + " from its rewrite temp", e);
+                    }
+                } else {
+                    knownGoodLength = 0;
+                    return records;
+                }
             }
 
             long fileLength = logFile.length();
@@ -228,35 +242,42 @@ public class EncryptedAppendLog {
             }
 
             try {
-                if (corrupt) {
+                if (corrupt || (tornTail && goodLength < fileLength)) {
+                    // Preserve the dropped bytes before truncating back to the valid prefix - they
+                    // may hold frames a smarter recovery (or a fixed build) can still extract. The
+                    // copy-then-truncate order means a failure at any point leaves the log (or its
+                    // full backup) on disk; the log is never renamed away before its replacement is
+                    // in place.
                     File backupFile = corruptedBackupFile();
-                    log.error("Corrupt record in {} at offset {} (file length {}). Backing up to {} and " +
-                                    "rebuilding from the {} valid leading record(s).",
-                            fileName, goodLength, fileLength, backupFile, records.size());
-                    FileUtil.renameFile(logFile, backupFile);
-                    rewrite(records);
-                } else if (tornTail && goodLength < fileLength) {
-                    // A mid-log length-prefix corruption is indistinguishable from a genuine torn
-                    // tail, so preserve the dropped bytes before truncating - they may hold valid
-                    // frames that a smarter recovery (or a fixed build) can still extract.
-                    File backupFile = corruptedBackupFile();
-                    log.warn("Truncating torn tail of {}: keeping {} bytes ({} valid record(s)), dropping {} bytes. " +
-                                    "Pre-truncation copy preserved at {}.",
-                            fileName, goodLength, records.size(), fileLength - goodLength, backupFile);
+                    if (corrupt) {
+                        log.error("Corrupt record in {} at offset {} (file length {}). Backing up to {} and " +
+                                        "keeping the {} valid leading record(s).",
+                                fileName, goodLength, fileLength, backupFile, records.size());
+                    } else {
+                        log.warn("Truncating torn tail of {}: keeping {} bytes ({} valid record(s)), dropping {} bytes. " +
+                                        "Pre-truncation copy preserved at {}.",
+                                fileName, goodLength, records.size(), fileLength - goodLength, backupFile);
+                    }
                     FileUtil.copyFile(logFile, backupFile);
                     truncateTo(logFile, goodLength);
                     knownGoodLength = goodLength;
                 } else {
                     knownGoodLength = fileLength;
                 }
-                // one-time migration: rewrite legacy frames in the current format (corruption
-                // handling above already rebuilt the log in the current format)
-                if (!corrupt && hasLegacyFrames) {
-                    log.info("Rewriting {} to upgrade legacy encrypted frames.", fileName);
-                    rewrite(records);
-                }
             } catch (IOException e) {
                 throw new RuntimeException("Could not repair " + fileName, e);
+            }
+            // one-time migration: rewrite legacy frames in the current format. Best effort - the
+            // replayed records must never be lost to a failed rewrite (the log on disk is intact).
+            if (hasLegacyFrames) {
+                try {
+                    log.info("Rewriting {} to upgrade legacy encrypted frames.", fileName);
+                    rewrite(records);
+                } catch (OutOfMemoryError e) {
+                    throw e;
+                } catch (Throwable t) {
+                    log.error("Could not rewrite {} to upgrade legacy frames; keeping the existing log.", fileName, t);
+                }
             }
             return records;
         }
@@ -287,12 +308,14 @@ public class EncryptedAppendLog {
                 }
                 // Keep a rolling backup of the pre-rewrite log as a safety net against a faulty compaction.
                 if (logFile.exists()) FileUtil.rollingBackup(dir, fileName, numMaxBackupFiles);
-                FileUtil.renameFile(tempFile, logFile);
+                FileUtil.atomicReplace(tempFile, logFile);
                 knownGoodLength = written;
             } catch (IOException | CryptoException e) {
                 throw new RuntimeException("Could not rewrite " + fileName, e);
             } finally {
-                if (tempFile.exists()) {
+                // Never delete the temp while the log itself is missing (a failed non-atomic swap):
+                // the fsynced temp is then the only remaining full copy and replay recovers it.
+                if (tempFile.exists() && logFile.exists()) {
                     try {
                         FileUtil.deleteFileIfExists(tempFile);
                     } catch (IOException ignore) {

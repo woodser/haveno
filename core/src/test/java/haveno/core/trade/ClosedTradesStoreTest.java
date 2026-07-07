@@ -188,6 +188,23 @@ public class ClosedTradesStoreTest {
     }
 
     @Test
+    public void testCompactionKeepsTombstonesSoLegacyCannotResurrectDeletedTrades() throws Exception {
+        ClosedTradesStore store = newStore();
+        store.appendUpsert(openOffer("deleted", 0));
+        store.appendDelete("deleted");
+        // enough superseded records to exceed the compaction floor
+        for (int i = 0; i < 600; i++) store.appendUpsert(openOffer("keep", i));
+
+        // this load compacts the log; the tombstone for "deleted" must survive the rewrite
+        assertEquals(List.of("keep"), ids(newStore().load()));
+
+        // a legacy file that reappears afterwards (e.g. downgrade/upgrade cycle) must not
+        // resurrect the deliberately deleted trade
+        writeLegacyFile(openOffer("deleted", 0), openOffer("legacy-only", 0));
+        assertEquals(List.of("keep", "legacy-only"), ids(newStore().load()));
+    }
+
+    @Test
     public void testSecondMergeDoesNotOverwriteEarlierLegacyBackup() throws Exception {
         writeLegacyFile(openOffer("first", 0));
         newStore().load();

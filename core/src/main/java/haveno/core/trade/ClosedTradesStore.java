@@ -19,7 +19,9 @@ package haveno.core.trade;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import haveno.common.UserThread;
 import haveno.common.config.Config;
 import haveno.common.crypto.KeyRing;
 import haveno.common.file.CorruptedStorageFileHandler;
@@ -57,6 +59,7 @@ import lombok.extern.slf4j.Slf4j;
  * mutations they mirror (see {@code ClosedTradableManager}'s persist lock).
  */
 @Slf4j
+@Singleton
 public class ClosedTradesStore {
 
     static final String LEGACY_FILE_NAME = "ClosedTrades";          // old monolithic store
@@ -79,9 +82,12 @@ public class ClosedTradesStore {
     private final PersistenceManager<TradableList<Tradable>> legacyPersistenceManager;
 
     private EncryptedAppendLog appendLog;
-    // Entries whose write failed (e.g. disk full); retried in order before the next write so a
-    // transient failure delays durability instead of dropping history or breaking the caller.
+    // Entries whose write failed (e.g. disk full); retried in order before the next write, on a
+    // timer, and at shutdown, so a transient failure delays durability instead of dropping history
+    // or breaking the caller.
     private final List<byte[]> failedEntries = new ArrayList<>();
+    private boolean retryScheduled = false; // guarded by failedEntries
+    private static final long RETRY_DELAY_SEC = 30;
 
     @Inject
     public ClosedTradesStore(@Named(Config.STORAGE_DIR) File dir,
@@ -98,7 +104,7 @@ public class ClosedTradesStore {
         this.legacyPersistenceManager = legacyPersistenceManager;
     }
 
-    private EncryptedAppendLog appendLog() {
+    private synchronized EncryptedAppendLog appendLog() {
         if (appendLog == null) {
             SecretKey symmetricKey = keyRing.getSymmetricKey();
             if (symmetricKey == null) throw new IllegalStateException("Cannot use ClosedTradesStore before the key ring is unlocked");
@@ -142,12 +148,29 @@ public class ClosedTradesStore {
             } catch (OutOfMemoryError e) {
                 throw e;
             } catch (Throwable t) {
-                log.error("Could not append {} record(s) to {}; keeping them in memory and retrying on the next write.",
+                log.error("Could not append {} record(s) to {}; keeping them in memory and retrying.",
                         batch.size(), LOG_FILE_NAME, t);
                 failedEntries.clear();
                 failedEntries.addAll(batch);
+                if (!retryScheduled) {
+                    retryScheduled = true;
+                    UserThread.runAfter(() -> {
+                        synchronized (failedEntries) {
+                            retryScheduled = false;
+                        }
+                        flushFailedEntries();
+                    }, RETRY_DELAY_SEC);
+                }
             }
         }
+    }
+
+    /**
+     * Retries any queued failed entries now; no-op when the queue is empty. Called on a timer after
+     * a failed write and from the shutdown sequence, so queued mutations do not die with the process.
+     */
+    public void flushFailedEntries() {
+        appendEntries(List.of());
     }
 
     static byte[] upsertBytes(Tradable tradable) {
@@ -186,6 +209,7 @@ public class ClosedTradesStore {
         // every id the log has ever mentioned (including tombstoned ones) for the legacy merge below.
         LinkedHashMap<String, Tradable> byId = new LinkedHashMap<>();
         Set<String> seenIds = new HashSet<>();
+        Set<String> deletedIds = new HashSet<>();
         int skipped = 0;
         for (byte[] record : records) {
             try {
@@ -195,10 +219,12 @@ public class ClosedTradesStore {
                         Tradable tradable = TradableList.tradableFromProto(entry.getUpsert(), protoResolver, xmrWalletService.get());
                         byId.put(tradable.getId(), tradable);
                         seenIds.add(tradable.getId());
+                        deletedIds.remove(tradable.getId());
                         break;
                     case DELETE_ID:
                         byId.remove(entry.getDeleteId());
                         seenIds.add(entry.getDeleteId());
+                        deletedIds.add(entry.getDeleteId());
                         break;
                     default:
                         // An authenticated record with no known entry set is most likely a new entry
@@ -226,23 +252,35 @@ public class ClosedTradesStore {
         List<Tradable> result = new ArrayList<>(byId.values());
         // Never compact while undecodable records exist - a rewrite from the decoded trades would
         // permanently drop them.
-        if (skipped == 0) maybeCompact(records.size(), result);
+        if (skipped == 0) maybeCompact(records.size(), result, deletedIds);
         return result;
     }
 
-    private void maybeCompact(int recordsRead, List<Tradable> liveTrades) {
-        int live = liveTrades.size();
-        if (!shouldCompact(recordsRead, live)) return;
-        log.info("Compacting {}: {} records -> {} live trades", LOG_FILE_NAME, recordsRead, live);
-        List<byte[]> compacted = new ArrayList<>(live);
+    // Compaction keeps one tombstone per deleted id: the legacy merge skips ids the log has ever
+    // mentioned, so dropping tombstones could resurrect deliberately deleted trades from a legacy
+    // file that reappears (e.g. after a downgrade/upgrade cycle). Best effort - a failed rewrite
+    // must never fail the load; the un-compacted log on disk is intact.
+    private void maybeCompact(int recordsRead, List<Tradable> liveTrades, Set<String> deletedIds) {
+        int compactedSize = liveTrades.size() + deletedIds.size();
+        if (!shouldCompact(recordsRead, compactedSize)) return;
+        log.info("Compacting {}: {} records -> {} live trades + {} tombstones", LOG_FILE_NAME, recordsRead, liveTrades.size(), deletedIds.size());
+        List<byte[]> compacted = new ArrayList<>(compactedSize);
         for (Tradable tradable : liveTrades) compacted.add(upsertBytes(tradable));
-        appendLog().rewrite(compacted);
+        for (String id : deletedIds) compacted.add(deleteBytes(id));
+        try {
+            appendLog().rewrite(compacted);
+        } catch (OutOfMemoryError e) {
+            throw e;
+        } catch (Throwable t) {
+            log.error("Compaction of {} failed; keeping the existing log.", LOG_FILE_NAME, t);
+        }
     }
 
-    // Compact once the log carries enough superseded/tombstoned records that a rewrite is worth it,
-    // but never on every small change. Package-private for testing.
-    static boolean shouldCompact(int recordsRead, int liveTrades) {
-        return recordsRead > Math.max((long) liveTrades * COMPACTION_RATIO, MIN_RECORDS_FOR_COMPACTION);
+    // Compact once the log carries enough superseded records that a rewrite is worth it, but never
+    // on every small change. retainedRecords = what compaction would keep (live trades + tombstones).
+    // Package-private for testing.
+    static boolean shouldCompact(int recordsRead, int retainedRecords) {
+        return recordsRead > Math.max((long) retainedRecords * COMPACTION_RATIO, MIN_RECORDS_FOR_COMPACTION);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

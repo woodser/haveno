@@ -74,6 +74,36 @@ public class KeyStorageTest {
     }
 
     @Test
+    public void testCorruptKeyFileIsNotReportedAsIncorrectPassword(@TempDir File dir) throws Exception {
+        new KeyRing(new KeyStorage(dir), PASSWORD, true);
+        File symFile = new File(dir, "sym.key");
+        byte[] bytes = Files.readAllBytes(symFile.toPath());
+        // keep the header but mangle the wrapped blob below its minimum valid length
+        Files.write(symFile.toPath(), java.util.Arrays.copyOf(bytes, 74));
+        KeyStorage keyStorage = new KeyStorage(dir);
+        // must surface as corruption (RuntimeException), not IncorrectPasswordException (a checked exception)
+        assertThrows(RuntimeException.class,
+                () -> keyStorage.loadSecretKey(KeyStorage.KeyEntry.SYM_ENCRYPTION, PASSWORD));
+    }
+
+    @Test
+    public void testBackupsSurviveFailedUnlockAttempts(@TempDir File dir) throws Exception {
+        new KeyRing(new KeyStorage(dir), PASSWORD, true);
+        // saving keeps a fresh backup so the wrapped key never exists as a single copy
+        File backupDir = new File(dir, "backup/backups_sym_key");
+        assertEquals(1, backupDir.listFiles().length);
+
+        // failed unlock attempts must not rotate more copies into the backups (a corrupt key file
+        // could otherwise churn out every good backup over repeated password retries)
+        KeyStorage keyStorage = new KeyStorage(dir);
+        for (int i = 0; i < 3; i++) {
+            assertThrows(IncorrectPasswordException.class,
+                    () -> keyStorage.loadSecretKey(KeyStorage.KeyEntry.SYM_ENCRYPTION, "wrong password"));
+        }
+        assertEquals(1, backupDir.listFiles().length);
+    }
+
+    @Test
     public void testLegacyFormatMigratesOnUnlock(@TempDir File dir) throws Exception {
         // write a keyring in the legacy format: PKCS#12 sym.p12 + AES-ECB-with-hmac key files
         SecretKey symKey = Encryption.generateSecretKey(256);

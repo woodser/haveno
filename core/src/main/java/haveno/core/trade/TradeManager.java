@@ -419,6 +419,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         log.info("Shutting down {}", getClass().getSimpleName());
         isShutDown = true;
         closeAllTrades();
+        closedTradableManager.shutDown();
     }
 
     private void closeAllTrades() {
@@ -1124,11 +1125,14 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         xmrWalletService.fixReservedOutputs();
     }
 
-    public void onMoveClosedTradeToPendingTrades(Trade trade) { 
+    public void onMoveClosedTradeToPendingTrades(Trade trade) {
         log.warn("Moving {} {} from closed trades to pending trades", trade.getClass().getSimpleName(), trade.getShortId());
         trade.setCompleted(false);
         addTradeToPendingTrades(trade);
-        closedTradableManager.removeTrade(trade);
+        // tombstone the closed log only once the pending store is durable: the closed-log delete is
+        // fsynced immediately while the pending write is debounced, so the reverse order has a crash
+        // window where the trade exists in neither store
+        persistNow(() -> closedTradableManager.removeTrade(trade));
     }
 
     private void removeFailedTrade(Trade trade) {

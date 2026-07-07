@@ -196,12 +196,15 @@ public class KeyStorage {
     public SecretKey loadSecretKey(KeyEntry keyEntry, String password) throws IncorrectPasswordException {
         File keyFile = new File(storageDir + "/" + keyEntry.getFileName());
         if (keyFile.exists()) {
+            SecretKey key = loadSecretKeyV2(keyFile, password);
+            // backup only after a successful load, so retries against a corrupt file cannot rotate out good backups
             FileUtil.rollingBackup(storageDir, keyEntry.getFileName(), 20);
-            return loadSecretKeyV2(keyFile, password);
+            return key;
         }
         legacyFormatLoaded = true;
+        SecretKey key = loadSecretKeyLegacy(keyEntry, password);
         FileUtil.rollingBackup(storageDir, LEGACY_SYM_FILE_NAME, 20);
-        return loadSecretKeyLegacy(keyEntry, password);
+        return key;
     }
 
     private SecretKey loadSecretKeyV2(File keyFile, String password) throws IncorrectPasswordException {
@@ -225,6 +228,8 @@ public class KeyStorage {
             buf.get(salt);
             byte[] blob = new byte[buf.remaining()];
             buf.get(blob);
+            // a mangled wrapped blob is corruption, not a wrong password
+            if (!Encryption.isV2Format(blob)) throw new IOException("Corrupt key file");
             SecretKey kek = Encryption.getSecretKeyFromBytes(PasswordKdf.deriveKey(password, salt, memKib, iterations, parallelism));
             try {
                 return Encryption.getSecretKeyFromBytes(Encryption.decryptV2(blob, kek));
@@ -336,7 +341,8 @@ public class KeyStorage {
             buf.put(SYM_FILE_MAGIC).put(SYM_FILE_VERSION).put((byte) PasswordKdf.KDF_ARGON2ID)
                     .putInt(memKib).putInt(iterations).putInt(parallelism).put(salt).put(blob);
 
-            // write to a temp file and rename so a failed write cannot corrupt the existing key file
+            // write to a temp file, verify the round trip, then atomically swap it in, so a failed
+            // or unverified write can never replace the existing key file
             File keyFile = new File(storageDir, fileName);
             File tempFile = new File(storageDir, fileName + ".tmp");
             try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -344,20 +350,21 @@ public class KeyStorage {
                 fos.flush();
                 fos.getFD().sync();
             }
-            FileUtil.renameFile(tempFile, keyFile);
-
-            // verify the round trip before deleting anything
-            SecretKey readBack = loadSecretKeyV2(keyFile, password);
+            SecretKey readBack = loadSecretKeyV2(tempFile, password);
             if (!Arrays.equals(readBack.getEncoded(), key.getEncoded())) {
                 throw new IOException("Key file verification failed");
             }
+            FileUtil.atomicReplace(tempFile, keyFile);
 
-            // remove the legacy PKCS#12 file and backups still unlockable with weak KDF or old passwords
+            // remove the legacy PKCS#12 file and backups still unlockable with weak KDF or old
+            // passwords, then keep a fresh backup so the wrapped key never exists as a single copy
+            FileUtil.deleteRollingBackup(storageDir, fileName);
             FileUtil.deleteFileIfExists(legacySymFile());
             FileUtil.deleteRollingBackup(storageDir, LEGACY_SYM_FILE_NAME);
-            FileUtil.deleteRollingBackup(storageDir, fileName);
+            FileUtil.rollingBackup(storageDir, fileName, 20);
         } catch (Exception e) {
             throw new RuntimeException("Could not save key " + fileName, e);
         }
     }
+
 }

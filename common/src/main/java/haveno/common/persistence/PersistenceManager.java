@@ -434,7 +434,13 @@ public class PersistenceManager<T extends PersistableEnvelope> {
     private protobuf.PersistableEnvelope readEncrypted(File storageFile, SecretKey symmetricKey) throws Exception {
         try (InputStream headStream = new BufferedInputStream(new FileInputStream(storageFile), READ_BUFFER_SIZE)) {
             if (Encryption.isV2Format(headStream)) {
-                return readEncryptedV2(storageFile, symmetricKey);
+                try {
+                    return readEncryptedV2(storageFile, symmetricKey);
+                } catch (CryptoException e) {
+                    // a legacy blob can collide with the v2 magic (p = 2^-32); try the legacy read
+                    // before treating the file as corrupt
+                    log.warn("Store {} looks like v2 but failed verification, attempting legacy read", storageFile.getName());
+                }
             }
         }
         lastReadWasLegacyFormat = true;

@@ -30,8 +30,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -225,6 +227,19 @@ public class FileUtil {
             }
         } else if (!oldFile.renameTo(newFile)) {
             throw new IOException("Failed to rename " + oldFile + " to " + newFile);
+        }
+    }
+
+    /**
+     * Replaces target with source atomically where the filesystem supports it, so no crash window
+     * exists with neither file in place ({@link #renameFile} deletes the target first on Windows).
+     */
+    public static void atomicReplace(File source, File target) throws IOException {
+        try {
+            java.nio.file.Files.move(source.toPath(), target.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            renameFile(source, target);
         }
     }
 

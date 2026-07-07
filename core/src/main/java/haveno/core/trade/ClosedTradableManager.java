@@ -130,11 +130,18 @@ public class ClosedTradableManager implements PersistedDataHost {
                 if (!closedTradables.add(tradable)) return;
                 cleared = clearSensitiveDataForEligibleTrades();
             }
-            // Serialize and write outside the list monitor; persistLock keeps the log ordered.
-            List<byte[]> entries = new ArrayList<>(cleared.size() + 1);
-            for (Trade trade : cleared) entries.add(ClosedTradesStore.upsertBytes(trade));
-            entries.add(ClosedTradesStore.upsertBytes(tradable));
-            store.appendEntries(entries);
+            try {
+                // Serialize and write outside the list monitor; persistLock keeps the log ordered.
+                List<byte[]> entries = new ArrayList<>(cleared.size() + 1);
+                for (Trade trade : cleared) entries.add(ClosedTradesStore.upsertBytes(trade));
+                entries.add(ClosedTradesStore.upsertBytes(tradable));
+                store.appendEntries(entries);
+            } catch (OutOfMemoryError e) {
+                throw e;
+            } catch (Throwable t) {
+                // serialization can fail on a concurrently mutated trade; never throw into callers
+                log.error("Could not persist closed trade {}", tradable.getId(), t);
+            }
         }
     }
 
@@ -161,8 +168,21 @@ public class ClosedTradableManager implements PersistedDataHost {
             synchronized (closedTradables.getList()) {
                 contained = closedTradables.stream().anyMatch(t -> t.getId().equals(trade.getId()));
             }
-            if (contained) store.appendEntries(List.of(ClosedTradesStore.upsertBytes(trade)));
+            try {
+                if (contained) store.appendEntries(List.of(ClosedTradesStore.upsertBytes(trade)));
+            } catch (OutOfMemoryError e) {
+                throw e;
+            } catch (Throwable t) {
+                // serialization can fail on a concurrently mutated trade; never throw into callers
+                log.error("Could not persist closed trade {}", trade.getId(), t);
+            }
         }
+    }
+
+    // Flushes any writes still queued for retry; called from the shutdown sequence so a transient
+    // append failure earlier in the session cannot silently drop history with the process.
+    public void shutDown() {
+        store.flushFailedEntries();
     }
 
     public boolean wasMyOffer(Offer offer) {
@@ -215,12 +235,19 @@ public class ClosedTradableManager implements PersistedDataHost {
             synchronized (closedTradables.getList()) {
                 cleared = clearSensitiveDataForEligibleTrades();
             }
-            // Serialize and batch-write outside the list monitor (one fsync for the whole batch), so
-            // a mass clearing - e.g. when the user first enables the clear-data setting and thousands
-            // of trades become eligible at once - cannot stall readers or the UI on per-trade fsyncs.
-            List<byte[]> entries = new ArrayList<>(cleared.size());
-            for (Trade trade : cleared) entries.add(ClosedTradesStore.upsertBytes(trade));
-            store.appendEntries(entries);
+            try {
+                // Serialize and batch-write outside the list monitor (one fsync for the whole batch), so
+                // a mass clearing - e.g. when the user first enables the clear-data setting and thousands
+                // of trades become eligible at once - cannot stall readers or the UI on per-trade fsyncs.
+                List<byte[]> entries = new ArrayList<>(cleared.size());
+                for (Trade trade : cleared) entries.add(ClosedTradesStore.upsertBytes(trade));
+                store.appendEntries(entries);
+            } catch (OutOfMemoryError e) {
+                throw e;
+            } catch (Throwable t) {
+                // serialization can fail on a concurrently mutated trade; never throw into callers
+                log.error("Could not persist cleared closed trades", t);
+            }
         }
     }
 

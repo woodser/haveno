@@ -333,6 +333,8 @@ public class Encryption {
             Cipher cipher = Cipher.getInstance(SYM_CIPHER);
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
             return new CipherInputStream(encryptedInput, cipher);
+        } catch (OutOfMemoryError e) {
+            throw e; // never mistake a heap-constrained read for a corrupt file
         } catch (Throwable e) {
             throw new CryptoException(e);
         }
@@ -436,14 +438,31 @@ public class Encryption {
         }
     }
 
-    // Decrypts v2 or legacy v1 (AES-ECB) blobs, detected by the magic prefix.
+    // Decrypts v2 or legacy v1 (AES-ECB) blobs, detected by the magic prefix. A legacy blob can
+    // collide with the magic (p = 2^-32), so a failed v2 decrypt falls back to v1 rather than
+    // making that blob permanently unreadable; v1 consumers authenticate the result themselves.
     public static byte[] decryptAuto(byte[] blob, SecretKey masterKey) throws CryptoException {
-        return isV2Format(blob) ? decryptV2(blob, masterKey) : decrypt(blob, masterKey);
+        if (isV2Format(blob)) {
+            try {
+                return decryptV2(blob, masterKey);
+            } catch (CryptoException e) {
+                return decrypt(blob, masterKey);
+            }
+        }
+        return decrypt(blob, masterKey);
     }
 
-    // Decrypts v2 or legacy v1 (AES-ECB with trailing HMAC) blobs, detected by the magic prefix.
+    // Decrypts v2 or legacy v1 (AES-ECB with trailing HMAC) blobs, detected by the magic prefix,
+    // with the same magic-collision fallback as decryptAuto (the v1 path verifies its own hmac).
     public static byte[] decryptPayloadWithHmacAuto(byte[] blob, SecretKey masterKey) throws CryptoException {
-        return isV2Format(blob) ? decryptV2(blob, masterKey) : decryptPayloadWithHmac(blob, masterKey);
+        if (isV2Format(blob)) {
+            try {
+                return decryptV2(blob, masterKey);
+            } catch (CryptoException e) {
+                return decryptPayloadWithHmac(blob, masterKey);
+            }
+        }
+        return decryptPayloadWithHmac(blob, masterKey);
     }
 
     /**
@@ -551,8 +570,8 @@ public class Encryption {
             Cipher cipher = Cipher.getInstance(V2_CIPHER);
             cipher.init(Cipher.DECRYPT_MODE, deriveV2EncKey(masterKey), new IvParameterSpec(iv));
             return new V2DecryptingInputStream(encryptedInput, cipher, mac);
-        } catch (CryptoException e) {
-            throw e;
+        } catch (OutOfMemoryError | CryptoException e) {
+            throw e; // never mistake a heap-constrained read for a corrupt file
         } catch (Throwable e) {
             throw new CryptoException(e);
         }

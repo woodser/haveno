@@ -49,6 +49,10 @@ All symmetric encryption uses one authenticated format
 | XMR connection passwords | AES-ECB | re-encrypted on first read |
 | Password change | — | rewrites `sym.key`, purges stale password-wrapped backups |
 
+`sym.key` is verified by a read-back before it replaces the previous file, and every save keeps a
+fresh rolling backup; load-time backups are only taken after a successful unlock so retries against
+a corrupt file cannot rotate out good copies.
+
 Downgrade to a pre-v2 release is not supported once files are rewritten.
 
 ## Network rollout (two phases)
