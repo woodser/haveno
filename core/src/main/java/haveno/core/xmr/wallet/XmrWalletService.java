@@ -320,6 +320,14 @@ public class XmrWalletService extends XmrWalletBase {
         return isNativeLibraryApplied() ? createWalletFull(config, applyProxyUri) : createWalletRpc(config, walletRpcPort, applyProxyUri, trustDaemon);
     }
 
+    private MoneroWallet createWalletFromSeed(String walletName, Integer walletRpcPort, boolean applyProxyUri, boolean trustDaemon, String seed, long restoreHeight) {
+        log.info("{}.createWalletFromSeed({}, {})", getClass().getSimpleName(), walletName, restoreHeight);
+        if (isShutDownStarted) throw new IllegalStateException("Cannot create wallet because shutting down");
+        if (!isSeedValid(seed)) throw new IllegalArgumentException("Invalid wallet seed");
+        MoneroWalletConfig config = getWalletConfig(walletName).setSeed(seed).setRestoreHeight(restoreHeight);
+        return isNativeLibraryApplied() ? createWalletFull(config, applyProxyUri) : createWalletRpc(config, walletRpcPort, applyProxyUri, trustDaemon);
+    }
+
     // mainnet genesis timestamp and v2 fork height, to translate between block heights and dates
     // (1-minute target blocks before the v2 fork, 2-minute after)
     private static final long GENESIS_TIMESTAMP = 1397818193;
@@ -2037,12 +2045,25 @@ public class XmrWalletService extends XmrWalletBase {
                     wallet = openWallet(MONERO_WALLET_NAME, rpcBindPort, isProxyApplied, xmrConnectionService.isTrustedDaemon());
                 } else {
                     if (!Boolean.TRUE.equals(xmrConnectionService.isConnected())) throw new RuntimeException("Cannot create main wallet because there is no connection to Monero daemon");
-                    wallet = createWallet(MONERO_WALLET_NAME, rpcBindPort, isProxyApplied, xmrConnectionService.isTrustedDaemon());
+                    String importSeed = accountService.getWalletImportSeed();
+                    if (importSeed == null) {
+                        wallet = createWallet(MONERO_WALLET_NAME, rpcBindPort, isProxyApplied, xmrConnectionService.isTrustedDaemon());
 
-                    // set wallet creation date to yesterday to guarantee complete restore
-                    LocalDateTime localDateTime = LocalDate.now().atStartOfDay().minusDays(1);
-                    long date = localDateTime.toEpochSecond(ZoneOffset.UTC);
-                    user.setWalletCreationDate(date);
+                        // set wallet creation date to yesterday to guarantee complete restore
+                        LocalDateTime localDateTime = LocalDate.now().atStartOfDay().minusDays(1);
+                        long date = localDateTime.toEpochSecond(ZoneOffset.UTC);
+                        user.setWalletCreationDate(date);
+                    } else {
+
+                        // import wallet from seed with the user's restore height, resolving a restore date with the daemon
+                        Long importHeight = accountService.getWalletImportRestoreHeight();
+                        LocalDate importDate = accountService.getWalletImportRestoreDate();
+                        if (importHeight == null && importDate != null) importHeight = resolveHeightForDate(importDate);
+                        long restoreHeight = importHeight == null ? 0 : importHeight;
+                        wallet = createWalletFromSeed(MONERO_WALLET_NAME, rpcBindPort, isProxyApplied, xmrConnectionService.isTrustedDaemon(), importSeed, restoreHeight);
+                        user.setWalletCreationDate(estimateHeightTimestamp(restoreHeight));
+                        accountService.setWalletImportDetails(null, null, null);
+                    }
                 }
 
                 // set state from wallet

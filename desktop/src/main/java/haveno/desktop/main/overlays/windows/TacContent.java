@@ -19,10 +19,10 @@ package haveno.desktop.main.overlays.windows;
 
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
 import haveno.core.locale.Res;
+import haveno.desktop.app.StartupWizard;
 import haveno.desktop.components.AutoTooltipCheckBox;
 import haveno.desktop.components.ExternalHyperlink;
 import haveno.desktop.components.HyperlinkWithIcon;
-import haveno.desktop.util.FormBuilder;
 import haveno.desktop.util.GUIUtil;
 import javafx.css.PseudoClass;
 import javafx.geometry.Insets;
@@ -46,8 +46,6 @@ public class TacContent {
 
     private static final PseudoClass ERROR_PSEUDO_CLASS = PseudoClass.getPseudoClass("error");
     private static final double DETAIL_ICON_BOX_WIDTH = 44;
-    private static final double HEADER_ICON_BOX_WIDTH = 56;
-    private static final double HEADER_TEXT_GAP = 14;
     private static final double DETAIL_TEXT_GAP = 18;
     private static final double DETAIL_HORIZONTAL_PADDING = 48;
 
@@ -109,7 +107,7 @@ public class TacContent {
     private VBox createRiskOverview() {
         VBox section = new VBox(8);
         section.getChildren().addAll(
-                createHeaderSection(MaterialDesignIcon.SHIELD_OUTLINE,
+                StartupWizard.createHeaderSection(MaterialDesignIcon.SHIELD_OUTLINE,
                         Res.get("tacWindow.risk.headline"),
                         Res.get("tacWindow.risk.subtitle")),
                 createRiskDetailRow(MaterialDesignIcon.ACCOUNT_MULTIPLE_OUTLINE,
@@ -124,35 +122,6 @@ public class TacContent {
                         Res.get("tacWindow.risk.noGuarantees.title"),
                         Res.get("tacWindow.risk.noGuarantees.body")));
         return section;
-    }
-
-    private VBox createHeaderSection(MaterialDesignIcon icon, String titleText, String subtitleText) {
-        HBox header = new HBox(HEADER_TEXT_GAP);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setFillHeight(false);
-
-        StackPane iconBox = new StackPane(createIcon(icon, "1.9em", "tac-agreement-header-icon"));
-        iconBox.getStyleClass().add("tac-agreement-header-icon-box");
-        iconBox.setMinWidth(HEADER_ICON_BOX_WIDTH);
-        iconBox.setMaxWidth(HEADER_ICON_BOX_WIDTH);
-
-        Label title = new Label(titleText);
-        title.getStyleClass().add("tac-agreement-header-title");
-        title.setWrapText(true);
-
-        Label subtitle = new Label(subtitleText);
-        subtitle.getStyleClass().add("tac-agreement-header-subtitle");
-        subtitle.setWrapText(true);
-
-        VBox titleBox = new VBox(3, title, subtitle);
-        titleBox.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(titleBox, Priority.ALWAYS);
-        header.getChildren().addAll(iconBox, titleBox);
-
-        Region divider = new Region();
-        divider.getStyleClass().add("tac-agreement-header-divider");
-
-        return new VBox(10, header, divider);
     }
 
     private HBox createRiskDetailRow(MaterialDesignIcon icon, String titleText, String bodyText) {
@@ -222,7 +191,7 @@ public class TacContent {
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         return new VBox(12,
-                createHeaderSection(MaterialDesignIcon.SCALE_BALANCE,
+                StartupWizard.createHeaderSection(MaterialDesignIcon.SCALE_BALANCE,
                         Res.get("tacWindow.legal.headline"),
                         Res.get("tacWindow.legal.subtitle")),
                 scrollPane,
@@ -296,10 +265,7 @@ public class TacContent {
     }
 
     private Text createIcon(MaterialDesignIcon icon, String size, String styleClass) {
-        Text textIcon = FormBuilder.getIcon(icon, size);
-        textIcon.getStyleClass().add(styleClass);
-        textIcon.setMouseTransparent(true);
-        return textIcon;
+        return StartupWizard.createIcon(icon, size, styleClass);
     }
 
     private void updateCheckBoxErrorStates() {
