@@ -974,6 +974,8 @@ configure(project(':daemon')) {
 
     apply plugin: 'com.gradleup.shadow'
 
+    apply plugin: 'com.github.johnrengelman.shadow'
+
     dependencies {
         implementation project(':proto')
         implementation project(':common')
