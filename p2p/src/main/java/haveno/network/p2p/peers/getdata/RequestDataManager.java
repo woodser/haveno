@@ -410,7 +410,12 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
                                         }
                                     }
 
-                                    requestFromNonSeedNodePeers();
+                                    boolean requested = requestFromNonSeedNodePeers();
+
+                                    // re-request after reconnect: retry until a node is reachable, else data missed while offline is only fetched on restart
+                                    if (!requested && nodeAddressOfPreliminaryDataRequest.isPresent()) {
+                                        restart();
+                                    }
                                 } else {
                                     log.info("We could not connect to seed node {} but we have other connection attempts open.", nodeAddress.getFullAddress());
                                 }
@@ -449,7 +454,7 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
     // Utils
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void requestFromNonSeedNodePeers() {
+    private boolean requestFromNonSeedNodePeers() {
         List<NodeAddress> list = getFilteredNonSeedNodeList(getSortedNodeAddresses(peerManager.getReportedPeers()), new ArrayList<>());
         List<NodeAddress> filteredPersistedPeers = getFilteredNonSeedNodeList(getSortedNodeAddresses(peerManager.getPersistedPeers()), list);
         list.addAll(filteredPersistedPeers);
@@ -458,13 +463,16 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
             NodeAddress nextCandidate = list.get(0);
             list.remove(nextCandidate);
             requestData(nextCandidate, list);
+            return true;
         }
+        return false;
     }
 
     private void restart() {
         if (retryTimer == null) {
             retryTimer = UserThread.runAfter(() -> {
                         stopped = false;
+                        numRepeatedRequests = 0; // reset the repeat limit per sync cycle
 
                         stopRetryTimer();
 
