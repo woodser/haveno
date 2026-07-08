@@ -277,7 +277,7 @@ task packageInstallers {
                         " --main-jar ${mainJarName}" +
                         " --main-class haveno.desktop.app.HavenoAppMain" +
                         rootProject.ext.havenoDesktopJpackageOpts +
-                        " --arguments --baseCurrencyNetwork=XMR_STAGENET"
+                        " --arguments --baseCurrencyNetwork=XMR_MAINNET"
                 // Note: -Djdk.module.illegalAccess=deny breaks Guice reflection (UI won't load)
         )
 
