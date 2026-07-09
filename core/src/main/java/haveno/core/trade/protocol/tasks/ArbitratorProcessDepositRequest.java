@@ -195,6 +195,7 @@ public class ArbitratorProcessDepositRequest extends TradeTask {
                     log.warn("Error relaying deposit txs for trade {}. They could already be confirmed. Error={}", trade.getId(), e.getMessage());
                 }
                 depositTxsRelayed = true;
+                processModel.setDepositTxsRelayUncertain(false);
 
                 // update trade state
                 log.info("Arbitrator published deposit txs for trade " + trade.getId());
