@@ -1583,8 +1583,9 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         // verify sum of outputs = destination amounts + change amount
         if (!payoutTx.getOutputSum().equals(buyerPayoutDestination.getAmount().add(sellerPayoutDestination.getAmount()).add(payoutTx.getChangeAmount()))) throw new IllegalArgumentException("Sum of outputs != destination amounts + change amount");
 
-        // verify buyer destination amount is deposit amount + this amount - 1/2 tx costs
-        BigInteger txCost = payoutTx.getFee().add(payoutTx.getChangeAmount());
+        // verify buyer destination amount is deposit amount + this amount - 1/2 tx fee
+        // change is excluded from the cost so any surplus injected into change is rejected
+        BigInteger txCost = payoutTx.getFee();
         BigInteger txCostSplit = txCost.divide(BigInteger.valueOf(2));
         BigInteger expectedBuyerPayout = buyerDepositAmount.add(tradeAmount).subtract(txCostSplit);
         if (!buyerPayoutDestination.getAmount().equals(expectedBuyerPayout)) throw new IllegalArgumentException("Buyer destination amount is not deposit amount + trade amount - 1/2 tx costs, " + buyerPayoutDestination.getAmount() + " vs " + expectedBuyerPayout);
