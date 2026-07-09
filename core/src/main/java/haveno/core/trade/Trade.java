@@ -1565,6 +1565,9 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         MoneroTxWallet payoutTx = describedTxSet.getTxs().get(0);
         if (payoutTxId == null) setPayoutTx(payoutTx); // update payout tx if id currently unknown
 
+        // verify payout tx is not time-locked
+        if (!BigInteger.ZERO.equals(payoutTx.getUnlockTime())) throw new IllegalArgumentException("Payout tx unlock time must be 0");
+
         // verify payout tx has exactly 2 destinations
         if (payoutTx.getOutgoingTransfer() == null || payoutTx.getOutgoingTransfer().getDestinations() == null || payoutTx.getOutgoingTransfer().getDestinations().size() != 2) throw new IllegalArgumentException("Payout tx does not have exactly two destinations");
 
@@ -1712,6 +1715,9 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         MoneroTxSet disputeTxSet = wallet.describeTxSet(new MoneroTxSet().setMultisigTxHex(unsignedPayoutTxHex));
         if (disputeTxSet.getTxs() == null || disputeTxSet.getTxs().size() != 1) throw new IllegalArgumentException("Bad arbitrator-signed payout tx");  // TODO (woodser): nack
         MoneroTxWallet arbitratorSignedPayoutTx = disputeTxSet.getTxs().get(0);
+
+        // verify payout tx is not time-locked
+        if (!BigInteger.ZERO.equals(arbitratorSignedPayoutTx.getUnlockTime())) throw new IllegalArgumentException("Payout tx unlock time must be 0");
 
         // verify payout tx has 1 or 2 destinations
         int numDestinations = arbitratorSignedPayoutTx.getOutgoingTransfer() == null || arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations() == null ? 0 : arbitratorSignedPayoutTx.getOutgoingTransfer().getDestinations().size();
