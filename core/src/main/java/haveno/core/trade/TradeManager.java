@@ -163,7 +163,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     private final ProcessModelServiceProvider processModelServiceProvider;
     private final ClockWatcher clockWatcher;
 
-    private final Map<String, TradeProtocol> tradeProtocolByTradeId = new HashMap<>();
+    private final Map<String, TradeProtocol> tradeProtocolByUid = new HashMap<>();
     private final PersistenceManager<TradableList<Trade>> persistenceManager;
     private final TradableList<Trade> tradableList = new TradableList<>();
     @Getter
@@ -451,21 +451,21 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     public TradeProtocol getTradeProtocol(Trade trade) {
-        synchronized (tradeProtocolByTradeId) {
-            return tradeProtocolByTradeId.get(trade.getUid());
+        synchronized (tradeProtocolByUid) {
+            return tradeProtocolByUid.get(trade.getUid());
         }
     }
 
     private void unregisterTradeProtocol(Trade trade) {
-        synchronized (tradeProtocolByTradeId) {
-            tradeProtocolByTradeId.remove(trade.getUid());
+        synchronized (tradeProtocolByUid) {
+            tradeProtocolByUid.remove(trade.getUid());
         }
     }
 
     public TradeProtocol createTradeProtocol(Trade trade) {
-        synchronized (tradeProtocolByTradeId) {
+        synchronized (tradeProtocolByUid) {
             TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
-            TradeProtocol prev = tradeProtocolByTradeId.put(trade.getUid(), tradeProtocol);
+            TradeProtocol prev = tradeProtocolByUid.put(trade.getUid(), tradeProtocol);
             if (prev != null) log.error("We had already an entry with uid {}", trade.getUid());
             return tradeProtocol;
         }
@@ -608,11 +608,14 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     /**
      * Persists a mutation of the given trade to whichever container owns it: post-close mutations
-     * (payout/dispute state, ack state) go to the closed-trades log, the rest to the pending store.
+     * (payout/dispute state, ack state) go to the closed-trades log, failed trades to the failed-trades
+     * store, the rest to the pending store.
      */
     public void requestPersistence(Trade trade) {
         if (closedTradableManager.getTradableById(trade.getId()).isPresent()) {
             closedTradableManager.persistClosedTrade(trade);
+        } else if (failedTradesManager.getObservableList().contains(trade)) {
+            failedTradesManager.requestPersistence();
         } else {
             requestPersistence();
         }
@@ -681,7 +684,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 log.warn("Ignoring InitTradeRequest to maker because maker and taker pubKeyRings are the same, tradeId={}, sender={}", request.getOfferId(), sender);
                 return;
             }
-  
+
+            // shut down any prior failed trades for this id so they stop processing messages for the new attempt
+            shutDownPriorFailedTrades(request.getOfferId());
+
             // initialize trade
             Trade trade;
             if (offer.isBuyOffer())
@@ -794,6 +800,9 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     return;
                 }
 
+                // shut down any prior failed trades for this id so they stop processing messages for the new attempt
+                shutDownPriorFailedTrades(offer.getId());
+
                 // create arbitrator trade
                 trade = new ArbitratorTrade(offer,
                         BigInteger.valueOf(request.getTradeAmount()),
@@ -885,7 +894,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 ThreadUtils.execute(() -> {
                     try {
 
-                        // check that offer is not already used in a trade
+                        // check that offer is not already used in an open, closed, or failed trade; this also ensures
+                        // no prior failed trades exist for this id to shut down, unlike the maker and arbitrator paths
                         checkArgument(!wasOfferAlreadyUsedInTrade(offer.getId()));
 
                         // check that trade is not already open
@@ -1099,7 +1109,9 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     // we move the trade to FailedTradesManager
     public void onMoveInvalidTradeToFailedTrades(Trade trade) {
         log.warn("Moving {} {} to failed trades", trade.getClass().getSimpleName(), trade.getShortId());
-        if (trade.isInitialized()) {
+
+        // shut down trade unless protocol error handling is scheduled, so it stays alive for polling
+        if (trade.isInitialized() && !trade.isProtocolErrorHandlingScheduled()) {
             ThreadUtils.submitToPool(() -> {
                 try {
                     trade.shutDown();
@@ -1133,6 +1145,37 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     private void removeFailedTrade(Trade trade) {
         failedTradesManager.removeTrade(trade);
+    }
+
+    // Shut down any prior failed trades for the same id so they stop processing the peer's messages, which route by
+    // offer id and would otherwise be handled by both trades (e.g. a stale trade nacks a request the new one fulfills).
+    // The failed trades are retained in the failed trades list for records.
+    private void shutDownPriorFailedTrades(String tradeId) {
+        for (Trade priorFailed : failedTradesManager.getTradesById(tradeId)) {
+            if (priorFailed.isShutDown() || priorFailed.isSuperseded()) continue; // already handled by a prior attempt
+            log.warn("Shutting down prior failed {} {} because a new trade is being created for the same id", priorFailed.getClass().getSimpleName(), priorFailed.getShortId());
+            priorFailed.removeDecryptedDirectMessageListener(); // stop processing messages immediately
+            priorFailed.onSuperseded(); // stop scheduled error handling and keep the shared trade-id executors for the new trade
+            ThreadUtils.submitToPool(() -> {
+
+                // complete scheduled error cleanup early so the wallet is deleted now instead of at the scheduled height,
+                // and the trade is not re-initialized on restart
+                try {
+                    priorFailed.maybeCompleteProtocolErrorCleanup();
+                } catch (Exception e) {
+                    log.warn("Error cleaning up prior failed {} {}: {}", priorFailed.getClass().getSimpleName(), priorFailed.getShortId(), e.getMessage(), e);
+                }
+
+                // shut down trade
+                try {
+                    priorFailed.shutDown();
+                } catch (Exception e) {
+                    log.warn("Error shutting down prior failed {} {}: {}", priorFailed.getClass().getSimpleName(), priorFailed.getShortId(), e.getMessage(), e);
+                } finally {
+                    unregisterTradeProtocol(priorFailed);
+                }
+            });
+        }
     }
 
     private void addTradeToPendingTrades(Trade trade) {
@@ -1355,8 +1398,13 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         }
     }
 
+    // checks for the trade instance, since id lookups can match another trade with the same id
+    public boolean hasTradeInstance(Trade trade) {
+        return hasOpenTrade(trade) || failedTradesManager.getObservableList().contains(trade);
+    }
+
     public boolean hasFailedScheduledTrade(String offerId) {
-        return failedTradesManager.getTradeById(offerId).isPresent() && failedTradesManager.getTradeById(offerId).get().isProtocolErrorHandlingScheduled();
+        return failedTradesManager.getTradesById(offerId).stream().anyMatch(Trade::isProtocolErrorHandlingScheduled);
     }
 
     public Optional<Trade> getOpenTradeByUid(String tradeUid) {
