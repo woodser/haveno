@@ -359,7 +359,13 @@
     -fx-background-radius: 8;
 }
 
-.combo-box-popup > .list-view:hover {
+/* Hand cursor on the dropdown items; set explicitly on the list and cells (not gated on
+   :hover) so it shows regardless of hover state, which can go stale on a rapid reopen. */
+.combo-box-popup > .list-view {
+    -fx-cursor: hand;
+}
+
+.combo-box-popup .list-cell {
     -fx-cursor: hand;
 }
 
