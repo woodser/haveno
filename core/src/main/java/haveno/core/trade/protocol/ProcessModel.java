@@ -96,7 +96,7 @@ public class ProcessModel implements Model, PersistablePayload {
     transient private Offer offer;
     transient public Throwable error;
     @Setter
-    transient private volatile boolean depositTxsRelayUncertain = false; // prevents premature nack while arbitrator is relaying deposit txs; set true before relay, reset false after relay succeeds or txs verified unpublished
+    transient private volatile boolean depositTxsRelayUncertain; // arbitrator initiated relaying the deposit txs; reset only when verified unpublished
 
     // Added in v1.4.0
     // MessageState of the last message sent from the seller to the buyer in the take offer process.

@@ -559,10 +559,29 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 }
 
                 // skip if failed and error handling not scheduled
-                if (failedTradesManager.getObservableList().contains(trade) && !trade.isProtocolErrorHandlingScheduled()) {
-                    log.warn("Skipping initialization of failed trade {} {}", trade.getClass().getSimpleName(), trade.getId());
-                    synchronized (tradesToSkip) {
-                        tradesToSkip.add(trade);
+                if (failedTradesManager.getObservableList().contains(trade)) {
+                    if (!trade.isProtocolErrorHandlingScheduled()) {
+                        log.warn("Skipping initialization of failed trade {} {}", trade.getClass().getSimpleName(), trade.getId());
+                        synchronized (tradesToSkip) {
+                            tradesToSkip.add(trade);
+                        }
+                        return;
+                    }
+
+                    // skip if superseded by an open trade for the same id, completing cleanup which did not finish before the last shutdown
+                    if (getOpenTrade(trade.getId()).isPresent()) {
+                        log.warn("Skipping initialization of failed {} {} superseded by an open trade for the same id", trade.getClass().getSimpleName(), trade.getShortId());
+                        trade.onSuperseded();
+                        ThreadUtils.submitToPool(() -> {
+                            try {
+                                trade.maybeCompleteProtocolErrorCleanup();
+                            } catch (Exception e) {
+                                log.warn("Error cleaning up superseded failed {} {}: {}", trade.getClass().getSimpleName(), trade.getShortId(), e.getMessage(), e);
+                            }
+                        });
+                        synchronized (tradesToSkip) {
+                            tradesToSkip.add(trade);
+                        }
                         return;
                     }
                 }

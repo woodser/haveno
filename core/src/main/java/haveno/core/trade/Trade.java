@@ -2396,12 +2396,6 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
 
         this.state = state;
 
-        // safety reset: clear relay uncertainty flag if we've progressed past deposit relay phase
-        if (state.getPhase().ordinal() > Phase.DEPOSITS_PUBLISHED.ordinal() && processModel.isDepositTxsRelayUncertain()) {
-            log.warn("Safety resetting depositTxsRelayUncertain flag for {} {} because trade progressed to phase {}", getShortId(), getClass().getSimpleName(), state.getPhase());
-            processModel.setDepositTxsRelayUncertain(false);
-        }
-
         persistNow(null);
         UserThread.execute(() -> {
             stateProperty.set(state);
