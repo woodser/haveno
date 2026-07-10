@@ -1360,7 +1360,7 @@ public class GUIUtil {
 
         Label label = new Label(symbol);
         label.getStyleClass().add("fiat-currency-symbol");
-        double fontSize = symbol.length() >= 3 ? size * 0.34 : symbol.length() == 2 ? size * 0.42 : size * 0.52;
+        double fontSize = symbol.length() >= 3 ? size * 0.34 : symbol.length() == 2 ? size * 0.5 : size * 0.72;
         label.setStyle("-fx-font-size: " + fontSize + "px;");
 
         StackPane badge = new StackPane(label);
