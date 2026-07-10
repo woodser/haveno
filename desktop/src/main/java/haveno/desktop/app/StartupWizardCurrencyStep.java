@@ -17,7 +17,6 @@
 
 package haveno.desktop.app;
 
-import com.jfoenix.controls.JFXComboBox;
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
 import haveno.core.locale.CountryUtil;
 import haveno.core.locale.CurrencyUtil;
@@ -28,40 +27,61 @@ import java.util.ArrayList;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import javafx.collections.FXCollections;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.util.StringConverter;
+import javafx.scene.text.Text;
 
 /**
- * Wizard step to choose the preferred display currency, preselected from the system locale.
- * Skipped on a quick start, which keeps the preselected currency.
+ * Wizard step to choose the preferred display currency from a searchable list, preselected
+ * from the system locale. Skipped on a quick start, which keeps the preselected currency.
  */
 public class StartupWizardCurrencyStep implements StartupWizard.Step {
 
+    private static final double LIST_WIDTH = 400;
+
     private final BooleanSupplier quickStart;
     private final VBox content;
-    private final ComboBox<TradeCurrency> currencyComboBox = new JFXComboBox<>();
+    private final TextField searchField = new TextField();
+    private final ListView<TradeCurrency> currencyListView = new ListView<>();
+    private final FilteredList<TradeCurrency> filteredCurrencies;
+    // survives filtering that temporarily hides the selected row
+    private TradeCurrency selectedCurrency;
+    // the selection model shifts rows while the predicate changes; ignore those transient selections
+    private boolean applyingFilter;
 
     public StartupWizardCurrencyStep(BooleanSupplier quickStart) {
         this.quickStart = quickStart;
-        currencyComboBox.setItems(FXCollections.observableArrayList(new ArrayList<>(CurrencyUtil.getAllSortedTraditionalCurrencies())));
-        currencyComboBox.setVisibleRowCount(12);
-        currencyComboBox.setMinWidth(340);
-        currencyComboBox.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(TradeCurrency currency) {
-                return currency == null ? "" : currency.getName() + " (" + currency.getCode() + ")";
-            }
 
+        filteredCurrencies = new FilteredList<>(FXCollections.observableArrayList(new ArrayList<>(CurrencyUtil.getAllSortedTraditionalCurrencies())));
+        currencyListView.setItems(filteredCurrencies);
+        currencyListView.getStyleClass().add("wizard-currency-list");
+        currencyListView.setPrefHeight(240);
+        currencyListView.setMinHeight(160);
+        currencyListView.setMaxWidth(LIST_WIDTH);
+        currencyListView.setCellFactory(listView -> new ListCell<>() {
             @Override
-            public TradeCurrency fromString(String string) {
-                return null;
+            protected void updateItem(TradeCurrency currency, boolean empty) {
+                super.updateItem(currency, empty);
+                setText(empty || currency == null ? null : currency.getName() + " (" + currency.getCode() + ")");
             }
         });
+        currencyListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (!applyingFilter && newValue != null) selectedCurrency = newValue;
+        });
+
+        Label noMatches = new AutoTooltipLabel(Res.get("startupWizard.currency.noMatch"));
+        noMatches.getStyleClass().add("startup-wizard-footer-label");
+        currencyListView.setPlaceholder(noMatches);
 
         // preselect the currency of the system locale's country
         TradeCurrency defaultCurrency = CurrencyUtil.getCurrencyByCountryCode("US");
@@ -69,7 +89,29 @@ public class StartupWizardCurrencyStep implements StartupWizard.Step {
             defaultCurrency = CurrencyUtil.getCurrencyByCountryCode(CountryUtil.getDefaultCountry().code);
         } catch (IllegalArgumentException e) {
         }
-        currencyComboBox.getSelectionModel().select(defaultCurrency);
+        currencyListView.getSelectionModel().select(defaultCurrency);
+
+        searchField.setPromptText(Res.get("startupWizard.currency.search"));
+        searchField.getStyleClass().add("login-password-field");
+        searchField.setMaxWidth(LIST_WIDTH);
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> applyFilter(newValue));
+        // let arrow keys move the list selection while typing in the search field
+        searchField.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            int delta = event.getCode() == KeyCode.DOWN ? 1 : event.getCode() == KeyCode.UP ? -1 : 0;
+            if (delta == 0) return;
+            if (!filteredCurrencies.isEmpty()) {
+                int index = Math.min(Math.max(currencyListView.getSelectionModel().getSelectedIndex() + delta, 0), filteredCurrencies.size() - 1);
+                currencyListView.getSelectionModel().select(index);
+                currencyListView.scrollTo(Math.max(0, index - 2));
+            }
+            event.consume();
+        });
+
+        Text searchIcon = StartupWizard.createIcon(MaterialDesignIcon.MAGNIFY, "1.1em", "wizard-search-icon");
+        StackPane searchBox = new StackPane(searchField, searchIcon);
+        searchBox.setMaxWidth(LIST_WIDTH);
+        StackPane.setAlignment(searchIcon, Pos.CENTER_RIGHT);
+        StackPane.setMargin(searchIcon, new Insets(0, 12, 0, 0));
 
         Label info = new AutoTooltipLabel(Res.get("startupWizard.currency.info"));
         info.getStyleClass().add("startup-wizard-footer-label");
@@ -80,10 +122,27 @@ public class StartupWizardCurrencyStep implements StartupWizard.Step {
                 StartupWizard.createHeaderSection(MaterialDesignIcon.EARTH,
                         Res.get("startupWizard.currency.headline"),
                         Res.get("startupWizard.currency.subtitle")),
-                currencyComboBox,
+                searchBox,
+                currencyListView,
                 info);
         content.setAlignment(Pos.TOP_CENTER);
-        VBox.setMargin(currencyComboBox, new Insets(8, 0, 0, 0));
+        VBox.setMargin(searchBox, new Insets(8, 0, 0, 0));
+    }
+
+    // filter by name or code; keep the selection if it still matches, else move it to the first match
+    private void applyFilter(String text) {
+        String filter = text == null ? "" : text.trim().toLowerCase();
+        applyingFilter = true;
+        filteredCurrencies.setPredicate(currency -> filter.isEmpty()
+                || currency.getName().toLowerCase().contains(filter)
+                || currency.getCode().toLowerCase().contains(filter));
+        applyingFilter = false;
+        if (filteredCurrencies.contains(selectedCurrency)) {
+            currencyListView.getSelectionModel().select(selectedCurrency);
+        } else if (!filteredCurrencies.isEmpty()) {
+            currencyListView.getSelectionModel().select(0);
+        }
+        currencyListView.scrollTo(Math.max(0, currencyListView.getSelectionModel().getSelectedIndex() - 2));
     }
 
     @Override
@@ -97,6 +156,12 @@ public class StartupWizardCurrencyStep implements StartupWizard.Step {
     }
 
     @Override
+    public void onShown() {
+        currencyListView.scrollTo(Math.max(0, currencyListView.getSelectionModel().getSelectedIndex() - 2));
+        searchField.requestFocus();
+    }
+
+    @Override
     public void validate(Consumer<Boolean> resultHandler) {
         resultHandler.accept(true);
     }
@@ -107,6 +172,6 @@ public class StartupWizardCurrencyStep implements StartupWizard.Step {
     }
 
     public TradeCurrency getSelectedCurrency() {
-        return currencyComboBox.getSelectionModel().getSelectedItem();
+        return selectedCurrency;
     }
 }
