@@ -297,9 +297,9 @@
 }
 
 /* Reserve room for the selection graphic (logo) overlaid at the editor's left.
-   Left inset = SELECTION_GRAPHIC_LEADING (4) + graphic width (24) + gap (8). */
+   Left inset = SELECTION_GRAPHIC_LEADING (4) + graphic width (24) + gap (6). */
 .jfx-combo-box > .text-field.currency-graphic-editor {
-    -fx-padding: 0 0 0 36 !important;
+    -fx-padding: 0 0 0 34 !important;
 }
 
 .jfx-combo-box > .arrow-button > .arrow {
@@ -365,7 +365,13 @@
     -fx-background-radius: 8;
 }
 
-.combo-box-popup > .list-view:hover {
+/* Hand cursor on the dropdown items; set on the cells (not gated on :hover) so it
+   survives rapid reopen, when the list-view :hover state can go stale. */
+.combo-box-popup > .list-view {
+    -fx-cursor: hand;
+}
+
+.combo-box-popup .list-cell {
     -fx-cursor: hand;
 }
 
