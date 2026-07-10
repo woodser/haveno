@@ -338,7 +338,7 @@ public class GUIUtil {
                     String code = item.tradeCurrency.getCode();
 
                     HBox box = new HBox();
-                    box.setSpacing(14);
+                    box.setSpacing(20);
                     box.setAlignment(Pos.CENTER_LEFT);
                     Label label1 = new AutoTooltipLabel(getCurrencyType(code));
                     label1.getStyleClass().add("currency-label-small");
@@ -353,17 +353,19 @@ public class GUIUtil {
 
                     switch (code) {
                         case GUIUtil.SHOW_ALL_FLAG:
-                            label1.setText(Res.get("shared.all"));
+                            label1.setManaged(false); // no logo column here, so "show all" aligns left
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.showAll"));
                             break;
                         case GUIUtil.EDIT_FLAG:
-                            label1.setText(Res.get("shared.edit"));
+                            label1.setManaged(false);
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.editList"));
                             break;
                         default:
 
                             // use icon if available
-                            Node currencyIcon = getCurrencyGraphic(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -456,7 +458,7 @@ public class GUIUtil {
                     String code = item.getCode();
 
                     HBox box = new HBox();
-                    box.setSpacing(14);
+                    box.setSpacing(20);
                     box.setAlignment(Pos.CENTER_LEFT);
 
                     Label label1 = new AutoTooltipLabel(getCurrencyType(item.getCode()));
@@ -471,17 +473,19 @@ public class GUIUtil {
 
                     switch (code) {
                         case GUIUtil.SHOW_ALL_FLAG:
-                            label1.setText(Res.get("shared.all"));
+                            label1.setManaged(false); // no logo column here, so "show all" aligns left
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.showAll"));
                             break;
                         case GUIUtil.EDIT_FLAG:
-                            label1.setText(Res.get("shared.edit"));
+                            label1.setManaged(false);
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.editList"));
                             break;
                         default:
 
                             // use icon if available
-                            Node currencyIcon = getCurrencyGraphic(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -525,7 +529,7 @@ public class GUIUtil {
                     label2.getStyleClass().add("currency-label");
 
                     // use icon if available
-                    Node currencyIcon = getCurrencyGraphic(item.getCode());
+                    Node currencyIcon = getCurrencyGraphic(item.getCode(), CURRENCY_GRAPHIC_ROW_SIZE);
                     if (currencyIcon != null) {
                         label1.setText("");
                         label1.setGraphic(currencyIcon);
@@ -1340,6 +1344,9 @@ public class GUIUtil {
         ImageView icon = getCurrencyImageView(currencyCode);
         return icon == null ? null : new StackPane(icon);
     }
+
+    // Currency mark size in the expanded dropdown rows.
+    public static final double CURRENCY_GRAPHIC_ROW_SIZE = 26;
 
     // Best mark for a currency: the crypto logo, or a badge with the fiat symbol.
     public static Node getCurrencyGraphic(String currencyCode) {
