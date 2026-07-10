@@ -91,6 +91,8 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
             if (newVal != null) {
                 lastCommittedValue = newVal;
                 searching = false; // a committed selection is displayed, so show its graphic at once
+                // Picking from the dropdown: blur the editor now so its caret doesn't briefly flash on the new text
+                if (getParent() != null && (isShowing() || getEditor().isFocused())) getParent().requestFocus();
                 requestLayout(); // refit width to the new value
             }
             updateSelectionGraphic();
