@@ -297,9 +297,9 @@
 }
 
 /* Reserve room for the selection graphic (logo) overlaid at the editor's left.
-   Left inset = SELECTION_GRAPHIC_LEADING (4) + graphic width (24) + gap (6). */
+   Left inset = SELECTION_GRAPHIC_LEADING (4) + graphic width (24) + gap (8). */
 .jfx-combo-box > .text-field.currency-graphic-editor {
-    -fx-padding: 0 0 0 34 !important;
+    -fx-padding: 0 0 0 36 !important;
 }
 
 .jfx-combo-box > .arrow-button > .arrow {

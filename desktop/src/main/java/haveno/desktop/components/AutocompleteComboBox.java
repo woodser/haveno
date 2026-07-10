@@ -53,7 +53,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     // padding in sync with SELECTION_GRAPHIC_LEADING + graphic width + SELECTION_GRAPHIC_GAP.
     private static final String SELECTION_GRAPHIC_EDITOR_CLASS = "currency-graphic-editor";
     private static final double SELECTION_GRAPHIC_LEADING = 4; // margin from editor left edge to graphic
-    private static final double SELECTION_GRAPHIC_GAP = 6;     // gap from graphic to text
+    private static final double SELECTION_GRAPHIC_GAP = 8;     // gap from graphic to text
     private static final double SELECTION_GRAPHIC_VMARGIN = 8; // breathing room above/below the graphic, matching the dropdown rows
 
     private List<? extends T> list;
