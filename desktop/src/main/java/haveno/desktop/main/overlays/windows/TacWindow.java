@@ -41,7 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * The user agreement popup for existing installations (first-run installations accept the
  * agreement in the startup wizard instead): a fixed-size card paging between the risk and
- * legal pages of {@link TacContent}.
+ * legal pages of {@link TacContent}, accepted once with the agree action on the legal page.
  */
 @Slf4j
 public class TacWindow extends Overlay<TacWindow> {
@@ -206,18 +206,10 @@ public class TacWindow extends Overlay<TacWindow> {
 
     private void handleAction() {
         if (!isLegalPageVisible) {
-            if (content.isRiskAccepted()) setLegalPageVisible(true);
-            else content.requestRiskValidation();
+            setLegalPageVisible(true);
         } else {
-            if (content.isAllAccepted()) {
-                hide();
-                actionHandlerOptional.ifPresent(Runnable::run);
-            } else if (!content.isRiskAccepted()) {
-                content.requestRiskValidation();
-                setLegalPageVisible(false);
-            } else {
-                content.requestLegalValidation();
-            }
+            hide();
+            actionHandlerOptional.ifPresent(Runnable::run);
         }
     }
 
