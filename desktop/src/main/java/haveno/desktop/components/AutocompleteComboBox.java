@@ -54,7 +54,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private static final String SELECTION_GRAPHIC_EDITOR_CLASS = "currency-graphic-editor";
     private static final double SELECTION_GRAPHIC_LEADING = 4; // margin from editor left edge to graphic
     private static final double SELECTION_GRAPHIC_GAP = 8;     // gap from graphic to text
-    private static final double SELECTION_GRAPHIC_VMARGIN = 6; // breathing room above/below the graphic, matching the dropdown rows
+    private static final double SELECTION_GRAPHIC_VMARGIN = 8; // breathing room above/below the graphic, matching the dropdown rows
 
     private List<? extends T> list;
     private List<? extends T> extendedList;
@@ -181,9 +181,11 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
         if (value) getEditor().getStyleClass().add(SELECTION_GRAPHIC_EDITOR_CLASS);
         // Give the collapsed selector enough height for the graphic to sit with the same
         // breathing room as the dropdown rows, so it isn't crowded by the control bounds.
-        double minHeight = value ? snapSizeY(selectionGraphicPane.prefWidth(-1)) + 2 * SELECTION_GRAPHIC_VMARGIN : USE_COMPUTED_SIZE;
-        setMinHeight(minHeight);
-        setPrefHeight(minHeight);
+        // Max height must be set too: ComboBoxBaseSkin clamps max height to pref height.
+        double height = value ? snapSizeY(selectionGraphicPane.prefWidth(-1)) + 2 * SELECTION_GRAPHIC_VMARGIN : USE_COMPUTED_SIZE;
+        setMinHeight(height);
+        setPrefHeight(height);
+        setMaxHeight(height);
         invalidateFittedWidth();
     }
 
