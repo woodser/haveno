@@ -418,13 +418,6 @@ public class GUIUtil {
                             break;
                         default:
 
-                            // use icon if available
-                            Node currencyIcon = getCurrencyGraphic(code);
-                            if (currencyIcon != null) {
-                                currency.setGraphic(currencyIcon);
-                                currency.setGraphicTextGap(8);
-                            }
-
                             if (offerCountOptional.isPresent()) {
                                 Label numberOfOffers = new AutoTooltipLabel(offerCountOptional.get() + " " +
                                         (offerCountOptional.get() == 1 ? postFixSingle : postFixMulti));

@@ -204,7 +204,6 @@ public class AssetsForm extends PaymentMethodForm {
         currencyComboBox.setVisibleRowCount(Math.min(currencyComboBox.getItems().size(), 10));
 
         currencyComboBox.setCellFactory(GUIUtil.getTradeCurrencyCellFactoryNameAndCode());
-        ((AutocompleteComboBox<TradeCurrency>) currencyComboBox).setSelectionGraphicProvider(item -> GUIUtil.getCurrencyGraphic(item.getCode()));
 
         currencyComboBox.setConverter(new StringConverter<>() {
             @Override
