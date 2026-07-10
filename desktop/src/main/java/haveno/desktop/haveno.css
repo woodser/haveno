@@ -1752,6 +1752,17 @@ textfield */
     -fx-padding: 0 8 0 8;
 }
 
+/* Circular badge showing a fiat currency symbol in the dropdown rows, matching the crypto logos */
+.fiat-currency-badge {
+    -fx-background-color: -bs-color-primary;
+    -fx-background-radius: 50%;
+}
+
+.fiat-currency-symbol {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
 /* Offer */
 .percentage-label {
     -fx-alignment: center;

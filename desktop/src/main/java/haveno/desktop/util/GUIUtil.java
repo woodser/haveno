@@ -43,6 +43,7 @@ import haveno.core.api.XmrConnectionService;
 import haveno.core.locale.Country;
 import haveno.core.locale.CountryUtil;
 import haveno.core.locale.CurrencyUtil;
+import haveno.core.locale.GlobalSettings;
 import haveno.core.locale.Res;
 import haveno.core.locale.TradeCurrency;
 import haveno.core.payment.PaymentAccount;
@@ -132,6 +133,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -351,17 +353,19 @@ public class GUIUtil {
 
                     switch (code) {
                         case GUIUtil.SHOW_ALL_FLAG:
-                            label1.setText(Res.get("shared.all"));
+                            label1.setManaged(false); // no logo column here, so "show all" aligns left
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.showAll"));
                             break;
                         case GUIUtil.EDIT_FLAG:
-                            label1.setText(Res.get("shared.edit"));
+                            label1.setManaged(false);
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.editList"));
                             break;
                         default:
 
                             // use icon if available
-                            StackPane currencyIcon = getCurrencyIcon(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -413,6 +417,7 @@ public class GUIUtil {
                             currency.setText(Res.get("list.currency.editList"));
                             break;
                         default:
+
                             if (offerCountOptional.isPresent()) {
                                 Label numberOfOffers = new AutoTooltipLabel(offerCountOptional.get() + " " +
                                         (offerCountOptional.get() == 1 ? postFixSingle : postFixMulti));
@@ -461,17 +466,19 @@ public class GUIUtil {
 
                     switch (code) {
                         case GUIUtil.SHOW_ALL_FLAG:
-                            label1.setText(Res.get("shared.all"));
+                            label1.setManaged(false); // no logo column here, so "show all" aligns left
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.showAll"));
                             break;
                         case GUIUtil.EDIT_FLAG:
-                            label1.setText(Res.get("shared.edit"));
+                            label1.setManaged(false);
+                            label1.setVisible(false);
                             label2.setText(Res.get("list.currency.editList"));
                             break;
                         default:
 
                             // use icon if available
-                            StackPane currencyIcon = getCurrencyIcon(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -515,7 +522,7 @@ public class GUIUtil {
                     label2.getStyleClass().add("currency-label");
 
                     // use icon if available
-                    StackPane currencyIcon = getCurrencyIcon(item.getCode());
+                    Node currencyIcon = getCurrencyGraphic(item.getCode(), CURRENCY_GRAPHIC_ROW_SIZE);
                     if (currencyIcon != null) {
                         label1.setText("");
                         label1.setGraphic(currencyIcon);
@@ -1329,6 +1336,39 @@ public class GUIUtil {
     public static StackPane getCurrencyIcon(String currencyCode) {
         ImageView icon = getCurrencyImageView(currencyCode);
         return icon == null ? null : new StackPane(icon);
+    }
+
+    // Currency mark size in the expanded dropdown rows.
+    public static final double CURRENCY_GRAPHIC_ROW_SIZE = 26;
+
+    // Best mark for a currency: the crypto logo, or a badge with the fiat symbol.
+    public static Node getCurrencyGraphic(String currencyCode, double size) {
+        if (currencyCode == null) return null;
+        if (CurrencyUtil.isFiatCurrency(currencyCode)) return getFiatCurrencyBadge(currencyCode, size);
+        return getCurrencyIcon(currencyCode, size);
+    }
+
+    private static Node getFiatCurrencyBadge(String currencyCode, double size) {
+        String symbol;
+        try {
+            symbol = Currency.getInstance(currencyCode).getSymbol(GlobalSettings.getLocale());
+        } catch (Exception e) {
+            symbol = currencyCode;
+        }
+        if (symbol == null || symbol.isEmpty()) symbol = currencyCode;
+        if (symbol.length() > 3) symbol = symbol.substring(0, 3);
+
+        Label label = new Label(symbol);
+        label.getStyleClass().add("fiat-currency-symbol");
+        double fontSize = symbol.length() >= 3 ? size * 0.34 : symbol.length() == 2 ? size * 0.5 : size * 0.72;
+        label.setStyle("-fx-font-size: " + fontSize + "px;");
+
+        StackPane badge = new StackPane(label);
+        badge.getStyleClass().add("fiat-currency-badge");
+        badge.setMinSize(size, size);
+        badge.setPrefSize(size, size);
+        badge.setMaxSize(size, size);
+        return badge;
     }
 
     public static StackPane getCurrencyIcon(String currencyCode, double size) {
