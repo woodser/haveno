@@ -363,7 +363,7 @@ public class GUIUtil {
                         default:
 
                             // use icon if available
-                            Node currencyIcon = getCurrencyGraphic(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -481,7 +481,7 @@ public class GUIUtil {
                         default:
 
                             // use icon if available
-                            Node currencyIcon = getCurrencyGraphic(code);
+                            Node currencyIcon = getCurrencyGraphic(code, CURRENCY_GRAPHIC_ROW_SIZE);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -525,7 +525,7 @@ public class GUIUtil {
                     label2.getStyleClass().add("currency-label");
 
                     // use icon if available
-                    Node currencyIcon = getCurrencyGraphic(item.getCode());
+                    Node currencyIcon = getCurrencyGraphic(item.getCode(), CURRENCY_GRAPHIC_ROW_SIZE);
                     if (currencyIcon != null) {
                         label1.setText("");
                         label1.setGraphic(currencyIcon);
@@ -1341,11 +1341,18 @@ public class GUIUtil {
         return icon == null ? null : new StackPane(icon);
     }
 
+    // Larger currency marks for the dropdown rows, which have room to spare around them.
+    public static final double CURRENCY_GRAPHIC_ROW_SIZE = 28;
+
     // Best mark for a currency: the crypto logo, or a badge with the fiat symbol.
     public static Node getCurrencyGraphic(String currencyCode) {
+        return getCurrencyGraphic(currencyCode, 24);
+    }
+
+    public static Node getCurrencyGraphic(String currencyCode, double size) {
         if (currencyCode == null) return null;
-        if (CurrencyUtil.isFiatCurrency(currencyCode)) return getFiatCurrencyBadge(currencyCode, 24);
-        return getCurrencyIcon(currencyCode);
+        if (CurrencyUtil.isFiatCurrency(currencyCode)) return getFiatCurrencyBadge(currencyCode, size);
+        return getCurrencyIcon(currencyCode, size);
     }
 
     private static Node getFiatCurrencyBadge(String currencyCode, double size) {
