@@ -69,7 +69,8 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private boolean popupHBarListenerAdded = false;
     private Function<T, Node> selectionGraphicProvider;
     private final StackPane selectionGraphicPane = new StackPane();
-    private boolean hasSelectionGraphic = false;
+    private boolean hasSelectionGraphic = false; // committed value has a graphic (sets the control height)
+    private boolean selectionGraphicShown = false; // graphic currently displayed (hidden while typing a search)
 
     public AutocompleteComboBox() {
         this(FXCollections.observableArrayList());
@@ -103,6 +104,9 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
         // Remeasure items when the converter or editor font changes
         converterProperty().addListener(obs -> invalidateFittedWidth());
         getEditor().fontProperty().addListener(obs -> invalidateFittedWidth());
+
+        // Hide the selection graphic and un-indent the editor while the user is typing a search
+        getEditor().focusedProperty().addListener((obs, was, focused) -> refreshSelectionGraphicShown());
 
         // Restore last committed value when editor loses focus if no matches
         getEditor().focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
@@ -174,29 +178,39 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     }
 
     private void setHasSelectionGraphic(boolean value) {
-        selectionGraphicPane.setVisible(value);
-        if (hasSelectionGraphic == value) return;
-        hasSelectionGraphic = value;
+        if (hasSelectionGraphic != value) {
+            hasSelectionGraphic = value;
+            // Give the collapsed selector enough height for the graphic to sit with the same
+            // breathing room as the dropdown rows, so it isn't crowded by the control bounds.
+            // Max height must be set too: ComboBoxBaseSkin clamps max height to pref height.
+            double height = value ? snapSizeY(selectionGraphicPane.prefWidth(-1)) + 2 * SELECTION_GRAPHIC_VMARGIN : USE_COMPUTED_SIZE;
+            setMinHeight(height);
+            setPrefHeight(height);
+            setMaxHeight(height);
+        }
+        refreshSelectionGraphicShown();
+    }
+
+    // Show the graphic (with its reserved editor padding) only when a value is selected and the
+    // editor is not focused, so clicking in to type clears the logo and starts the caret at the left.
+    private void refreshSelectionGraphicShown() {
+        boolean show = hasSelectionGraphic && !getEditor().isFocused();
+        if (selectionGraphicShown == show) return;
+        selectionGraphicShown = show;
+        selectionGraphicPane.setVisible(show);
         getEditor().getStyleClass().remove(SELECTION_GRAPHIC_EDITOR_CLASS);
-        if (value) getEditor().getStyleClass().add(SELECTION_GRAPHIC_EDITOR_CLASS);
-        // Give the collapsed selector enough height for the graphic to sit with the same
-        // breathing room as the dropdown rows, so it isn't crowded by the control bounds.
-        // Max height must be set too: ComboBoxBaseSkin clamps max height to pref height.
-        double height = value ? snapSizeY(selectionGraphicPane.prefWidth(-1)) + 2 * SELECTION_GRAPHIC_VMARGIN : USE_COMPUTED_SIZE;
-        setMinHeight(height);
-        setPrefHeight(height);
-        setMaxHeight(height);
+        if (show) getEditor().getStyleClass().add(SELECTION_GRAPHIC_EDITOR_CLASS);
         invalidateFittedWidth();
     }
 
     // Horizontal space the graphic reserves, matching the editor's reserved left padding
     private double selectionGraphicSpace() {
-        return hasSelectionGraphic ? SELECTION_GRAPHIC_LEADING + snapSizeX(selectionGraphicPane.prefWidth(-1)) + SELECTION_GRAPHIC_GAP : 0;
+        return selectionGraphicShown ? SELECTION_GRAPHIC_LEADING + snapSizeX(selectionGraphicPane.prefWidth(-1)) + SELECTION_GRAPHIC_GAP : 0;
     }
 
     // Position the graphic overlay in the editor's reserved padding, vertically centered
     private void layoutSelectionGraphic(double x, double y, double h) {
-        if (!hasSelectionGraphic) return;
+        if (!selectionGraphicShown) return;
         double graphicWidth = snapSizeX(selectionGraphicPane.prefWidth(-1));
         double graphicHeight = snapSizeY(selectionGraphicPane.prefHeight(-1));
         selectionGraphicPane.resizeRelocate(snapPositionX(x + SELECTION_GRAPHIC_LEADING),
