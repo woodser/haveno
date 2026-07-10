@@ -347,6 +347,7 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         currencyComboBox.setCellFactory(GUIUtil.getTradeCurrencyCellFactory(Res.get("shared.oneOffer"),
                 Res.get("shared.multipleOffers"),
                 offerCounts));
+        currencyComboBox.setSelectionGraphicProvider(item -> GUIUtil.getCurrencyGraphic(item.getCode()));
 
         currencyComboBox.setConverter(new CurrencyStringConverter(currencyComboBox));
         currencyComboBox.getEditor().getStyleClass().add("combo-box-editor-bold");

@@ -32,11 +32,13 @@ import javafx.scene.control.ScrollBar;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.text.Text;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -47,6 +49,12 @@ import java.util.stream.Collectors;
  * @param <T>  type of the ComboBox item; in the simplest case this can be a String
  */
 public class AutocompleteComboBox<T> extends JFXComboBox<T> {
+    // Editor style class reserving left padding for the selection graphic; keep the CSS
+    // padding in sync with SELECTION_GRAPHIC_LEADING + graphic width + SELECTION_GRAPHIC_GAP.
+    private static final String SELECTION_GRAPHIC_EDITOR_CLASS = "currency-graphic-editor";
+    private static final double SELECTION_GRAPHIC_LEADING = 4; // margin from editor left edge to graphic
+    private static final double SELECTION_GRAPHIC_GAP = 8;     // gap from graphic to text
+
     private List<? extends T> list;
     private List<? extends T> extendedList;
     private List<T> matchingList;
@@ -58,6 +66,9 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private double maxItemWidth = -1;
     private boolean maxItemWidthDirty = true;
     private boolean popupHBarListenerAdded = false;
+    private Function<T, Node> selectionGraphicProvider;
+    private final StackPane selectionGraphicPane = new StackPane();
+    private boolean hasSelectionGraphic = false;
 
     public AutocompleteComboBox() {
         this(FXCollections.observableArrayList());
@@ -78,6 +89,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
                 lastCommittedValue = newVal;
                 requestLayout(); // refit width to the new value
             }
+            updateSelectionGraphic();
         });
 
         // Refit width after the popup closes, as the value may change while it's open;
@@ -138,8 +150,49 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
                 textWidth(getPromptText())));
         if (textWidth < 0) return super.computePrefWidth(height);
         double arrowWidth = lookup(".arrow-button") instanceof Region arrow ? arrow.prefWidth(-1) : 25;
-        fittedWidth = snappedLeftInset() + snapSizeX(textWidth) + 10 + arrowWidth + snappedRightInset();
+        fittedWidth = snappedLeftInset() + selectionGraphicSpace() + snapSizeX(textWidth) + 10 + arrowWidth + snappedRightInset();
         return fittedWidth;
+    }
+
+    /**
+     * Show a per-item graphic (e.g. currency logo) at the left of the current selection.
+     */
+    public void setSelectionGraphicProvider(Function<T, Node> provider) {
+        selectionGraphicProvider = provider;
+        updateSelectionGraphic();
+    }
+
+    // Mirror the selected item's graphic next to the editor. Space is reserved with editor
+    // padding so the text and caret sit clear of the graphic; kept stable while searching.
+    private void updateSelectionGraphic() {
+        if (selectionGraphicProvider == null || getValue() == null) return; // keep last graphic while searching
+        Node graphic = selectionGraphicProvider.apply(getValue());
+        if (graphic == null) selectionGraphicPane.getChildren().clear();
+        else selectionGraphicPane.getChildren().setAll(graphic);
+        setHasSelectionGraphic(!selectionGraphicPane.getChildren().isEmpty());
+    }
+
+    private void setHasSelectionGraphic(boolean value) {
+        selectionGraphicPane.setVisible(value);
+        if (hasSelectionGraphic == value) return;
+        hasSelectionGraphic = value;
+        getEditor().getStyleClass().remove(SELECTION_GRAPHIC_EDITOR_CLASS);
+        if (value) getEditor().getStyleClass().add(SELECTION_GRAPHIC_EDITOR_CLASS);
+        invalidateFittedWidth();
+    }
+
+    // Horizontal space the graphic reserves, matching the editor's reserved left padding
+    private double selectionGraphicSpace() {
+        return hasSelectionGraphic ? SELECTION_GRAPHIC_LEADING + snapSizeX(selectionGraphicPane.prefWidth(-1)) + SELECTION_GRAPHIC_GAP : 0;
+    }
+
+    // Position the graphic overlay in the editor's reserved padding, vertically centered
+    private void layoutSelectionGraphic(double x, double y, double h) {
+        if (!hasSelectionGraphic) return;
+        double graphicWidth = snapSizeX(selectionGraphicPane.prefWidth(-1));
+        double graphicHeight = snapSizeY(selectionGraphicPane.prefHeight(-1));
+        selectionGraphicPane.resizeRelocate(snapPositionX(x + SELECTION_GRAPHIC_LEADING),
+                snapPositionY(y + (h - graphicHeight) / 2), graphicWidth, graphicHeight);
     }
 
     private double maxItemTextWidth() {
@@ -263,7 +316,19 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     // ListView that is used as a dropdown. The only way to get this control
     // is to set custom ListViewSkin. The default skin is null and so useless.
     private void setEmptySkinToGetMoreControlOverListView() {
-        comboBoxListViewSkin = new JFXComboBoxListViewSkin<>(this);
+        comboBoxListViewSkin = new JFXComboBoxListViewSkin<>(this) {
+            {
+                selectionGraphicPane.setManaged(false);
+                selectionGraphicPane.setMouseTransparent(true);
+                getChildren().add(selectionGraphicPane);
+            }
+
+            @Override
+            protected void layoutChildren(double x, double y, double w, double h) {
+                super.layoutChildren(x, y, w, h);
+                layoutSelectionGraphic(x, y, h);
+            }
+        };
         setSkin(comboBoxListViewSkin);
     }
 

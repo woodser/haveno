@@ -43,6 +43,7 @@ import haveno.core.api.XmrConnectionService;
 import haveno.core.locale.Country;
 import haveno.core.locale.CountryUtil;
 import haveno.core.locale.CurrencyUtil;
+import haveno.core.locale.GlobalSettings;
 import haveno.core.locale.Res;
 import haveno.core.locale.TradeCurrency;
 import haveno.core.payment.PaymentAccount;
@@ -132,6 +133,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -361,7 +363,7 @@ public class GUIUtil {
                         default:
 
                             // use icon if available
-                            StackPane currencyIcon = getCurrencyIcon(code);
+                            Node currencyIcon = getCurrencyGraphic(code);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -413,6 +415,14 @@ public class GUIUtil {
                             currency.setText(Res.get("list.currency.editList"));
                             break;
                         default:
+
+                            // use icon if available
+                            Node currencyIcon = getCurrencyGraphic(code);
+                            if (currencyIcon != null) {
+                                currency.setGraphic(currencyIcon);
+                                currency.setGraphicTextGap(8);
+                            }
+
                             if (offerCountOptional.isPresent()) {
                                 Label numberOfOffers = new AutoTooltipLabel(offerCountOptional.get() + " " +
                                         (offerCountOptional.get() == 1 ? postFixSingle : postFixMulti));
@@ -471,7 +481,7 @@ public class GUIUtil {
                         default:
 
                             // use icon if available
-                            StackPane currencyIcon = getCurrencyIcon(code);
+                            Node currencyIcon = getCurrencyGraphic(code);
                             if (currencyIcon != null) {
                                 label1.setText("");
                                 label1.setGraphic(currencyIcon);
@@ -515,7 +525,7 @@ public class GUIUtil {
                     label2.getStyleClass().add("currency-label");
 
                     // use icon if available
-                    StackPane currencyIcon = getCurrencyIcon(item.getCode());
+                    Node currencyIcon = getCurrencyGraphic(item.getCode());
                     if (currencyIcon != null) {
                         label1.setText("");
                         label1.setGraphic(currencyIcon);
@@ -1329,6 +1339,36 @@ public class GUIUtil {
     public static StackPane getCurrencyIcon(String currencyCode) {
         ImageView icon = getCurrencyImageView(currencyCode);
         return icon == null ? null : new StackPane(icon);
+    }
+
+    // Best mark for a currency: the crypto logo, or a badge with the fiat symbol.
+    public static Node getCurrencyGraphic(String currencyCode) {
+        if (currencyCode == null) return null;
+        if (CurrencyUtil.isFiatCurrency(currencyCode)) return getFiatCurrencyBadge(currencyCode, 24);
+        return getCurrencyIcon(currencyCode);
+    }
+
+    private static Node getFiatCurrencyBadge(String currencyCode, double size) {
+        String symbol;
+        try {
+            symbol = Currency.getInstance(currencyCode).getSymbol(GlobalSettings.getLocale());
+        } catch (Exception e) {
+            symbol = currencyCode;
+        }
+        if (symbol == null || symbol.isEmpty()) symbol = currencyCode;
+        if (symbol.length() > 3) symbol = symbol.substring(0, 3);
+
+        Label label = new Label(symbol);
+        label.getStyleClass().add("fiat-currency-symbol");
+        double fontSize = symbol.length() >= 3 ? size * 0.34 : symbol.length() == 2 ? size * 0.42 : size * 0.52;
+        label.setStyle("-fx-font-size: " + fontSize + "px;");
+
+        StackPane badge = new StackPane(label);
+        badge.getStyleClass().add("fiat-currency-badge");
+        badge.setMinSize(size, size);
+        badge.setPrefSize(size, size);
+        badge.setMaxSize(size, size);
+        return badge;
     }
 
     public static StackPane getCurrencyIcon(String currencyCode, double size) {
