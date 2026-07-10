@@ -71,6 +71,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private final StackPane selectionGraphicPane = new StackPane();
     private boolean hasSelectionGraphic = false; // committed value has a graphic (sets the control height)
     private boolean selectionGraphicShown = false; // graphic currently displayed (hidden while typing a search)
+    private boolean searching = false; // editor is being edited for a search, not showing a committed value
 
     public AutocompleteComboBox() {
         this(FXCollections.observableArrayList());
@@ -89,6 +90,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
         valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 lastCommittedValue = newVal;
+                searching = false; // a committed selection is displayed, so show its graphic at once
                 requestLayout(); // refit width to the new value
             }
             updateSelectionGraphic();
@@ -105,8 +107,12 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
         converterProperty().addListener(obs -> invalidateFittedWidth());
         getEditor().fontProperty().addListener(obs -> invalidateFittedWidth());
 
-        // Hide the selection graphic and un-indent the editor while the user is typing a search
-        getEditor().focusedProperty().addListener((obs, was, focused) -> refreshSelectionGraphicShown());
+        // Focusing the editor starts a search (clears the field); losing focus ends it. A committed
+        // value clears this too, so the graphic returns immediately on selection rather than on blur.
+        getEditor().focusedProperty().addListener((obs, was, focused) -> {
+            searching = focused;
+            refreshSelectionGraphicShown();
+        });
 
         // Restore last committed value when editor loses focus if no matches
         getEditor().focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
@@ -194,7 +200,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     // Show the graphic (with its reserved editor padding) only when a value is selected and the
     // editor is not focused, so clicking in to type clears the logo and starts the caret at the left.
     private void refreshSelectionGraphicShown() {
-        boolean show = hasSelectionGraphic && !getEditor().isFocused();
+        boolean show = hasSelectionGraphic && !searching;
         if (selectionGraphicShown == show) return;
         selectionGraphicShown = show;
         selectionGraphicPane.setVisible(show);
