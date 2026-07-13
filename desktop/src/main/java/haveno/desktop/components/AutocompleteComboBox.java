@@ -159,9 +159,10 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     }
 
     // A click on the already-focused editor lands outside the popup window and auto-hides
-    // it. Re-show it so clicking the search box always presents the list.
+    // it. Re-show on press, within the same event dispatch as the auto-hide, so clicking
+    // the search box always presents the list without a visible blink.
     private void showOnEditorClick() {
-        getEditor().addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+        getEditor().addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
             if (event.getButton() == MouseButton.PRIMARY && !isShowing() && matchingListSize() > 0)
                 show();
         });
