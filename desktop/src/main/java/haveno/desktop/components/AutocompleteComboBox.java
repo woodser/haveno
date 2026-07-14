@@ -30,6 +30,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private JFXComboBoxListViewSkin<T> comboBoxListViewSkin;
     private boolean selectAllShortcut = false;
     private T lastCommittedValue;
+    private double unfilteredPopupWidth = -1; // popup width measured from the full item list
 
     public AutocompleteComboBox() {
         this(FXCollections.observableArrayList());
@@ -98,6 +100,8 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
         list = items;
         extendedList = allItems;
         matchingList = new ArrayList<>(list);
+        unfilteredPopupWidth = -1;
+        unpinPopupWidth(); // new items: measure anew so the popup can resize
         setValue(null);
         getSelectionModel().clearSelection();
         setItems(FXCollections.observableList(matchingList));
@@ -282,6 +286,11 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
     private void forceRedraw() {
         adjustVisibleRowCount();
         if (matchingListSize() > 0) {
+            // Sizing the popup width runs the cell factory over the whole list several times per
+            // open, which lags the popup visibly. Pin the popup to the width measured on the first
+            // unfiltered open; filtered rows can be wider, so those keep measuring anew.
+            if (matchingList.equals(list) && unfilteredPopupWidth > 0) setPopupPrefWidth(unfilteredPopupWidth);
+            else unpinPopupWidth();
             // Flush the popup ListView's item count before measuring, else a stale (smaller) count
             // caps its preferred height and a grown list (e.g. rapidly cleared filter) leaves the
             // popup shorter than its max rows.
@@ -294,10 +303,23 @@ public class AutocompleteComboBox<T> extends JFXComboBox<T> {
             if (comboBoxListViewSkin.getPopupContent() instanceof ListView<?> listView) {
                 listView.applyCss();
                 listView.layout();
+                if (matchingList.equals(list) && unfilteredPopupWidth <= 0 && listView.getWidth() > 0) {
+                    unfilteredPopupWidth = listView.getWidth();
+                    setPopupPrefWidth(unfilteredPopupWidth);
+                }
             }
         } else {
             hide();
         }
+    }
+
+    private void setPopupPrefWidth(double width) {
+        if (comboBoxListViewSkin.getPopupContent() instanceof ListView<?> listView)
+            listView.setPrefWidth(width);
+    }
+
+    private void unpinPopupWidth() {
+        if (comboBoxListViewSkin != null) setPopupPrefWidth(Region.USE_COMPUTED_SIZE);
     }
 
     private void adjustVisibleRowCount() {
