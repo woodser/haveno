@@ -1346,16 +1346,22 @@ public class GUIUtil {
         return getCurrencyImage(currencyCode, (int) px, 0);
     }
 
-    // decode the logo at native size (decoding at target size instead would flat-cut the right/bottom
-    // edge AA), then area-average it into a transparent box inset by a margin so the antialiased edge
-    // never snaps against the icon bounds and looks clipped
+    // decode via the native scaler at a small supersample of the target rather than full native size,
+    // so a large source PNG (e.g. 2000px) doesn't stall the first pulldown open, then area-average that
+    // bounded intermediate into a transparent box inset by a margin for a crisp edge that never snaps
+    // against the icon bounds and looks clipped
+    private static final int CURRENCY_ICON_SUPERSAMPLE = 3; // decode source at this multiple of the icon box
     private static Image getCurrencyImage(String currencyCode, int boxPx, int marginPx) {
         if (!CurrencyUtil.isCryptoCurrency(currencyCode)) return null;
         String code = currencyCode.toLowerCase();
         return currencyImageCache.computeIfAbsent(code + "@" + boxPx + "+" + marginPx, k -> {
-            try (InputStream in = GUIUtil.class.getResourceAsStream("/images/" + code + "_logo.png")) {
+            String path = "/images/" + code + "_logo.png";
+            double cap = boxPx * CURRENCY_ICON_SUPERSAMPLE;
+            int[] source = pngSize(path);
+            boolean bound = source != null && Math.max(source[0], source[1]) > cap; // never upscale
+            try (InputStream in = GUIUtil.class.getResourceAsStream(path)) {
                 if (in == null) return null;
-                Image logo = new Image(in);
+                Image logo = bound ? new Image(in, cap, cap, true, true) : new Image(in);
                 return logo.isError() ? null : downscaleCentered(logo, boxPx, marginPx);
             } catch (IOException e) {
                 return null;
