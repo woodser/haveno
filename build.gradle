@@ -40,6 +40,8 @@ configure(rootProject) {
         // Shared runtime flags for all Haveno JVM processes
         havenoCommonJvmArgs = [
             '-XX:+ExitOnOutOfMemoryError',
+            '-XX:+HeapDumpOnOutOfMemoryError',
+            '-XX:HeapDumpPath=haveno-%p.hprof',
             '-XX:+EnableDynamicAgentLoading',
             '-Djava.net.preferIPv4Stack=true',
             '-Dfile.encoding=UTF-8',
