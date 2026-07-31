@@ -3519,7 +3519,9 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         if (logInfoLevel) log.info(startSyncLogMsg);
         else log.debug(startSyncLogMsg);
         long startTime = System.currentTimeMillis();
-        syncWithProgress(initialSyncTimeoutMs);
+        synchronized (HavenoUtils.getDaemonLock()) { // lock on daemon to limit concurrent wallet syncs
+            syncWithProgress(initialSyncTimeoutMs);
+        }
         String doneSyncLogMsg = "Done syncing wallet for " + getShortId() + " " + getClass().getSimpleName() + " in " + (System.currentTimeMillis() - startTime) + " ms";
         if (logInfoLevel) log.info(doneSyncLogMsg);
         else log.debug(doneSyncLogMsg);
@@ -4113,7 +4115,9 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
 
                 // rescan spent outputs
                 if (logInfoLevel) log.info("Rescanning spent outputs for {} {}", getClass().getSimpleName(), getShortId());
-                wallet.rescanSpent();
+                synchronized (HavenoUtils.getDaemonLock()) { // lock on daemon because rescan queries key images
+                    wallet.rescanSpent();
+                }
                 if (logInfoLevel) log.info("Done rescanning spent outputs for {} {}", getClass().getSimpleName(), getShortId());
                 saveWalletIfElapsedTime();
             } catch (Exception e) {
