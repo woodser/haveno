@@ -239,7 +239,7 @@ arbitrator-daemon-local:
 		--apiPassword=apitest \
 		--apiPort=9998 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator-desktop-local:
@@ -252,7 +252,7 @@ arbitrator-desktop-local:
 		--appName=haveno-XMR_LOCAL_arbitrator \
 		--apiPassword=apitest \
 		--apiPort=9998 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator2-daemon-local:
@@ -265,7 +265,7 @@ arbitrator2-daemon-local:
 		--appName=haveno-XMR_LOCAL_arbitrator2 \
 		--apiPassword=apitest \
 		--apiPort=10001 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 	    --xmrNode=http://127.0.0.1:48081 \
 
 arbitrator2-desktop-local:
@@ -278,7 +278,7 @@ arbitrator2-desktop-local:
 		--appName=haveno-XMR_LOCAL_arbitrator2 \
 		--apiPassword=apitest \
 		--apiPort=10001 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 	    --xmrNode=http://127.0.0.1:48081 \
 
 user1-daemon-local:
@@ -292,7 +292,7 @@ user1-daemon-local:
 		--apiPort=9999 \
 		--walletRpcBindPort=38091 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user1-desktop-local:
 	./haveno-desktop$(APP_EXT) \
@@ -305,7 +305,7 @@ user1-desktop-local:
 		--apiPort=9999 \
 		--walletRpcBindPort=38091 \
 		--logLevel=info \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user2-desktop-local:
 	./haveno-desktop$(APP_EXT) \
@@ -317,7 +317,7 @@ user2-desktop-local:
 		--apiPassword=apitest \
 		--apiPort=10000 \
 		--walletRpcBindPort=38092 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user2-daemon-local:
 	./haveno-daemon$(APP_EXT) \
@@ -330,7 +330,7 @@ user2-daemon-local:
 		--apiPort=10000 \
 		--walletRpcBindPort=38092 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user3-desktop-local:
 	./haveno-desktop$(APP_EXT) \
@@ -342,7 +342,7 @@ user3-desktop-local:
 		--apiPassword=apitest \
 		--apiPort=10002 \
 		--walletRpcBindPort=38093 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user3-daemon-local:
 	./haveno-daemon$(APP_EXT) \
@@ -355,7 +355,7 @@ user3-daemon-local:
 		--apiPort=10002 \
 		--walletRpcBindPort=38093 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 # Stagenet network
 
@@ -404,7 +404,7 @@ arbitrator-daemon-stagenet:
 		--apiPort=3200 \
 		--passwordRequired=false \
 		--xmrNode=http://127.0.0.1:38081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 # Arbitrator needs to be registered before making trades
 arbitrator-desktop-stagenet:
@@ -417,7 +417,7 @@ arbitrator-desktop-stagenet:
 		--apiPassword=apitest \
 		--apiPort=3200 \
 		--xmrNode=http://127.0.0.1:38081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user1-daemon-stagenet:
 	./haveno-daemon$(APP_EXT) \
@@ -429,7 +429,7 @@ user1-daemon-stagenet:
 		--apiPassword=apitest \
 		--apiPort=3201 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user1-desktop-stagenet:
 	./haveno-desktop$(APP_EXT) \
@@ -440,7 +440,7 @@ user1-desktop-stagenet:
 		--appName=haveno-XMR_STAGENET_user1 \
 		--apiPassword=apitest \
 		--apiPort=3201 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user2-daemon-stagenet:
 	./haveno-daemon$(APP_EXT) \
@@ -452,7 +452,7 @@ user2-daemon-stagenet:
 		--apiPassword=apitest \
 		--apiPort=3202 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user2-desktop-stagenet:
 	./haveno-desktop$(APP_EXT) \
@@ -463,7 +463,7 @@ user2-desktop-stagenet:
 		--appName=haveno-XMR_STAGENET_user2 \
 		--apiPassword=apitest \
 		--apiPort=3202 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 user3-desktop-stagenet:
 	./haveno-desktop$(APP_EXT) \
@@ -474,7 +474,7 @@ user3-desktop-stagenet:
 		--appName=haveno-XMR_STAGENET_user3 \
 		--apiPassword=apitest \
 		--apiPort=3203 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 haveno-desktop-stagenet:
 	./haveno-desktop$(APP_EXT) \
@@ -485,7 +485,7 @@ haveno-desktop-stagenet:
 		--appName=Haveno \
 		--apiPassword=apitest \
 		--apiPort=3204 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 haveno-daemon-stagenet:
 	./haveno-daemon$(APP_EXT) \
@@ -496,7 +496,7 @@ haveno-daemon-stagenet:
 		--appName=Haveno \
 		--apiPassword=apitest \
 		--apiPort=3204 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 # expose the stagenet daemon API to grpc-web clients at http://localhost:8080
 envoy-stagenet:
@@ -543,7 +543,7 @@ arbitrator-daemon-mainnet:
 		--apiPort=1200 \
 		--passwordRequired=false \
 		--xmrNode=http://127.0.0.1:18081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 arbitrator-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -555,7 +555,7 @@ arbitrator-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1200 \
 		--xmrNode=http://127.0.0.1:18081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 arbitrator2-daemon-mainnet:
 	./haveno-daemon$(APP_EXT) \
@@ -568,7 +568,7 @@ arbitrator2-daemon-mainnet:
 		--apiPort=1205 \
 		--passwordRequired=false \
 		--xmrNode=http://127.0.0.1:18081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 arbitrator2-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -580,7 +580,7 @@ arbitrator2-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1205 \
 		--xmrNode=http://127.0.0.1:18081 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 
 haveno-daemon-mainnet:
 	./haveno-daemon$(APP_EXT) \
@@ -591,7 +591,7 @@ haveno-daemon-mainnet:
 		--appName=Haveno \
 		--apiPassword=apitest \
 		--apiPort=1201 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 haveno-desktop-mainnet:
@@ -603,7 +603,7 @@ haveno-desktop-mainnet:
 		--appName=Haveno \
 		--apiPassword=apitest \
 		--apiPort=1201 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 # expose the mainnet daemon API to grpc-web clients at http://localhost:8080
@@ -621,7 +621,7 @@ user1-daemon-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1202 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 user1-desktop-mainnet:
@@ -633,7 +633,7 @@ user1-desktop-mainnet:
 		--appName=haveno-XMR_MAINNET_user1 \
 		--apiPassword=apitest \
 		--apiPort=1202 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 user2-daemon-mainnet:
@@ -646,7 +646,7 @@ user2-daemon-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1203 \
 		--passwordRequired=false \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 user2-desktop-mainnet:
@@ -658,7 +658,7 @@ user2-desktop-mainnet:
 		--appName=haveno-XMR_MAINNET_user2 \
 		--apiPassword=apitest \
 		--apiPort=1203 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 user3-desktop-mainnet:
@@ -670,7 +670,7 @@ user3-desktop-mainnet:
 		--appName=haveno-XMR_MAINNET_user3 \
 		--apiPassword=apitest \
 		--apiPort=1204 \
-		--useNativeXmrWallet=false \
+		--useNativeXmrWallet=true \
 		--ignoreLocalXmrNode=false \
 
 buyer-wallet-mainnet:
