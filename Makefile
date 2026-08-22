@@ -592,7 +592,7 @@ haveno-daemon-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 haveno-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -604,7 +604,7 @@ haveno-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1201 \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 # expose the mainnet daemon API to grpc-web clients at http://localhost:8080
 envoy-mainnet:
@@ -622,7 +622,7 @@ user1-daemon-mainnet:
 		--apiPort=1202 \
 		--passwordRequired=false \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user1-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -634,7 +634,7 @@ user1-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1202 \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user2-daemon-mainnet:
 	./haveno-daemon$(APP_EXT) \
@@ -647,7 +647,7 @@ user2-daemon-mainnet:
 		--apiPort=1203 \
 		--passwordRequired=false \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user2-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -659,7 +659,7 @@ user2-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1203 \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 user3-desktop-mainnet:
 	./haveno-desktop$(APP_EXT) \
@@ -671,7 +671,7 @@ user3-desktop-mainnet:
 		--apiPassword=apitest \
 		--apiPort=1204 \
 		--useNativeXmrWallet=true \
-		--ignoreLocalXmrNode=false \
+		--ignoreLocalXmrNode=true \
 
 buyer-wallet-mainnet:
 	./.localnet/monero-wallet-rpc \
