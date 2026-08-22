@@ -126,7 +126,7 @@ public class XmrWalletService extends XmrWalletBase {
     private static final String ADDRESS_FILE_POSTFIX = ".address.txt";
     private static final int NUM_WALLET_BACKUPS = 3;
     private static final boolean PRINT_RPC_STACK_TRACE = false;
-    private static final long SHUTDOWN_TIMEOUT_MS = 60000;
+    private static final long SHUTDOWN_TIMEOUT_MS = 20000;
     private static final long FORCE_CLOSE_TIMEOUT_MS = 15000; // bounded wait since native close can block draining a stalled network request
     private static final long PENDING_CLOSE_TIMEOUT_MS = 240000; // max wait to reopen, covering wallet2's 3.5 minute rpc timeout
     private static final long NUM_BLOCKS_BEHIND_TOLERANCE = 5;
