@@ -682,7 +682,7 @@ public class HavenoUtils {
     }
 
     public static boolean isNotConnectedToDaemon(Throwable t) {
-        return t != null && t.getMessage() != null && (t.getMessage().contains("no connection to daemon") || t.getMessage().contains("Wallet is not connected to daemon"));
+        return t != null && t.getMessage() != null && (t.getMessage().contains("no connection to daemon") || t.getMessage().contains("Wallet is not connected to daemon") || t.getMessage().contains("Failed to connect to daemon"));
     }
 
     private static boolean isNotEnoughSigners(Throwable t) {
