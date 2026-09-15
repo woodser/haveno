@@ -173,7 +173,7 @@ public class StartupShell extends StackPane {
         contentSlot.getChildren().setAll(content);
     }
 
-    public void setHelpContent(Region content) {
+    public void setHelpContent(Region content, Runnable onAutoHide) {
         hideHelp();
         helpPopover = new PopOver(content);
         helpPopover.setDetachable(false);
@@ -182,6 +182,7 @@ public class StartupShell extends StackPane {
         helpPopover.setArrowIndent(0);
         helpPopover.setAutoFix(false);
         helpPopover.setAnimated(preferences.isUseAnimations());
+        helpPopover.setOnAutoHide(event -> onAutoHide.run());
         helpPopover.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
                 hideHelp();

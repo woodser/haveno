@@ -547,10 +547,19 @@ public class HavenoApp extends Application implements UncaughtExceptionHandler {
         helpContent.getStyleClass().add("startup-help");
         helpContent.setPadding(new Insets(15));
         helpContent.setPrefWidth(320);
-        startupShell.setHelpContent(helpContent);
+        startupShell.setHelpContent(helpContent, passwordField::requestFocus);
 
         // focus the password field once the screen is rendered
         UserThread.execute(passwordField::requestFocus);
+
+        // refocus when returning to the login window, until the login content is removed
+        ChangeListener<Boolean> windowFocusListener = (observable, oldValue, focused) -> {
+            if (focused) UserThread.execute(passwordField::requestFocus);
+        };
+        stage.focusedProperty().addListener(windowFocusListener);
+        contentBox.sceneProperty().addListener((observable, oldScene, newScene) -> {
+            if (newScene == null) stage.focusedProperty().removeListener(windowFocusListener);
+        });
     }
 
     private void openPasswordRecovery() {
