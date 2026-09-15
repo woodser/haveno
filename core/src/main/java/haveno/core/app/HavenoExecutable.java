@@ -261,6 +261,8 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
             } catch (IncorrectPasswordException ipe) {
                 log.info("Account password protected, password required");
                 result.complete(false);
+            } catch (IllegalStateException e) {
+                result.completeExceptionally(e);
             }
         } else if (!config.passwordRequired) {
             log.info("Creating Haveno account with null password");
@@ -307,7 +309,10 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         hosts.forEach(host -> {
             host.readPersisted(() -> {
                 if (remaining.decrementAndGet() == 0) {
-                    UserThread.execute(completeHandler);
+                    UserThread.execute(() -> {
+                        accountService.onPersistedDataRead();
+                        completeHandler.run();
+                    });
                 }
             });
         });
@@ -377,6 +382,7 @@ public abstract class HavenoExecutable implements GracefulShutDownHandler, Haven
         try {
 
             // notify trade protocols and wallets to prepare for shut down before shutting down
+            accountService.onShutDownStarted();
             Set<Runnable> tasks = new HashSet<Runnable>();
             tasks.add(() -> injector.getInstance(TradeManager.class).onShutDownStarted());
             tasks.add(() -> injector.getInstance(XmrWalletService.class).onShutDownStarted());

@@ -1049,7 +1049,7 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         return walletHeight.get();
     }
 
-    private String getWalletName() {
+    public String getWalletName() {
         return MONERO_TRADE_WALLET_PREFIX + getShortId() + "_" + getShortUid();
     }
 
@@ -1124,10 +1124,15 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         return errMsg.contains("Failed to parse hex") || errMsg.contains("Multisig info is for a different account");
     }
 
-    public void changeWalletPassword(String oldPassword, String newPassword) {
+    public void changeWalletPassword(String newPassword) {
         synchronized (walletLock) {
-            getWallet().changePassword(oldPassword, newPassword);
-            saveWallet();
+            if (!walletExists()) return;
+            try {
+                xmrWalletService.changeWalletPassword(getWalletName(), wallet, newPassword);
+            } catch (Exception e) {
+                wallet = null; // a failed password write must not be saved again during shutdown
+                throw e;
+            }
         }
     }
 

@@ -129,7 +129,7 @@ public class GrpcAccountService extends AccountImplBase {
             responseObserver.onCompleted();
         } catch (Throwable cause) {
             if (cause instanceof IncorrectPasswordException) cause = new IllegalStateException(cause);
-            exceptionHandler.handleException(log, cause, responseObserver);
+            exceptionHandler.handleAccountException(log, cause, responseObserver);
         }
     }
 
@@ -154,7 +154,7 @@ public class GrpcAccountService extends AccountImplBase {
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
         } catch (Throwable cause) {
-            exceptionHandler.handleException(log, cause, responseObserver);
+            exceptionHandler.handleAccountException(log, cause, responseObserver);
         }
     }
 
