@@ -4,6 +4,24 @@ Haveno validates the new password, updates all wallet and stored connection pass
 
 If an unexpected error interrupts the change, Haveno blocks further password changes and password-dependent wallet operations. It does not roll back or retry the change. Keep both passwords, close Haveno, and use the recovery tool. A crash can also leave files using different passwords.
 
+## Recovery in the application
+
+On the login screen, choose **Help** in the bottom-left corner, then **Open password repair...**. You can also choose **Repair a password change...** under **Account > Wallet password**, after an account startup failure, or after a wallet password error during startup.
+
+Haveno closes and opens a separate recovery screen for the same profile. Wait for shutdown to finish, then use **Open directory** to make a complete copy of the application data folder before proceeding. Close any other Haveno or wallet applications using this data.
+
+Enter the **current account password** and the **previous or attempted password** from the failed change. Leave the current field empty if the account has no password. Unset passwords are always tried automatically, including the internal wallet default `password`; there is no need to type that default. Use **Add another password** if several changes failed with different passwords.
+
+Select **Repair wallets** after confirming the backup. Recovery runs offline, without trading or synchronization. Keep the window open until it finishes. On success, close recovery and start Haveno normally. If it fails, **Try again** opens a fresh recovery screen; re-enter all relevant passwords. If the current account password was rejected, try the other password in the first field. Unknown passwords cannot be recovered or bypassed.
+
+The screen is also available from the desktop launcher with `--recover-password` followed by the network data directory. For example, with an updated macOS installation:
+
+```sh
+/Applications/Haveno.app/Contents/MacOS/Haveno --recover-password '/path/to/application-data/xmr_mainnet'
+```
+
+This uses the bundled runtime; a separate Java installation or source checkout is unnecessary. Other platforms use their installed Haveno executable with the same arguments. Older installations must first be updated to a version containing this screen. For source builds, use the generated desktop launcher, or `java -cp desktop/build/libs/desktop-1.8.0-SNAPSHOT-all.jar haveno.desktop.app.HavenoAppMain --recover-password '/path/to/application-data/xmr_mainnet'` with the filename produced by your build. Close Haveno before starting recovery manually.
+
 ## Terminal recovery
 
 Close Haveno and all its wallet processes, and back up the complete application data directory. From a built Haveno source checkout, run:

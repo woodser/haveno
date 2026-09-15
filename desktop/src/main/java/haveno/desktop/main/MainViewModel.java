@@ -85,6 +85,7 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -137,6 +138,8 @@ public class MainViewModel implements ViewModel, HavenoSetup.HavenoSetupListener
 
     @Getter
     private final BooleanProperty showAppScreen = new SimpleBooleanProperty();
+    @Getter
+    private final ReadOnlyBooleanProperty passwordRecoveryRequired;
     private final DoubleProperty combinedSyncProgress = new SimpleDoubleProperty(-1);
     private final BooleanProperty isSplashScreenRemoved = new SimpleBooleanProperty();
     private final StringProperty footerVersionInfo = new SimpleStringProperty();
@@ -179,6 +182,7 @@ public class MainViewModel implements ViewModel, HavenoSetup.HavenoSetupListener
                          Navigation navigation) {
         this.havenoSetup = havenoSetup;
         this.xmrConnectionService = xmrConnectionService;
+        passwordRecoveryRequired = xmrWalletService.passwordRecoveryRequiredProperty();
         this.user = user;
         this.balancePresentation = balancePresentation;
         this.tradePresentation = tradePresentation;
