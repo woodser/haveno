@@ -1088,6 +1088,16 @@ tree-table-view:focused {
     -fx-border-radius: 999;
 }
 
+.nav-unread-dot {
+    -fx-fill: -bs-red;
+    -fx-stroke: -bs-rd-nav-deselected;
+    -fx-stroke-width: 1.5;
+}
+
+.tab-unread-dot {
+    -fx-fill: -bs-red;
+}
+
 .nav-button .text {
     -fx-font-size: 0.95em;
     -fx-font-weight: 500;
@@ -2616,6 +2626,11 @@ textfield */
     -fx-font-size: .95em;
     -fx-font-weight: normal;
     -fx-cursor: hand;
+}
+
+.jfx-tab-pane .headers-region .unread-trade-chat-tab .tab-container .tab-label {
+    -fx-content-display: right;
+    -fx-graphic-text-gap: 0;
 }
 
 /* heading label-tab sits flush with the content's left inset (no leading tab pad);

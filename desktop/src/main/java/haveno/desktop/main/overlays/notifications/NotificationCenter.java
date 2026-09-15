@@ -64,6 +64,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javax.annotation.Nullable;
@@ -107,6 +109,7 @@ public class NotificationCenter {
     private final Map<ObservableList<ChatMessage>, Notification> chatNotifications = new IdentityHashMap<>();
     private final Set<String> notifiedChatMessages = new HashSet<>();
     private final ListChangeListener<ChatMessage> chatMessagesListener = change -> UserThread.execute(this::refreshChatState);
+    private final ReadOnlyBooleanWrapper unreadTradeChat = new ReadOnlyBooleanWrapper();
     @Nullable
     private String selectedTradeId;
 
@@ -208,6 +211,10 @@ public class NotificationCenter {
     // Setter/Getter
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    public ReadOnlyBooleanProperty unreadTradeChatProperty() {
+        return unreadTradeChat.getReadOnlyProperty();
+    }
+
     @Nullable
     public String getSelectedTradeId() {
         return selectedTradeId;
@@ -262,8 +269,14 @@ public class NotificationCenter {
 
     private void refreshChatState() {
         Set<ObservableList<ChatMessage>> currentChats = Collections.newSetFromMap(new IdentityHashMap<>());
+        boolean hasUnreadTradeChat = false;
         for (Trade trade : snapshot(tradeManager.getObservableList())) {
-            observeChat(trade.getChatMessages(), currentChats);
+            ObservableList<ChatMessage> messages = trade.getChatMessages();
+            observeChat(messages, currentChats);
+            if (!trade.isArbitrator() && !openChats.contains(messages) &&
+                    snapshot(messages).stream().anyMatch(message -> isUnreadChat(message, trade.isMaker()))) {
+                hasUnreadTradeChat = true;
+            }
         }
         for (DisputeManager<? extends DisputeList<Dispute>> manager : getDisputeManagers()) {
             for (Dispute dispute : snapshot(manager.getDisputesAsObservableList())) {
@@ -279,6 +292,7 @@ public class NotificationCenter {
             }
             return true;
         });
+        unreadTradeChat.set(hasUnreadTradeChat);
     }
 
     private void observeChat(ObservableList<ChatMessage> messages, Set<ObservableList<ChatMessage>> currentChats) {

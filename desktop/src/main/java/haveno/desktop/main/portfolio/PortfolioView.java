@@ -31,6 +31,7 @@ import haveno.desktop.common.view.CachingViewLoader;
 import haveno.desktop.common.view.FxmlView;
 import haveno.desktop.common.view.View;
 import haveno.desktop.main.MainView;
+import haveno.desktop.main.overlays.notifications.NotificationCenter;
 import haveno.desktop.main.overlays.popups.Popup;
 import haveno.desktop.main.portfolio.cloneoffer.CloneOfferView;
 import haveno.desktop.main.portfolio.closedtrades.ClosedTradesView;
@@ -44,9 +45,12 @@ import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Circle;
 import javax.annotation.Nullable;
 
 @FxmlView
@@ -64,6 +68,7 @@ public class PortfolioView extends ActivatableView<TabPane, Void> {
     private final CachingViewLoader viewLoader;
     private final Navigation navigation;
     private final FailedTradesManager failedTradesManager;
+    private final NotificationCenter notificationCenter;
     private EditOfferView editOfferView;
     private ReadOnlyBooleanProperty editOfferCanceling;
     private DuplicateOfferView duplicateOfferView;
@@ -75,10 +80,12 @@ public class PortfolioView extends ActivatableView<TabPane, Void> {
     private boolean tabListChangeListenerAdded = false;
 
     @Inject
-    public PortfolioView(CachingViewLoader viewLoader, Navigation navigation, FailedTradesManager failedTradesManager) {
+    public PortfolioView(CachingViewLoader viewLoader, Navigation navigation, FailedTradesManager failedTradesManager,
+                         NotificationCenter notificationCenter) {
         this.viewLoader = viewLoader;
         this.navigation = navigation;
         this.failedTradesManager = failedTradesManager;
+        this.notificationCenter = notificationCenter;
     }
 
     @Override
@@ -90,6 +97,7 @@ public class PortfolioView extends ActivatableView<TabPane, Void> {
         openOffersTab.setText(Res.get("portfolio.tab.openOffers"));
         pendingTradesTab.setText(Res.get("portfolio.tab.pendingTrades"));
         closedTradesTab.setText(Res.get("portfolio.tab.history"));
+        setupUnreadChatIndicator();
 
         navigationListener = (viewPath, data) -> {
             if (viewPath.size() == 3 && viewPath.indexOf(PortfolioView.class) == 1)
@@ -137,6 +145,35 @@ public class PortfolioView extends ActivatableView<TabPane, Void> {
             if (removedTabs.size() == 1 && removedTabs.get(0).equals(cloneOpenOfferTab))
                 onCloneOpenOfferRemoved();
         };
+    }
+
+    private void setupUnreadChatIndicator() {
+        Circle dot = new Circle(3);
+        dot.getStyleClass().add("tab-unread-dot");
+        dot.setManaged(false);
+        dot.setCenterX(6);
+        dot.setCenterY(-4);
+        dot.visibleProperty().bind(notificationCenter.unreadTradeChatProperty());
+
+        // use the existing right padding without changing the tab's width
+        StackPane indicator = new StackPane(dot);
+        indicator.setMinSize(0, 0);
+        indicator.setPrefSize(0, 0);
+        indicator.setMaxSize(0, 0);
+        indicator.setMouseTransparent(true);
+        pendingTradesTab.setGraphic(indicator);
+        pendingTradesTab.getStyleClass().add("unread-trade-chat-tab");
+
+        Tooltip tooltip = new Tooltip(Res.get("notification.chat.unreadTradeMessages"));
+        Runnable updateHelp = () -> {
+            boolean unread = notificationCenter.unreadTradeChatProperty().get();
+            pendingTradesTab.setTooltip(unread ? tooltip : null);
+            Node header = root.lookup(".unread-trade-chat-tab");
+            if (header != null) header.setAccessibleHelp(unread ? tooltip.getText() : null);
+        };
+        root.skinProperty().addListener((observable, oldValue, newValue) -> UserThread.execute(updateHelp));
+        notificationCenter.unreadTradeChatProperty().addListener((observable, oldValue, newValue) -> updateHelp.run());
+        updateHelp.run();
     }
 
     private void onEditOpenOfferRemoved() {
