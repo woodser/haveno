@@ -18,14 +18,87 @@
 package haveno.common.crypto;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Random;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EncryptionTest {
+
+    @TempDir
+    Path keyDir;
+
+    @Test
+    public void testPasswordChangeOnlyRewrapsSymmetricKey() throws Exception {
+        KeyStorage storage = new KeyStorage(keyDir.toFile());
+        KeyRing ring = new KeyRing(storage, null, true);
+        byte[] signature = Files.readAllBytes(keyDir.resolve("sig.key"));
+        byte[] encryption = Files.readAllBytes(keyDir.resolve("enc.key"));
+        byte[] original = Files.readAllBytes(keyDir.resolve("sym.p12"));
+
+        byte[] replacement = storage.preparePasswordChange(null, "new-password");
+        assertArrayEquals(original, Files.readAllBytes(keyDir.resolve("sym.p12")));
+        storage.commitPasswordChange(replacement);
+        assertArrayEquals(signature, Files.readAllBytes(keyDir.resolve("sig.key")));
+        assertArrayEquals(encryption, Files.readAllBytes(keyDir.resolve("enc.key")));
+        assertEquals(ring.getSymmetricKey(), storage.loadSecretKey(KeyStorage.KeyEntry.SYM_ENCRYPTION, "new-password"));
+        assertThrows(IncorrectPasswordException.class, () -> storage.loadSecretKey(KeyStorage.KeyEntry.SYM_ENCRYPTION, null));
+
+        storage.commitPasswordChange(storage.preparePasswordChange("new-password", null));
+        assertTrue(new KeyRing(storage, null, false).isUnlocked());
+    }
+
+    @Test
+    public void testInvalidPasswordLeavesKeystoreUntouched() throws Exception {
+        KeyStorage storage = new KeyStorage(keyDir.toFile());
+        new KeyRing(storage, "old-password", true);
+        byte[] original = Files.readAllBytes(keyDir.resolve("sym.p12"));
+        assertThrows(IllegalArgumentException.class, () -> storage.preparePasswordChange("old-password", "password-\u00e9"));
+        assertThrows(IllegalStateException.class, () -> storage.preparePasswordChange("incorrect", "new-password"));
+        assertArrayEquals(original, Files.readAllBytes(keyDir.resolve("sym.p12")));
+        assertTrue(new KeyRing(storage, "old-password", false).isUnlocked());
+    }
+
+    @Test
+    public void testIncompleteAccountsCannotBeOverwritten() throws Exception {
+        KeyStorage storage = new KeyStorage(keyDir.toFile());
+        new KeyRing(storage, null, true);
+        byte[] signature = Files.readAllBytes(keyDir.resolve("sig.key"));
+        Files.delete(keyDir.resolve("sym.p12"));
+        assertThrows(IllegalStateException.class, () -> new KeyRing(storage, null, true));
+        assertArrayEquals(signature, Files.readAllBytes(keyDir.resolve("sig.key")));
+    }
+
+    @Test
+    public void testRecoveryReplacesOnlySupersededBackupsOfTheSameMasterKey() throws Exception {
+        KeyStorage storage = new KeyStorage(keyDir.toFile());
+        KeyRing ring = new KeyRing(storage, null, true);
+        Path backups = Files.createDirectories(keyDir.resolve("backup/backups_sym_p12"));
+        Path old = backups.resolve("old_sym.p12");
+        Files.copy(keyDir.resolve("sym.p12"), old);
+        Path foreignDir = Files.createDirectory(keyDir.resolve("foreign"));
+        KeyStorage foreign = new KeyStorage(foreignDir.toFile());
+        new KeyRing(foreign, null, true);
+        Path foreignBackup = backups.resolve("password-change_sym.p12");
+        Files.copy(foreignDir.resolve("sym.p12"), foreignBackup);
+        byte[] foreignBytes = Files.readAllBytes(foreignBackup);
+        storage.commitPasswordChange(storage.preparePasswordChange(null, "old-password"));
+        storage.commitPasswordChange(storage.preparePasswordChange("old-password", "new-password"));
+        storage.finishPasswordChange(ring, "new-password", Arrays.asList("new-password", "old-password"));
+        assertEquals(false, Files.exists(old));
+        assertArrayEquals(foreignBytes, Files.readAllBytes(foreignBackup));
+        assertTrue(Files.exists(backups.resolve("password-change_sym.p12")));
+        assertThrows(IncorrectPasswordException.class, () -> storage.verifyPassword(ring.getSymmetricKey(), null));
+        storage.verifyPassword(ring.getSymmetricKey(), "new-password");
+    }
 
     // Sizes around AES block (16) and stream chunk (64 KiB) boundaries, plus an empty payload.
     private static final int[] SIZES = {0, 1, 15, 16, 17, 1000, 65_535, 65_536, 65_537, 100_000, 5_000_000};

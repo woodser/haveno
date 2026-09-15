@@ -245,6 +245,17 @@ public class FileUtil {
         }
     }
 
+    // write the replacement before touching the current file
+    public static void writeAtomically(Path target, byte[] bytes) throws IOException {
+        Path temp = java.nio.file.Files.createTempFile(target.toAbsolutePath().getParent(), ".haveno-write-", ".tmp");
+        try {
+            java.nio.file.Files.write(temp, bytes);
+            java.nio.file.Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            java.nio.file.Files.deleteIfExists(temp);
+        }
+    }
+
     public static void copyFile(File origin, File target) throws IOException {
         if (!origin.exists()) {
             return;
