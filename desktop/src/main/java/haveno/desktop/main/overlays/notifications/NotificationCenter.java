@@ -59,6 +59,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.ReadOnlyBooleanProperty;
@@ -82,6 +83,8 @@ import org.fxmisc.easybind.Subscription;
 @Slf4j
 @Singleton
 public class NotificationCenter {
+
+    private static final long AMBIGUOUS_PAYMENT_NOTIFICATION_THROTTLE_NANOS = TimeUnit.MINUTES.toNanos(10);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Static
@@ -111,6 +114,7 @@ public class NotificationCenter {
 
     private final Map<String, Subscription> disputeStateSubscriptionsMap = new HashMap<>();
     private final Map<String, Subscription> tradePhaseSubscriptionsMap = new HashMap<>();
+    private final Map<String, Long> ambiguousPaymentNotificationTimesNanos = new HashMap<>();
     private final Map<String, Subscription> tradePayoutSubscriptionsMap = new HashMap<>();
     private final ObservableMap<String, String> unseenTradeUpdates = FXCollections.observableHashMap();
     private final Map<String, Notification> tradeNotifications = new HashMap<>();
@@ -149,6 +153,8 @@ public class NotificationCenter {
     }
 
     public void onAllServicesAndViewsInitialized() {
+        tradeManager.addAmbiguousPaymentRejectedListener(this::onAmbiguousPaymentRejected);
+
         Scene scene = MainView.getRootContainer().getScene();
         mainWindow = scene.getWindow();
         // acknowledge content interaction after selection and focus settle, not title-bar drags
@@ -565,6 +571,22 @@ public class NotificationCenter {
         });
         notification.show();
         if (!notification.isHasBeenDisplayed()) tradeNotifications.remove(tradeId, notification);
+    }
+
+    private void onAmbiguousPaymentRejected(String offerId) {
+        long now = System.nanoTime();
+        synchronized (ambiguousPaymentNotificationTimesNanos) {
+            ambiguousPaymentNotificationTimesNanos.entrySet().removeIf(entry ->
+                    now - entry.getValue() >= AMBIGUOUS_PAYMENT_NOTIFICATION_THROTTLE_NANOS);
+            if (ambiguousPaymentNotificationTimesNanos.containsKey(offerId)) return;
+            ambiguousPaymentNotificationTimesNanos.put(offerId, now);
+        }
+        UserThread.execute(() ->
+                new Notification()
+                        .headLine(Res.get("notification.offer.takeRejected.headline"))
+                        .notification(Res.get("notification.offer.takeRejected.msg", Utilities.getShortId(offerId)))
+                        .autoClose()
+                        .show());
     }
 
     private void onDisputeStateChanged(Trade trade, Trade.DisputeState disputeState) {
