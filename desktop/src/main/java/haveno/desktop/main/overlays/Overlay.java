@@ -249,7 +249,7 @@ public abstract class Overlay<T extends Overlay<T>> {
 
         addHeadLine();
 
-        if (showBusyAnimation)
+        if (showBusyAnimation && message == null)
             addBusyAnimation();
 
         addMessage();
@@ -1049,6 +1049,7 @@ public abstract class Overlay<T extends Overlay<T>> {
             HBox hBox = new HBox();
             hBox.setSpacing(7);
             headLineLabel = new AutoTooltipLabel(headLine);
+            headLineLabel.setWrapText(showBusyAnimation);
             headlineIcon = new Label();
             headlineIcon.setManaged(false);
             headlineIcon.setVisible(false);
@@ -1058,7 +1059,7 @@ public abstract class Overlay<T extends Overlay<T>> {
             if (headlineStyle != null)
                 headLineLabel.setStyle(headlineStyle);
 
-            if (message != null) {
+            if (message != null && !showBusyAnimation) {
                 copyLabel = new Label();
                 copyLabel.setManaged(false);
                 copyLabel.setVisible(false);
@@ -1097,6 +1098,16 @@ public abstract class Overlay<T extends Overlay<T>> {
                 messageRegion = scrollPane;
             } else
                 messageRegion = messageTextArea;
+
+            if (showBusyAnimation) {
+                BusyAnimation busyAnimation = new BusyAnimation();
+                busyAnimation.setMinSize(24, 24);
+                busyAnimation.setMaxSize(24, 24);
+                HBox messageBox = new HBox(12, busyAnimation, messageRegion);
+                messageBox.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(messageRegion, Priority.ALWAYS);
+                messageRegion = messageBox;
+            }
 
             GridPane.setHalignment(messageRegion, HPos.LEFT);
             GridPane.setHgrow(messageRegion, Priority.ALWAYS);

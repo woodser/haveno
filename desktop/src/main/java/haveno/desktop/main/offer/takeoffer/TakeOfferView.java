@@ -445,6 +445,7 @@ public class TakeOfferView extends ActivatableViewAndModel<AnchorPane, TakeOffer
             fundingAddressPopup = new Popup();
             fundingAddressPopup.headLine(Res.get("shared.fundingAddress.headline"))
                     .message(Res.get("shared.fundingAddress.msg"))
+                    .width(600)
                     .showBusyAnimation()
                     .closeButtonText(Res.get("shared.cancel"))
                     .onClose(() -> {

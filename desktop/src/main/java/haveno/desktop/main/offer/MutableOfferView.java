@@ -402,6 +402,7 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
             fundingAddressPopup = new Popup();
             fundingAddressPopup.headLine(Res.get("shared.fundingAddress.headline"))
                     .message(Res.get("shared.fundingAddress.msg"))
+                    .width(600)
                     .showBusyAnimation()
                     .closeButtonText(Res.get("shared.cancel"))
                     .onClose(() -> fundingAddressPopup = null)
