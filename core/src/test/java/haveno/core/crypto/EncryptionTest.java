@@ -91,6 +91,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -323,6 +324,43 @@ public class EncryptionTest {
         assertTrue(account.onShutDownStarted().isDone());
         assertThrows(IllegalStateException.class, () -> account.changePassword(null, "new-password"));
         assertFalse(account.isPasswordRecoveryRequired());
+    }
+
+    @Test
+    public void testStartupCallbacksDoNotWaitForAccountBackup() throws Exception {
+        CoreAccountService account = new CoreAccountService(null, keyStorage, new KeyRing(keyStorage));
+        account.openAccount(null);
+        accounts.add(account);
+        List<String> changed = new ArrayList<>();
+        account.addPasswordChangeHandler(CoreAccountService.PasswordChangeTarget.WALLETS,
+                (oldPassword, newPassword) -> changed.add("wallets"));
+        CountDownLatch backupStarted = new CountDownLatch(1);
+        CompletableFuture<Void> startup = CompletableFuture.runAsync(() -> {
+            try {
+                assertTrue(backupStarted.await(10, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+            account.addPasswordChangeHandler(CoreAccountService.PasswordChangeTarget.CONNECTIONS,
+                    (oldPassword, newPassword) -> changed.add("connections"));
+            account.onPersistedDataRead();
+        });
+        try {
+            account.withAccountBackup(() -> {
+                backupStarted.countDown();
+                assertDoesNotThrow(() -> startup.get(10, TimeUnit.SECONDS));
+                assertTrue(changed.isEmpty());
+                assertNull(account.getPassword());
+            });
+        } finally {
+            backupStarted.countDown();
+            startup.get(10, TimeUnit.SECONDS);
+        }
+
+        account.changePassword(null, "new-password");
+        assertEquals(List.of("wallets", "connections"), changed);
+        assertEquals("new-password", account.getPassword());
     }
 
     @Test

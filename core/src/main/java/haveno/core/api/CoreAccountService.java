@@ -195,10 +195,12 @@ public class CoreAccountService {
         try {
             if (!isAccountOpen()) throw new IllegalStateException("Cannot change password on unopened account");
             checkPasswordRecovery();
+            List<BiConsumer<String, String>> handlers;
             synchronized (this) {
                 if (isShutDownStarted || !persistedDataRead || passwordChangeHandlers.size() != PasswordChangeTarget.values().length) {
                     throw new IllegalStateException("Wait until account services finish initializing and are not shutting down");
                 }
+                handlers = new ArrayList<>(passwordChangeHandlers.values());
                 completion = new CompletableFuture<>();
                 passwordChangeCompletion = completion;
             }
@@ -212,9 +214,7 @@ public class CoreAccountService {
             // validate and serialize the replacement before changing any passwords
             byte[] keyStore = keyStorage.preparePasswordChange(oldPassword, newPassword);
             try {
-                for (PasswordChangeTarget target : PasswordChangeTarget.values()) {
-                    passwordChangeHandlers.get(target).accept(oldPassword, newPassword);
-                }
+                for (BiConsumer<String, String> handler : handlers) handler.accept(oldPassword, newPassword);
                 keyStorage.commitPasswordChange(keyStore);
                 this.password = newPassword;
             } catch (Throwable e) {
@@ -276,22 +276,13 @@ public class CoreAccountService {
         if (passwordRecoveryRequired) throw new IllegalStateException("Close Haveno and use password recovery with both passwords before continuing; see docs/password-recovery.md");
     }
 
-    public void addPasswordChangeHandler(PasswordChangeTarget target, BiConsumer<String, String> handler) {
-        accountLock.lock();
-        try {
-            passwordChangeHandlers.put(target, handler);
-        } finally {
-            accountLock.unlock();
-        }
+    // startup callbacks run on the user thread and must not wait for account backups
+    public synchronized void addPasswordChangeHandler(PasswordChangeTarget target, BiConsumer<String, String> handler) {
+        passwordChangeHandlers.put(target, handler);
     }
 
-    public void onPersistedDataRead() {
-        accountLock.lock();
-        try {
-            persistedDataRead = true;
-        } finally {
-            accountLock.unlock();
-        }
+    public synchronized void onPersistedDataRead() {
+        persistedDataRead = true;
     }
 
     public synchronized CompletableFuture<Void> onShutDownStarted() {
