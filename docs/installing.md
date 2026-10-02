@@ -75,6 +75,22 @@ make clean && make
 > * macOS: `~/Library/Application\ Support/Haveno/`
 > * Windows: `~\AppData\Roaming\Haveno\`
 
+### Headless/API agreement acceptance
+
+Every headless/API launch, including development mode, requires explicit acceptance
+of the current user agreement revision. Without it, startup prints the legal terms
+and exits before opening the API or starting the network.
+
+After reviewing the terms, pass `--acceptTacVersion=1` to the daemon, or add
+`acceptTacVersion=1` to that instance's `haveno.properties` file. This also applies
+to instances started by the Makefile, deployment scripts, and API tests. An old
+revision will stop working when the agreement changes; review the new terms before
+updating the setting.
+
+Desktop users accept through the agreement screen. Acceptance of the earlier
+wording does not carry over. Developers changing the agreement must increment
+`Version.TAC_VERSION` independently of the application version.
+
 ### Mainnet
 
 If you are building a third party repository which supports mainnet, you can start Haveno with:

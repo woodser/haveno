@@ -17,6 +17,8 @@
 
 package haveno.core.user;
 
+import com.google.protobuf.UnknownFieldSet;
+import haveno.common.app.Version;
 import haveno.common.config.Config;
 import haveno.common.persistence.PersistenceManager;
 import haveno.core.api.XmrLocalNode;
@@ -71,6 +73,31 @@ public class PreferencesTest {
                 persistenceManager, config, null, null);
         xmrNodes = new XmrNodes();
         XmrLocalNode xmrLocalNode = new XmrLocalNode(config, preferences, xmrNodes);
+    }
+
+    @Test
+    public void testLegacyTacAcceptanceDoesNotAcceptCurrentRevision() throws IOException {
+        protobuf.PreferencesPayload legacy = protobuf.PreferencesPayload.newBuilder()
+                .setTacAccepted(true)
+                .setTacAcceptedV120(true)
+                .setUnknownFields(UnknownFieldSet.newBuilder().mergeVarintField(79, 1).build()) // tac_accepted_v190
+                .build();
+        PreferencesPayload payload = PreferencesPayload.fromProto(protobuf.PreferencesPayload.parseFrom(legacy.toByteArray()), null);
+        assertEquals(0, payload.getTacAcceptedVersion());
+
+        payload.setTacAcceptedVersion(Version.TAC_VERSION);
+        protobuf.PersistableEnvelope persisted = (protobuf.PersistableEnvelope) payload.toProtoMessage();
+        PreferencesPayload reloaded = PreferencesPayload.fromProto(persisted.getPreferencesPayload(), null);
+        assertEquals(Version.TAC_VERSION, reloaded.getTacAcceptedVersion());
+        assertFalse(persisted.getPreferencesPayload().getUnknownFields().hasField(79));
+    }
+
+    @Test
+    public void testTacAcceptancePersistsDuringStartup() {
+        assertEquals(0, preferences.getTacAcceptedVersion());
+        preferences.setTacAcceptedVersion(Version.TAC_VERSION);
+        assertEquals(Version.TAC_VERSION, preferences.getTacAcceptedVersion());
+        verify(persistenceManager).forcePersistNow();
     }
 
     @Test

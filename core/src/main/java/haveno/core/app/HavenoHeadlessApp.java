@@ -20,6 +20,7 @@ package haveno.core.app;
 import com.google.inject.Injector;
 import haveno.common.UserThread;
 import haveno.common.app.Version;
+import haveno.common.config.Config;
 import haveno.common.file.CorruptedStorageFileHandler;
 import haveno.common.setup.GracefulShutDownHandler;
 import haveno.core.trade.TradeManager;
@@ -72,8 +73,13 @@ public class HavenoHeadlessApp implements HeadlessApp {
 
     protected void setupHandlers() {
         havenoSetup.setDisplayTacHandler(acceptedHandler -> {
-            log.info("onDisplayTacHandler: We accept the tacs automatically in headless mode");
-            acceptedHandler.run();
+            if (injector.getInstance(Config.class).acceptTacVersion == Version.TAC_VERSION) {
+                acceptedHandler.run();
+            } else {
+                log.error("User agreement not accepted; set --{}={} after reviewing the terms",
+                        Config.ACCEPT_TAC_VERSION, Version.TAC_VERSION);
+                stop();
+            }
         });
         havenoSetup.setDisplayMoneroConnectionFallbackHandler(show -> log.warn("onDisplayMoneroConnectionFallbackHandler: show={}", show));
         havenoSetup.setDisplayTorNetworkSettingsHandler(show -> log.info("onDisplayTorNetworkSettingsHandler: show={}", show));

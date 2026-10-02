@@ -21,6 +21,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import haveno.common.UserThread;
 import haveno.common.app.AppModule;
 import haveno.common.app.Version;
+import haveno.common.config.Config;
+import haveno.core.locale.Res;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.Executors;
@@ -46,6 +48,20 @@ public class HavenoHeadlessAppMain extends HavenoExecutable {
 
     @Override
     protected int doExecute() {
+        // Require consent before account login can expose the API.
+        if (config.acceptTacVersion != Version.TAC_VERSION) {
+            Res.setup();
+            System.err.println(Res.get("tacWindow.legal.headline"));
+            for (int i = 1; Res.getResourceBundle().containsKey("tacWindow.legal.section" + i + ".title"); i++) {
+                System.err.println(i + ". " + Res.get("tacWindow.legal.section" + i + ".title"));
+                System.err.println(Res.get("tacWindow.legal.section" + i + ".body"));
+            }
+            String acceptOption = "--" + Config.ACCEPT_TAC_VERSION + "=" + Version.TAC_VERSION;
+            System.err.println(Res.get("tacWindow.legal.footnote", acceptOption));
+            System.err.println("error: Headless mode requires explicit acceptance of the user agreement with " + acceptOption);
+            System.exit(EXIT_FAILURE);
+        }
+
         super.doExecute();
 
         return keepRunning();

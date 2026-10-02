@@ -1877,6 +1877,9 @@ enum RefundResultState {
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 message PreferencesPayload {
+    reserved 79;
+    reserved "tac_accepted_v190";
+
     string user_language = 1;
     Country user_country = 2;
     repeated TradeCurrency traditional_currencies = 3;
@@ -1955,8 +1958,8 @@ message PreferencesPayload {
     string buy_screen_other_payment_method_id = 76;
     string sell_screen_other_payment_method_id = 77;
     bool deposit_addresses_expanded = 78;
-    bool tac_accepted_v190 = 79;
     bool use_native_xmr_wallet = 80;
+    int32 tac_accepted_version = 81;
 }
 
 message AutoConfirmSettings {

@@ -1,5 +1,6 @@
 package haveno.common.config;
 
+import haveno.common.app.Version;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -11,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static haveno.common.config.Config.ACCEPT_TAC_VERSION;
 import static haveno.common.config.Config.API_HIDDEN_SERVICE;
 import static haveno.common.config.Config.API_HIDDEN_SERVICE_BEFORE_LOGIN;
 import static haveno.common.config.Config.API_HIDDEN_SERVICE_PORT;
@@ -42,6 +44,30 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ConfigTests {
+
+    @Test
+    public void whenTacAcceptanceIsNotSpecified_thenNoRevisionIsAccepted() {
+        assertEquals(0, new Config().acceptTacVersion);
+        assertThrows(ConfigException.class, () -> configWithOpts(opt(ACCEPT_TAC_VERSION)));
+        assertThrows(ConfigException.class, () -> configWithOpts(opt(ACCEPT_TAC_VERSION, "true")));
+    }
+
+    @Test
+    public void whenTacRevisionIsSpecified_thenOnlyThatRevisionIsAccepted() {
+        for (int version : new int[]{0, Version.TAC_VERSION, Version.TAC_VERSION + 1}) {
+            assertEquals(version, configWithOpts(opt(ACCEPT_TAC_VERSION, Integer.toString(version))).acceptTacVersion);
+        }
+    }
+
+    @Test
+    public void whenTacRevisionIsConfigured_thenCommandLineCanOverrideIt() throws IOException {
+        File configFile = createTempFile("haveno", "properties");
+        try (PrintWriter writer = new PrintWriter(configFile)) {
+            writer.println(new ConfigFileOption(ACCEPT_TAC_VERSION, Integer.toString(Version.TAC_VERSION)));
+        }
+        assertEquals(Version.TAC_VERSION, configWithOpts(opt(CONFIG_FILE, configFile.getAbsolutePath())).acceptTacVersion);
+        assertEquals(0, configWithOpts(opt(CONFIG_FILE, configFile.getAbsolutePath()), opt(ACCEPT_TAC_VERSION, "0")).acceptTacVersion);
+    }
 
     // Note: "DataDirProperties" in the test method names below represent the group of
     // configuration options that influence the location of a Haveno node's data directory.
