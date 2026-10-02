@@ -374,7 +374,8 @@ public abstract class PaymentAccount implements PersistablePayload {
         }
 
         jsonMap.put("accountName", getAccountName());
-        jsonMap.put("accountId", getId());
+        // a payload's own accountId (e.g. Uphold) takes precedence over the local account id
+        if (!jsonMap.containsKey("accountId")) jsonMap.put("accountId", getId());
         if (paymentAccountPayload != null) jsonMap.put("salt", getSaltAsHex());
         return gson.toJson(jsonMap);
     }
