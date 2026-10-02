@@ -485,6 +485,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
             // remove trades duplicated across stores by an interrupted move
             removeDuplicateTrades(trades);
+            resumeInterruptedTradeMoves();
 
             // initialize trades in parallel
             int threadPoolSize = 10;
@@ -640,7 +641,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     // remove trades with duplicate uids from their stores, which can happen when a move between stores is interrupted
-    // by shutdown. keep the closed copy over pending over failed; error handling re-converges a kept pending copy on init
+    // by shutdown. prefer the latest completion transition, then closed over pending over failed
     private void removeDuplicateTrades(List<Trade> trades) {
         Map<String, Trade> tradesByUid = new HashMap<String, Trade>();
         for (Trade trade : new ArrayList<Trade>(trades)) {
@@ -649,7 +650,8 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                 tradesByUid.put(trade.getUid(), trade);
                 continue;
             }
-            Trade duplicate = getStorePriority(trade) > getStorePriority(other) ? other : trade;
+            int revisionOrder = Long.compare(trade.getCompletedRevision(), other.getCompletedRevision());
+            Trade duplicate = revisionOrder > 0 || (revisionOrder == 0 && getStorePriority(trade) > getStorePriority(other)) ? other : trade;
             if (duplicate == other) tradesByUid.put(trade.getUid(), trade);
             log.warn("Removing {} {} with duplicate uid from its store. That should never happen. uid={}", duplicate.getClass().getSimpleName(), duplicate.getId(), duplicate.getUid());
             removeDuplicateTrade(duplicate);
@@ -658,9 +660,23 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     private int getStorePriority(Trade trade) {
-        if (closedTradableManager.getClosedTrades().contains(trade)) return 2;
+        if (closedTradableManager.getClosedTrades().contains(trade)) return isInterruptedTradeMove(trade) ? 1 : 3;
         if (failedTradesManager.getObservableList().contains(trade)) return 0;
-        return 1; // pending
+        return 2; // pending
+    }
+
+    private boolean isInterruptedTradeMove(Trade trade) {
+        return trade.getCompletedRevision() > 0 && !trade.isCompleted();
+    }
+
+    private void resumeInterruptedTradeMoves() {
+        for (Trade trade : closedTradableManager.getClosedTrades()) {
+            synchronized (trade) {
+                if (!isInterruptedTradeMove(trade)) continue;
+                addTrade(trade); // initialization follows once all interrupted moves have been recovered
+                persistReopenedTrade(trade);
+            }
+        }
     }
 
     // remove a duplicate trade from whichever store holds it
@@ -1152,12 +1168,14 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
 
     // If trade was completed (closed without fault but might be closed by a dispute) we move it to the closed trades
     public void onTradeCompleted(Trade trade) {
-        if (trade.isCompleted()) throw new RuntimeException("Trade " + trade.getId() + " was already completed");
-        // Mark completed BEFORE adding: add() synchronously appends a snapshot to the closed log,
-        // so this persisted flag must already be set. Do not reorder.
-        trade.setCompleted(true);
-        closedTradableManager.add(trade);
-        removeTrade(trade);
+        synchronized (trade) {
+            if (trade.isCompleted()) throw new RuntimeException("Trade " + trade.getId() + " was already completed");
+            // Mark completed BEFORE adding: add() synchronously appends a snapshot to the closed log,
+            // so this persisted flag must already be set. Do not reorder.
+            trade.setCompleted(true);
+            closedTradableManager.add(trade);
+            removeTrade(trade);
+        }
         xmrWalletService.swapPayoutAddressEntryToAvailable(trade.getId()); // TODO The address entry should have been removed already. Check and if its the case remove that.
         requestPersistence();
     }
@@ -1286,12 +1304,25 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     public void onMoveClosedTradeToPendingTrades(Trade trade) {
-        log.warn("Moving {} {} from closed trades to pending trades", trade.getClass().getSimpleName(), trade.getShortId());
-        trade.setCompleted(false);
-        addTradeToPendingTrades(trade);
-        // tombstone the closed log only once the pending store is durable; the reverse order has
-        // a crash window where the trade exists in neither store
-        persistNow(() -> closedTradableManager.removeTrade(trade));
+        synchronized (trade) {
+            log.warn("Moving {} {} from closed trades to pending trades", trade.getClass().getSimpleName(), trade.getShortId());
+            trade.setCompleted(false);
+            closedTradableManager.persistClosedTrade(trade);
+            addTradeToPendingTrades(trade);
+            persistReopenedTrade(trade);
+        }
+    }
+
+    private void persistReopenedTrade(Trade trade) {
+        try {
+            // the ordinary persistence callback also runs on failure, so require a successful write
+            persistenceManager.persistNowAndWait();
+        } catch (RuntimeException e) {
+            log.error("Could not persist reopened trade {}; retaining its closed record for recovery", trade.getId(), e);
+            requestPersistence();
+            return;
+        }
+        closedTradableManager.removeTrade(trade);
     }
 
     private void removeFailedTrade(Trade trade) {

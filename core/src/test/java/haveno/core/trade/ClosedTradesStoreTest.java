@@ -34,6 +34,7 @@ import haveno.core.offer.OpenOffer;
 import haveno.core.payment.ZelleAccount;
 import haveno.core.proto.persistable.CorePersistenceProtoResolver;
 import haveno.core.trade.protocol.ProcessModel;
+import haveno.core.trade.failed.FailedTradesManager;
 import haveno.core.user.Preferences;
 import haveno.core.xmr.wallet.BtcWalletService;
 import haveno.core.xmr.wallet.XmrWalletService;
@@ -41,8 +42,14 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import javafx.collections.FXCollections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,14 +68,18 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 public class ClosedTradesStoreTest {
 
@@ -841,5 +853,222 @@ public class ClosedTradesStoreTest {
         assertTrue(ClosedTradesStore.shouldCompact(513, 1), "just past the floor, compact");
         assertFalse(ClosedTradesStore.shouldCompact(1000, 600), "ratio not exceeded -> no compaction");
         assertTrue(ClosedTradesStore.shouldCompact(1300, 600), "ratio exceeded -> compaction");
+    }
+
+    @Test
+    public void testCompletionRevisionRoundTripsAndLegacyRecordsRemainUnmarked() throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            Trade trade = handoffTrade();
+            trade.setCompleted(true);
+            trade.setCompleted(false);
+            assertEquals(2, trade.getCompletedRevision());
+            protobuf.BuyerAsMakerTrade proto = ((protobuf.Tradable) trade.toProtoMessage()).getBuyerAsMakerTrade();
+            Trade restored = (Trade) BuyerAsMakerTrade.fromProto(proto, mock(XmrWalletService.class), resolver);
+            assertFalse(restored.isCompleted());
+            assertEquals(2, restored.getCompletedRevision());
+            restored.setCompleted(true);
+            assertEquals(3, restored.getCompletedRevision());
+
+            Trade legacy = (Trade) BuyerAsMakerTrade.fromProto(proto.toBuilder()
+                    .setTrade(proto.getTrade().toBuilder().clearCompletedRevision()).build(), mock(XmrWalletService.class), resolver);
+            assertEquals(0, legacy.getCompletedRevision());
+            legacy.setCompleted(false);
+            assertEquals(1, legacy.getCompletedRevision());
+        }
+    }
+
+    @Test
+    public void testDuplicateResolutionKeepsNewestCloseOrReopenInEitherOrder() throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            for (boolean pendingFirst : List.of(false, true)) {
+                for (int scenario = 0; scenario < 4; scenario++) {
+                    Trade closed = handoffTrade();
+                    Trade pending = handoffTrade();
+                    if (scenario != 3) closed.setCompleted(true);
+                    if (scenario == 1 || scenario == 2) {
+                        pending.setCompleted(true);
+                        pending.setCompleted(false);
+                    }
+                    if (scenario == 2) closed.setCompleted(false);
+                    ClosedTradableManager closedManager = handoffClosedManager(closed);
+                    TradeManager manager = handoffManager(closedManager, mock(PersistenceManager.class));
+                    manager.getObservableList().add(pending);
+                    List<Trade> trades = new ArrayList<>(pendingFirst ? List.of(pending, closed) : List.of(closed, pending));
+                    var deduplicate = TradeManager.class.getDeclaredMethod("removeDuplicateTrades", List.class);
+                    deduplicate.setAccessible(true);
+                    deduplicate.invoke(manager, trades);
+                    Trade expected = scenario == 1 || scenario == 2 ? pending : closed;
+                    assertEquals(1, trades.size());
+                    assertSame(expected, trades.get(0));
+                    assertEquals(expected == pending, manager.getObservableList().contains(pending));
+                    assertEquals(expected == closed, closedManager.getClosedTrades().contains(closed));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testStartupResumesMarkedReopenWithoutMovingLegacyOrCompletedTrades() throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            Trade reopened = handoffTrade();
+            reopened.setCompleted(true);
+            reopened.setCompleted(false);
+            Trade legacy = handoffTrade();
+            Trade completed = handoffTrade();
+            completed.setCompleted(true);
+            ClosedTradableManager closed = handoffClosedManager(reopened, legacy, completed);
+            PersistenceManager<TradableList<Trade>> persistence = mock(PersistenceManager.class);
+            TradeManager manager = handoffManager(closed, persistence);
+            resumeTradeMoves(manager);
+            assertEquals(List.of(reopened), manager.getObservableList());
+            assertEquals(List.of(legacy, completed), closed.getClosedTrades());
+            InOrder order = inOrder(persistence, closed);
+            order.verify(persistence).persistNowAndWait();
+            order.verify(closed).removeTrade(reopened);
+        }
+    }
+
+    @Test
+    public void testFailedPendingWriteRetainsClosedCopyUntilSuccessfulRetry() throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            Trade trade = spy(handoffTrade());
+            trade.setCompleted(true);
+            doReturn(true).when(trade).isInitialized();
+            ClosedTradableManager closed = handoffClosedManager(trade);
+            PersistenceManager<TradableList<Trade>> persistence = mock(PersistenceManager.class);
+            doThrow(new IllegalStateException("write failed")).when(persistence).persistNowAndWait();
+            TradeManager manager = handoffManager(closed, persistence);
+
+            manager.onMoveClosedTradeToPendingTrades(trade);
+
+            assertFalse(trade.isCompleted());
+            assertEquals(2, trade.getCompletedRevision());
+            assertTrue(manager.getObservableList().contains(trade));
+            verify(closed, never()).removeTrade(trade);
+            InOrder order = inOrder(closed, persistence);
+            order.verify(closed).persistClosedTrade(trade);
+            order.verify(persistence).persistNowAndWait();
+
+            doNothing().when(persistence).persistNowAndWait();
+            resumeTradeMoves(manager);
+            assertTrue(closed.getClosedTrades().isEmpty());
+            assertEquals(List.of(trade), manager.getObservableList());
+        }
+    }
+
+    @Test
+    public void testReopenCannotDeleteConcurrentCompletion() throws Exception {
+        assertConcurrentCompletion(false);
+        assertConcurrentCompletion(true);
+    }
+
+    private void assertConcurrentCompletion(boolean startup) throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            Trade trade = spy(handoffTrade());
+            trade.setCompleted(true);
+            if (startup) trade.setCompleted(false);
+            doReturn(true).when(trade).isInitialized();
+            ClosedTradableManager closed = handoffClosedManager(trade);
+            PersistenceManager<TradableList<Trade>> persistence = mock(PersistenceManager.class);
+            CountDownLatch saving = new CountDownLatch(1);
+            CountDownLatch finishSaving = new CountDownLatch(1);
+            doAnswer(invocation -> {
+                saving.countDown();
+                assertTrue(finishSaving.await(10, TimeUnit.SECONDS));
+                return null;
+            }).when(persistence).persistNowAndWait();
+            TradeManager manager = handoffManager(closed, persistence);
+            try (var executor = Executors.newFixedThreadPool(2)) {
+                var reopen = executor.submit(() -> {
+                    if (startup) resumeTradeMoves(manager);
+                    else manager.onMoveClosedTradeToPendingTrades(trade);
+                    return null;
+                });
+                try {
+                    assertTrue(saving.await(5, TimeUnit.SECONDS));
+                    CountDownLatch completing = new CountDownLatch(1);
+                    var complete = executor.submit(() -> {
+                        completing.countDown();
+                        manager.onTradeCompleted(trade);
+                    });
+                    assertTrue(completing.await(5, TimeUnit.SECONDS));
+                    try {
+                        assertThrows(TimeoutException.class, () -> complete.get(100, TimeUnit.MILLISECONDS));
+                    } finally {
+                        finishSaving.countDown();
+                    }
+                    reopen.get(5, TimeUnit.SECONDS);
+                    complete.get(5, TimeUnit.SECONDS);
+                    assertTrue(trade.isCompleted());
+                    assertEquals(List.of(trade), closed.getClosedTrades());
+                    assertTrue(manager.getObservableList().isEmpty());
+                } finally {
+                    finishSaving.countDown();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testRecompletionPersistsWhenFailedReopenLeftTradeInClosedList() throws Exception {
+        try (var userThread = mockStatic(UserThread.class)) {
+            XmrWalletService walletService = mock(XmrWalletService.class);
+            ClosedTradesStore store = new ClosedTradesStore(dir, keyRing, resolver, () -> walletService,
+                    corruptedStorageFileHandler, new PersistenceManager<>(dir, resolver, null, keyRing));
+            store.load();
+            ClosedTradableManager closed = new ClosedTradableManager(null, null, mock(Preferences.class), null,
+                    store, corruptedStorageFileHandler, null);
+            Trade trade = handoffTrade();
+            trade.setCompleted(true);
+            closed.add(trade);
+            trade.setCompleted(false);
+            closed.persistClosedTrade(trade);
+            trade.setCompleted(true);
+            closed.add(trade);
+            ClosedTradesStore restarted = new ClosedTradesStore(dir, keyRing, resolver, () -> walletService,
+                    corruptedStorageFileHandler, new PersistenceManager<>(dir, resolver, null, keyRing));
+            Trade restored = (Trade) restarted.load().get(0);
+            assertTrue(restored.isCompleted());
+            assertEquals(3, restored.getCompletedRevision());
+        }
+    }
+
+    private Trade handoffTrade() {
+        return new BuyerAsMakerTrade(openOffer("handoff", 0).getOffer(), BigInteger.ONE, 100,
+                mock(XmrWalletService.class), new ProcessModel("handoff", "account", keyRing.getPubKeyRing()),
+                "handoff-uid", null, null, null, null);
+    }
+
+    private ClosedTradableManager handoffClosedManager(Trade... trades) {
+        ClosedTradableManager manager = mock(ClosedTradableManager.class);
+        List<Trade> closed = new ArrayList<>(List.of(trades));
+        when(manager.getClosedTrades()).thenAnswer(invocation -> List.copyOf(closed));
+        doAnswer(invocation -> { closed.remove(invocation.getArgument(0)); return null; }).when(manager).removeTrade(any(Trade.class));
+        doAnswer(invocation -> {
+            Trade trade = invocation.getArgument(0);
+            if (!closed.contains(trade)) closed.add(trade);
+            return null;
+        }).when(manager).add(any(Tradable.class));
+        return manager;
+    }
+
+    private TradeManager handoffManager(ClosedTradableManager closed, PersistenceManager<TradableList<Trade>> persistence) throws Exception {
+        TradeManager manager = mock(TradeManager.class, CALLS_REAL_METHODS);
+        FailedTradesManager failed = mock(FailedTradesManager.class);
+        when(failed.getObservableList()).thenReturn(FXCollections.observableArrayList());
+        String[] names = { "closedTradableManager", "persistenceManager", "failedTradesManager", "tradableList", "xmrWalletService" };
+        Object[] values = { closed, persistence, failed, new TradableList<Trade>(), mock(XmrWalletService.class) };
+        for (int i = 0; i < names.length; i++) {
+            var field = TradeManager.class.getDeclaredField(names[i]);
+            field.setAccessible(true);
+            field.set(manager, values[i]);
+        }
+        return manager;
+    }
+
+    private void resumeTradeMoves(TradeManager manager) throws Exception {
+        var resume = TradeManager.class.getDeclaredMethod("resumeInterruptedTradeMoves");
+        resume.setAccessible(true);
+        resume.invoke(manager);
     }
 }
