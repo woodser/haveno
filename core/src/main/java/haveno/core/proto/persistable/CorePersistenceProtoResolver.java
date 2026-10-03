@@ -34,6 +34,7 @@ import haveno.core.support.dispute.arbitration.ArbitrationDisputeList;
 import haveno.core.support.dispute.mediation.MediationDisputeList;
 import haveno.core.support.dispute.refund.RefundDisputeList;
 import haveno.core.trade.TradableList;
+import haveno.core.trade.statistics.SignedTradeStatisticsStore;
 import haveno.core.trade.statistics.TradeStatistics3Store;
 import haveno.core.user.PreferencesPayload;
 import haveno.core.user.UserPayload;
@@ -102,6 +103,8 @@ public class CorePersistenceProtoResolver extends CoreProtoResolver implements P
                     return AccountAgeWitnessStore.fromProto(proto.getAccountAgeWitnessStore());
                 case SIGNED_WITNESS_STORE:
                     return SignedWitnessStore.fromProto(proto.getSignedWitnessStore());
+                case SIGNED_TRADE_STATISTICS_STORE:
+                    return SignedTradeStatisticsStore.fromProto(proto.getSignedTradeStatisticsStore());
                 case TRADE_STATISTICS3_STORE:
                     return TradeStatistics3Store.fromProto(proto.getTradeStatistics3Store());
                 case MAILBOX_MESSAGE_LIST:

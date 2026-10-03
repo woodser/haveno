@@ -17,7 +17,6 @@
 
 package haveno.core.trade.statistics;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
 import haveno.common.app.Capabilities;
@@ -316,7 +315,6 @@ public final class TradeStatistics3 implements ProcessOncePersistableNetworkPayl
     // PROTO BUFFER
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    @VisibleForTesting
     public TradeStatistics3(String currency,
                             long price,
                             long amount,

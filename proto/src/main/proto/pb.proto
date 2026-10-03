@@ -458,6 +458,7 @@ message PersistableNetworkPayload {
         AccountAgeWitness account_age_witness = 1;
         SignedWitness signed_witness = 2;
         TradeStatistics3 trade_statistics3 = 3;
+        SignedTradeStatistics signed_trade_statistics = 4;
     }
 }
 
@@ -614,6 +615,20 @@ message TradeStatistics3 {
     string maker_deposit_tx_id = 8;
     string taker_deposit_tx_id = 9;
     map<string, string> extra_data = 10;
+}
+
+message SignedTradeStatistics {
+    TradeStatistics3 trade_statistics = 1;
+    bytes arbitrator_pub_key = 2;
+    bytes registration_pub_key = 3;
+    string registration_signature = 4;
+    bytes signature = 5;
+    string network = 6;
+    uint32 version = 7;
+}
+
+message SignedTradeStatisticsStore {
+    repeated SignedTradeStatistics items = 1;
 }
 
 message MailboxStoragePayload {
@@ -1428,6 +1443,7 @@ message PersistableEnvelope {
         XmrAddressEntryList xmr_address_entry_list = 18;
         SignedOfferList signed_offer_list = 19;
         EncryptedConnectionList encrypted_connection_list = 20;
+        SignedTradeStatisticsStore signed_trade_statistics_store = 21;
     }
 }
 

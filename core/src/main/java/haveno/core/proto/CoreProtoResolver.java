@@ -106,6 +106,7 @@ import haveno.core.payment.payload.VerseAccountPayload;
 import haveno.core.payment.payload.VippsMobilePayAccountPayload;
 import haveno.core.payment.payload.WeChatPayAccountPayload;
 import haveno.core.payment.payload.WesternUnionAccountPayload;
+import haveno.core.trade.statistics.SignedTradeStatistics;
 import haveno.core.trade.statistics.TradeStatistics3;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -332,6 +333,8 @@ public class CoreProtoResolver implements ProtoResolver {
                     return AccountAgeWitness.fromProto(proto.getAccountAgeWitness());
                 case SIGNED_WITNESS:
                     return SignedWitness.fromProto(proto.getSignedWitness());
+                case SIGNED_TRADE_STATISTICS:
+                    return SignedTradeStatistics.fromProto(proto.getSignedTradeStatistics());
                 case TRADE_STATISTICS3:
                     return TradeStatistics3.fromProto(proto.getTradeStatistics3());
                 default:

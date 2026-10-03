@@ -23,13 +23,18 @@ import com.google.inject.name.Named;
 
 import haveno.common.UserThread;
 import haveno.common.config.Config;
+import haveno.common.crypto.KeyRing;
 import haveno.common.file.JsonFileManager;
+import haveno.common.util.Utilities;
 import haveno.core.locale.CurrencyTuple;
 import haveno.core.locale.CurrencyUtil;
 import haveno.core.locale.Res;
 import haveno.core.provider.price.PriceFeedService;
+import haveno.core.support.dispute.arbitration.arbitrator.Arbitrator;
+import haveno.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.trade.Trade;
+import haveno.core.user.User;
 import haveno.core.util.JsonUtil;
 import haveno.network.p2p.P2PService;
 import haveno.network.p2p.storage.P2PDataStorage;
@@ -61,6 +66,12 @@ public class TradeStatisticsManager {
     private final P2PService p2PService;
     private final PriceFeedService priceFeedService;
     private final TradeStatistics3StorageService tradeStatistics3StorageService;
+    private final SignedTradeStatisticsStorageService signedTradeStatisticsStorageService;
+    private final KeyRing keyRing;
+    private final User user;
+    private final Map<P2PDataStorage.ByteArray, SignedTradeStatistics> verifiedTradeStatistics = new HashMap<>();
+    private final Set<P2PDataStorage.ByteArray> scheduledSignedTradeStatistics = new HashSet<>();
+    private final List<SignedTradeStatistics> pendingSignedTradeStatistics = new ArrayList<>();
     private final File storageDir;
     private final boolean dumpStatistics;
     private final ObservableList<TradeStatistics3> observableTradeStatisticsList = FXCollections.observableArrayList();
@@ -94,15 +105,22 @@ public class TradeStatisticsManager {
                                   PriceFeedService priceFeedService,
                                   TradeStatistics3StorageService tradeStatistics3StorageService,
                                   AppendOnlyDataStoreService appendOnlyDataStoreService,
+                                  SignedTradeStatisticsStorageService signedTradeStatisticsStorageService,
+                                  KeyRing keyRing,
+                                  User user,
                                   @Named(Config.STORAGE_DIR) File storageDir,
                                   @Named(Config.DUMP_STATISTICS) boolean dumpStatistics) {
         this.p2PService = p2PService;
         this.priceFeedService = priceFeedService;
         this.tradeStatistics3StorageService = tradeStatistics3StorageService;
+        this.signedTradeStatisticsStorageService = signedTradeStatisticsStorageService;
+        this.keyRing = keyRing;
+        this.user = user;
         this.storageDir = storageDir;
         this.dumpStatistics = dumpStatistics;
 
         appendOnlyDataStoreService.addService(tradeStatistics3StorageService);
+        appendOnlyDataStoreService.addService(signedTradeStatisticsStorageService);
         HavenoUtils.tradeStatisticsManager = this;
     }
 
@@ -120,7 +138,12 @@ public class TradeStatisticsManager {
 
     public void onAllServicesInitialized() {
         p2PService.getP2PDataStorage().addAppendOnlyDataStoreListener(payload -> {
-            if (payload instanceof TradeStatistics3) {
+            if (payload instanceof SignedTradeStatistics) {
+                synchronized (pendingTradeStatistics) {
+                    pendingSignedTradeStatistics.add((SignedTradeStatistics) payload);
+                }
+                maybeFlushPendingTradeStatistics();
+            } else if (payload instanceof TradeStatistics3) {
                 TradeStatistics3 tradeStatistics = (TradeStatistics3) payload;
                 if (!tradeStatistics.isValid()) {
                     return;
@@ -137,6 +160,13 @@ public class TradeStatisticsManager {
                 .map(e -> (TradeStatistics3) e)
                 .filter(TradeStatistics3::isValid)
                 .collect(Collectors.toSet());
+
+        synchronized (observableTradeStatisticsList) {
+            signedTradeStatisticsStorageService.getMap().values().stream()
+                    .map(payload -> (SignedTradeStatistics) payload)
+                    .forEach(this::applySignedTradeStatistics);
+            verifiedTradeStatistics.values().forEach(signed -> set.add(signed.getTradeStatistics()));
+        }
 
         // add deduplicated, dropping early trade stats duplicated by legacy publishing bugs
         addTradeStatistics(set);
@@ -158,12 +188,29 @@ public class TradeStatisticsManager {
 
     private void flushPendingTradeStatistics() {
         List<TradeStatistics3> pending;
+        List<SignedTradeStatistics> signed;
         synchronized (pendingTradeStatistics) {
-            if (pendingTradeStatistics.isEmpty()) return;
+            if (pendingTradeStatistics.isEmpty() && pendingSignedTradeStatistics.isEmpty()) return;
             pending = new ArrayList<>(pendingTradeStatistics);
+            signed = new ArrayList<>(pendingSignedTradeStatistics);
             pendingTradeStatistics.clear();
+            pendingSignedTradeStatistics.clear();
+        }
+        synchronized (observableTradeStatisticsList) {
+            for (SignedTradeStatistics statistics : signed) {
+                if (applySignedTradeStatistics(statistics)) pending.add(statistics.getTradeStatistics());
+            }
         }
         addTradeStatistics(pending);
+    }
+
+    // The content hash is a deterministic tie-breaker if more than one authorized attestation exists.
+    private boolean applySignedTradeStatistics(SignedTradeStatistics statistics) {
+        P2PDataStorage.ByteArray key = new P2PDataStorage.ByteArray(statistics.getTradeStatistics().getHash());
+        SignedTradeStatistics previous = verifiedTradeStatistics.get(key);
+        if (previous != null && Arrays.compareUnsigned(previous.getHash(), statistics.getHash()) <= 0) return false;
+        verifiedTradeStatistics.put(key, statistics);
+        return true;
     }
 
     private void addTradeStatistics(Collection<TradeStatistics3> tradeStatistics) {
@@ -171,17 +218,34 @@ public class TradeStatisticsManager {
         synchronized (observableTradeStatisticsList) {
             List<TradeStatistics3> addedEarly = new ArrayList<>();
             List<TradeStatistics3> addedRecent = new ArrayList<>();
-            for (TradeStatistics3 tradeStatistic : tradeStatistics) {
+            Set<TradeStatistics3> replacedRecent = new HashSet<>();
+            Set<P2PDataStorage.ByteArray> processed = new HashSet<>();
+            boolean rebuildEarly = false;
+            for (TradeStatistics3 received : tradeStatistics) {
+                P2PDataStorage.ByteArray key = new P2PDataStorage.ByteArray(received.getHash());
+                if (!processed.add(key)) continue;
+                SignedTradeStatistics signed = verifiedTradeStatistics.get(key);
+                TradeStatistics3 tradeStatistic = signed == null ? received : signed.getTradeStatistics();
                 if (isEarlyTrade(tradeStatistic)) {
-                    if (earlyTradeStatistics.size() >= MAX_EARLY_TRADE_STATISTICS) {
+                    if (signed != null) {
+                        earlyTradeStatistics.remove(tradeStatistic);
+                        earlyTradeStatistics.add(tradeStatistic);
+                        rebuildEarly = true;
+                    } else if (earlyTradeStatistics.size() >= MAX_EARLY_TRADE_STATISTICS) {
                         if (!earlyTradeStatisticsCapped) log.warn("Ignoring early trade statistics beyond {}", MAX_EARLY_TRADE_STATISTICS);
                         earlyTradeStatisticsCapped = true;
                     } else if (earlyTradeStatistics.add(tradeStatistic)) {
                         addedEarly.add(tradeStatistic);
                     }
-                } else if (recentTradeStatistics.add(tradeStatistic)) {
-                    addedRecent.add(tradeStatistic);
+                } else {
+                    if (signed != null && recentTradeStatistics.remove(tradeStatistic)) replacedRecent.add(tradeStatistic);
+                    if (recentTradeStatistics.add(tradeStatistic)) addedRecent.add(tradeStatistic);
                 }
+            }
+            if (rebuildEarly) {
+                earlyTradeStatisticsDeduplicated.clear();
+                earlyFuzzyTradeStatistics.clear();
+                addedEarly = new ArrayList<>(earlyTradeStatistics);
             }
             if (!addedEarly.isEmpty()) {
                 deduplicateEarlyTradeStatistics(addedEarly);
@@ -190,6 +254,7 @@ public class TradeStatisticsManager {
                 applied.addAll(recentTradeStatistics);
                 observableTradeStatisticsList.setAll(applied);
             } else {
+                if (!replacedRecent.isEmpty()) observableTradeStatisticsList.removeAll(replacedRecent);
                 observableTradeStatisticsList.addAll(addedRecent);
                 applied.addAll(addedRecent);
             }
@@ -200,7 +265,8 @@ public class TradeStatisticsManager {
     // Deduplicates the added early trades against those already kept, looking up exact duplicates by date and fuzzy
     // duplicates within the fuzzed date window of the same price, so the work is bounded by the trades which can match.
     private void deduplicateEarlyTradeStatistics(List<TradeStatistics3> added) {
-        added.sort(EARLY_TRADE_ORDER);
+        added.sort(Comparator.comparing((TradeStatistics3 statistics) ->
+                !verifiedTradeStatistics.containsKey(new P2PDataStorage.ByteArray(statistics.getHash()))).thenComparing(EARLY_TRADE_ORDER));
         long fuzzDateMs = TimeUnit.HOURS.toMillis(FUZZ_DATE_HOURS);
         for (TradeStatistics3 candidate : added) {
             String key = candidate.getPaymentMethodId() + "/" + candidate.getCurrency();
@@ -369,6 +435,11 @@ public class TradeStatisticsManager {
             boolean hasTradeStatistics3V0 = hashes.contains(new P2PDataStorage.ByteArray(tradeStatistics3V0.getHash()));
             boolean hasTradeStatistics3V1 = hashes.contains(new P2PDataStorage.ByteArray(tradeStatistics3V1.getHash()));
             boolean hasTradeStatistics3V2 = hashes.contains(new P2PDataStorage.ByteArray(tradeStatistics3V2.getHash()));
+            if (trade.isArbitrator()) {
+                TradeStatistics3 statistics = hasTradeStatistics3V2 ? tradeStatistics3V2 :
+                        hasTradeStatistics3V1 ? tradeStatistics3V1 : hasTradeStatistics3V0 ? tradeStatistics3V0 : tradeStatistics3V2;
+                maybePublishSignedTradeStatistics(statistics, List.of(tradeStatistics3V2, tradeStatistics3V1, tradeStatistics3V0));
+            }
             if (hasTradeStatistics3V0 || hasTradeStatistics3V1 || hasTradeStatistics3V2) {
                 log.debug("Trade: {}. We have already a tradeStatistics matching the hash of tradeStatistics3.",
                         trade.getShortId());
@@ -389,5 +460,38 @@ public class TradeStatisticsManager {
         });
         log.info("maybeRepublishTradeStatistics took {} ms. Number of tradeStatistics: {}. Number of own trades: {}",
                 System.currentTimeMillis() - ts, hashes.size(), trades.size());
+    }
+
+    public List<SignedTradeStatistics> getSignedTradeStatisticsListCopy() {
+        synchronized (observableTradeStatisticsList) {
+            return new ArrayList<>(verifiedTradeStatistics.values());
+        }
+    }
+
+    private void maybePublishSignedTradeStatistics(TradeStatistics3 statistics, List<TradeStatistics3> variants) {
+        Arbitrator arbitrator = user.getRegisteredArbitrator();
+        if (arbitrator == null || !statistics.isValid() ||
+                !ArbitratorManager.getRegistrationPubKeys().contains(Utilities.bytesAsHexString(arbitrator.getRegistrationPubKey()))) return;
+        P2PDataStorage.ByteArray key = new P2PDataStorage.ByteArray(statistics.getHash());
+        synchronized (observableTradeStatisticsList) {
+            if (variants.stream().anyMatch(variant -> verifiedTradeStatistics.containsKey(new P2PDataStorage.ByteArray(variant.getHash()))) ||
+                    !scheduledSignedTradeStatistics.add(key)) return;
+        }
+        UserThread.runAfterRandomDelay(() -> {
+            try {
+                if (shutDownRequested) return;
+                synchronized (observableTradeStatisticsList) {
+                    if (variants.stream().anyMatch(variant -> verifiedTradeStatistics.containsKey(new P2PDataStorage.ByteArray(variant.getHash())))) return;
+                }
+                SignedTradeStatistics signed = SignedTradeStatistics.sign(statistics, arbitrator, keyRing);
+                p2PService.addPersistableNetworkPayload(signed, false);
+            } catch (Exception e) {
+                log.warn("Could not publish signed trade statistics: {}", e.getMessage());
+            } finally {
+                synchronized (observableTradeStatisticsList) {
+                    scheduledSignedTradeStatistics.remove(key);
+                }
+            }
+        }, 0, PUBLISH_STATS_RANDOM_DELAY_HOURS / 2 * 60 * 60 * 1000, TimeUnit.MILLISECONDS);
     }
 }

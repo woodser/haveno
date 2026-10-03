@@ -770,10 +770,12 @@ service GetTradeStatistics {
 }
 
 message GetTradeStatisticsRequest {
+    bool include_signed_trade_statistics = 1;
 }
 
 message GetTradeStatisticsReply {
     repeated TradeStatistics3 trade_statistics = 1;
+    repeated SignedTradeStatistics signed_trade_statistics = 2;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

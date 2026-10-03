@@ -59,6 +59,10 @@ public class ArbitratorManager extends DisputeAgentManager<Arbitrator> {
 
     @Override
     protected List<String> getPubKeyList() {
+        return getRegistrationPubKeys();
+    }
+
+    public static List<String> getRegistrationPubKeys() {
         switch (Config.baseCurrencyNetwork()) {
         case XMR_LOCAL:
             return List.of(

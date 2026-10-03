@@ -2,6 +2,7 @@ package haveno.daemon.grpc;
 
 import com.google.inject.Inject;
 import haveno.core.api.CoreApi;
+import haveno.core.trade.statistics.SignedTradeStatistics;
 import haveno.core.trade.statistics.TradeStatistics3;
 import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.daemon.grpc.interceptor.CallRateMeteringInterceptor;
@@ -39,13 +40,19 @@ class GrpcGetTradeStatisticsService extends GetTradeStatisticsImplBase {
                                    StreamObserver<GetTradeStatisticsReply> responseObserver) {
         try {
             List<protobuf.TradeStatistics3> tradeStatistics;
+            List<protobuf.SignedTradeStatistics> signedTradeStatistics;
             synchronized (tradeStatisticsManager.getObservableTradeStatisticsList()) {
                 tradeStatistics = tradeStatisticsManager.getObservableTradeStatisticsList().stream()
                         .map(TradeStatistics3::toProtoTradeStatistics3)
                         .collect(Collectors.toList());
+                signedTradeStatistics = req.getIncludeSignedTradeStatistics() ? tradeStatisticsManager.getSignedTradeStatisticsListCopy().stream()
+                        .map(SignedTradeStatistics::toProtoSignedTradeStatistics)
+                        .collect(Collectors.toList()) : List.of();
             }
 
-            var reply = GetTradeStatisticsReply.newBuilder().addAllTradeStatistics(tradeStatistics).build();
+            var reply = GetTradeStatisticsReply.newBuilder().addAllTradeStatistics(tradeStatistics)
+                    .addAllSignedTradeStatistics(signedTradeStatistics)
+                    .build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
         } catch (Throwable cause) {
