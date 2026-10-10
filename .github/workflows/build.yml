@@ -113,6 +113,13 @@ jobs:
         run: ./gradlew :daemon:shadowJar
         working-directory: .
 
+      - name: Build Daemon JAR
+        if: >
+            (runner.os == 'Linux' && (matrix.arch == 'x86_64' || matrix.arch == 'aarch64'))
+            || (runner.os == 'Windows')
+        run: ./gradlew :daemon:shadowJar -x test -x checkstyleMain -x checkstyleTest --stacktrace
+        working-directory: .
+
       # get version from jar
       - name: Set Version Unix
         if: ${{ env.ATTACH_INSTALLERS == 'true' && runner.os != 'Windows' }}
