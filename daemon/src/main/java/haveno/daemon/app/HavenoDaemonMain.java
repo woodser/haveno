@@ -27,6 +27,7 @@ import haveno.core.api.AccountServiceListener;
 import haveno.core.app.ConsoleInput;
 import haveno.core.app.CoreModule;
 import haveno.core.app.HavenoHeadlessAppMain;
+import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.daemon.grpc.GrpcServer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -151,6 +152,7 @@ public class HavenoDaemonMain extends HavenoHeadlessAppMain {
      */
     @Override
     protected CompletableFuture<Boolean> loginAccount() {
+        injector.getInstance(XmrWalletService.class); // listens for automatic account creation to retain an orphaned wallet
         CompletableFuture<Boolean> opened = super.loginAccount();
 
         // Start rpc server in case login is coming in from rpc
