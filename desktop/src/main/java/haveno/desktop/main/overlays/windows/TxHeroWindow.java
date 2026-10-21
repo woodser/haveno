@@ -52,6 +52,7 @@ import monero.daemon.model.MoneroTx;
 import monero.wallet.model.MoneroWalletListener;
 
 import java.math.BigInteger;
+import java.util.function.Supplier;
 
 /** Base for tx popups: a badge and hero amount over an inset detail sheet. */
 public abstract class TxHeroWindow<T extends TxHeroWindow<T>> extends Overlay<T> {
@@ -238,13 +239,17 @@ public abstract class TxHeroWindow<T extends TxHeroWindow<T>> extends Overlay<T>
     }
 
     protected static Label copyIcon(String text) {
+        return copyIcon(() -> text);
+    }
+
+    protected static Label copyIcon(Supplier<String> text) {
         Label icon = new Label();
         icon.setGraphic(GlyphsDude.createIcon(MaterialDesignIcon.CONTENT_COPY, "1.1em"));
         icon.getStyleClass().add("confirm-send-copy");
         icon.setCursor(Cursor.HAND);
         icon.setTooltip(new Tooltip(Res.get("shared.copyToClipboard")));
         icon.setOnMouseClicked(e -> {
-            Utilities.copyToClipboard(text);
+            Utilities.copyToClipboard(text.get());
             Tooltip tp = new Tooltip(Res.get("shared.copiedToClipboard"));
             tp.show((Node) e.getSource(), e.getScreenX() + Layout.PADDING, e.getScreenY() + Layout.PADDING);
             UserThread.runAfter(tp::hide, 1);

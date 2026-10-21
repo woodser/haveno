@@ -19,14 +19,26 @@ package haveno.desktop.main.overlays.windows;
 
 import com.google.inject.Inject;
 import de.jensd.fx.glyphs.materialdesignicons.MaterialDesignIcon;
+import haveno.common.ThreadUtils;
+import haveno.common.UserThread;
 import haveno.core.locale.Res;
 import haveno.core.provider.price.PriceFeedService;
 import haveno.core.trade.HavenoUtils;
 import haveno.core.user.Preferences;
 import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.desktop.main.funds.transactions.TransactionsListItem;
+import haveno.desktop.main.overlays.popups.Popup;
+import haveno.desktop.util.Accessibility;
 import haveno.desktop.util.GUIUtil;
+import haveno.desktop.util.GlyphsDude;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import lombok.extern.slf4j.Slf4j;
 import monero.wallet.model.MoneroTxWallet;
 
 import java.math.BigInteger;
@@ -34,12 +46,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Details of a wallet transaction, shown as a sent or received hero amount. */
+@Slf4j
 public class TxDetailsWindow extends TxHeroWindow<TxDetailsWindow> {
 
     private final XmrWalletService xmrWalletService;
     private final Preferences preferences;
     private final PriceFeedService priceFeedService;
     private TransactionsListItem item;
+    private Runnable memoChangedHandler;
+    private TextArea memoArea;
+    private String memoBeforeEdit;
 
     @Inject
     public TxDetailsWindow(XmrWalletService xmrWalletService, Preferences preferences, PriceFeedService priceFeedService) {
@@ -48,8 +64,9 @@ public class TxDetailsWindow extends TxHeroWindow<TxDetailsWindow> {
         this.priceFeedService = priceFeedService;
     }
 
-    public void show(TransactionsListItem item) {
+    public void show(TransactionsListItem item, Runnable memoChangedHandler) {
         this.item = item;
+        this.memoChangedHandler = memoChangedHandler;
         showHeroWindow();
     }
 
@@ -58,7 +75,6 @@ public class TxDetailsWindow extends TxHeroWindow<TxDetailsWindow> {
         MoneroTxWallet tx = item.getTx();
         boolean isOutgoing = tx.getOutgoingTransfer() != null;
         BigInteger amount = isOutgoing ? tx.getOutgoingAmount() : tx.getIncomingAmount();
-        String memo = tx.getNote();
         String txKey = null;
         if (isOutgoing) {
             try {
@@ -75,7 +91,7 @@ public class TxDetailsWindow extends TxHeroWindow<TxDetailsWindow> {
         groups.add(sheetGroup(Res.get(isOutgoing ? "txDetailsWindow.sentTo" : "txDetailsWindow.receivedWith"),
                 selectableLabel(item.getAddressString(), "confirm-send-address"), copyIcon(item.getAddressString())));
         if (isOutgoing) groups.add(detailRow(Res.get("funds.withdrawal.confirm.networkFee"), selectableValue(HavenoUtils.formatXmr(tx.getFee(), true))));
-        if (memo != null && !memo.isEmpty()) groups.add(sheetGroup(Res.get("funds.withdrawal.sent.note"), selectableLabel(memo, "confirm-send-row-value"), copyIcon(memo)));
+        groups.add(memoGroup());
         if (txKey != null && !txKey.isEmpty()) groups.add(sheetGroup(Res.get("txDetailsWindow.txKey"), selectableLabel(txKey, "confirm-send-address"), copyIcon(txKey)));
         groups.add(txIdGroup(tx.getHash(), xmrWalletService, preferences));
 
@@ -85,5 +101,77 @@ public class TxDetailsWindow extends TxHeroWindow<TxDetailsWindow> {
                         ? hero(MaterialDesignIcon.SEND, "confirm-send-icon", Res.get("funds.withdrawal.sent.headline"), amount, fiat)
                         : hero(MaterialDesignIcon.ARROW_DOWN, "tx-sent-icon", Res.get("txDetailsWindow.received"), amount, fiat),
                 sheet(groups.toArray(new Node[0])));
+    }
+
+    @Override
+    protected void onHidden() {
+        super.onHidden();
+        if (memoArea.isEditable()) endMemoEdit();
+    }
+
+    // memo group editable in place via its pencil icon, saved when editing ends
+    private Node memoGroup() {
+        TextArea area = selectableLabel(getMemo(item.getTxId()), "confirm-send-row-value");
+        area.focusedProperty().addListener((obs, wasFocused, focused) -> {
+            if (!focused && area == memoArea && area.isEditable()) endMemoEdit();
+        });
+        area.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.ENTER && area.isEditable()) {
+                e.consume();
+                actionButton.requestFocus(); // ends the edit on focus loss
+            }
+        });
+        memoArea = area;
+
+        Label editIcon = new Label();
+        editIcon.setGraphic(GlyphsDude.createIcon(MaterialDesignIcon.PENCIL, "1.1em"));
+        editIcon.getStyleClass().add("confirm-send-copy");
+        editIcon.setCursor(Cursor.HAND);
+        editIcon.setTooltip(new Tooltip(Res.get("shared.edit")));
+        editIcon.setOnMouseClicked(e -> startMemoEdit());
+        Accessibility.asButton(editIcon, Res.get("shared.edit"));
+        return sheetGroup(Res.get("funds.withdrawal.sent.note"), area, editIcon, copyIcon(area::getText));
+    }
+
+    private void startMemoEdit() {
+        if (memoArea.isEditable()) return;
+        memoBeforeEdit = memoArea.getText();
+        memoArea.getStyleClass().add("editing");
+        memoArea.setEditable(true);
+        memoArea.requestFocus();
+        memoArea.end();
+    }
+
+    private void endMemoEdit() {
+        memoArea.getStyleClass().remove("editing");
+        memoArea.setEditable(false);
+        String txId = item.getTxId();
+        if (memoArea.getText().equals(memoBeforeEdit)) {
+            memoArea.setText(getMemo(txId)); // a save may have completed during the edit
+            return;
+        }
+        String memo = memoArea.getText().trim();
+        memoArea.setText(memo);
+        Runnable handler = memoChangedHandler;
+        ThreadUtils.execute(() -> {
+            try {
+                xmrWalletService.setTxNote(txId, memo);
+            } catch (Exception e) {
+                log.warn("Error setting memo for tx {}: {}", txId, e.getMessage());
+                UserThread.execute(() -> new Popup().warning(e.getMessage()).show());
+            }
+
+            // reconcile with the wallet's note whether or not the save succeeded
+            String note = getMemo(txId);
+            UserThread.execute(() -> {
+                if (txId.equals(item.getTxId()) && !memoArea.isEditable()) memoArea.setText(note);
+                if (handler != null) handler.run();
+            });
+        }, TxDetailsWindow.class.getSimpleName());
+    }
+
+    private String getMemo(String txId) {
+        MoneroTxWallet tx = xmrWalletService.getTx(txId);
+        return tx == null || tx.getNote() == null ? "" : tx.getNote();
     }
 }

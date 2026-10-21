@@ -1783,6 +1783,15 @@ public class XmrWalletService extends XmrWalletBase {
         return txs.isEmpty() ? null : txs.get(0);
     }
 
+    public void setTxNote(String txId, String note) {
+        synchronized (walletLock) {
+            wallet.setTxNote(txId, note);
+            MoneroTxWallet tx = getTx(txId);
+            if (tx != null) tx.setNote(note); // reflect in the cache until the next poll
+            saveWallet();
+        }
+    }
+
     public BigInteger getBalance() {
         return cachedBalance;
     }

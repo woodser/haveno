@@ -2760,6 +2760,12 @@ textfield */
     -fx-vbar-policy: never;
 }
 
+/* selectable label being edited in place */
+.selectable-label.editing,
+.selectable-label.editing:focused {
+    -fx-border-color: transparent transparent -bs-color-primary transparent;
+}
+
 .text-area-popup {
     -fx-border-color: -bs-color-background-popup-blur;
 }

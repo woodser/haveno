@@ -322,7 +322,7 @@ public class TransactionsView extends ActivatableView<VBox, Void> {
     }
 
     private void openTxDetailPopup(TransactionsListItem item) {
-        txDetailsWindow.show(item);
+        txDetailsWindow.show(item, this::updateList);
     }
 
 
