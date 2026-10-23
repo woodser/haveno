@@ -23,14 +23,11 @@ import haveno.common.handlers.ErrorMessageHandler;
 import haveno.common.handlers.ResultHandler;
 import haveno.common.util.Utilities;
 import haveno.core.filter.FilterManager;
-import haveno.network.p2p.NodeAddress;
 import haveno.network.p2p.P2PService;
 import haveno.network.p2p.storage.HashMapChangedListener;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -90,7 +87,7 @@ public abstract class DisputeAgentService<T extends DisputeAgent> {
         return p2PService;
     }
 
-    public Map<NodeAddress, T> getDisputeAgents() {
+    public Set<T> getDisputeAgentSet() {
         final List<String> bannedDisputeAgents;
         if (filterManager.getFilter() != null) {
             bannedDisputeAgents = getDisputeAgentsFromFilter();
@@ -102,15 +99,7 @@ public abstract class DisputeAgentService<T extends DisputeAgent> {
             log.warn("bannedDisputeAgents=" + bannedDisputeAgents);
         }
 
-        Set<T> disputeAgentSet = getDisputeAgentSet(bannedDisputeAgents);
-
-        Map<NodeAddress, T> map = new HashMap<>();
-        for (T disputeAgent : disputeAgentSet) {
-            NodeAddress disputeAgentNodeAddress = disputeAgent.getNodeAddress();
-            if (map.containsKey(disputeAgentNodeAddress)) log.warn("disputeAgentAddress already exists in disputeAgent map. Seems a disputeAgent object is already registered with the same address.");
-            map.put(disputeAgentNodeAddress, disputeAgent);
-        }
-        return map;
+        return getDisputeAgentSet(bannedDisputeAgents);
     }
 
     protected abstract Set<T> getDisputeAgentSet(List<String> bannedDisputeAgents);
