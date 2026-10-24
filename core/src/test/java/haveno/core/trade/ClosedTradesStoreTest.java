@@ -30,6 +30,7 @@ import haveno.common.file.FileUtil;
 import haveno.common.persistence.EncryptedAppendLog;
 import haveno.common.persistence.PersistenceManager;
 import haveno.common.proto.network.NetworkEnvelope;
+import haveno.core.api.XmrConnectionService;
 import haveno.core.offer.Offer;
 import haveno.core.offer.OfferDirection;
 import haveno.core.offer.OfferPayload;
@@ -43,6 +44,7 @@ import haveno.core.trade.statistics.TradeStatisticsManager;
 import haveno.core.trade.failed.FailedTradesManager;
 import haveno.core.user.Preferences;
 import haveno.core.xmr.wallet.BtcWalletService;
+import haveno.core.xmr.wallet.XmrWalletBase;
 import haveno.core.xmr.wallet.XmrWalletService;
 import haveno.network.p2p.NodeAddress;
 import haveno.network.p2p.P2PService;
@@ -75,6 +77,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
+import monero.common.MoneroRpcConnection;
+import monero.daemon.MoneroDaemonRpc;
+import monero.daemon.model.MoneroTx;
+import monero.wallet.MoneroWallet;
+import monero.wallet.model.MoneroTxWallet;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -1583,6 +1590,67 @@ public class ClosedTradesStoreTest {
             assertEquals(0, legacy.getCompletedRevision());
             legacy.setCompleted(false);
             assertEquals(1, legacy.getCompletedRevision());
+        }
+    }
+
+    @Test
+    public void testRemotePayoutSightingsRequireWalletEvidenceButStillScan() throws Exception {
+        var updatePayout = Trade.class.getDeclaredMethod("setPayoutTx", List.class, boolean.class);
+        updatePayout.setAccessible(true);
+        var walletField = XmrWalletBase.class.getDeclaredField("wallet");
+        walletField.setAccessible(true);
+        var missingHeight = Trade.class.getDeclaredField("firstPayoutTxMissingHeight");
+        missingHeight.setAccessible(true);
+        try (var userThread = mockStatic(UserThread.class)) {
+            for (boolean trustedDaemon : List.of(false, true)) {
+                for (boolean seenByMainWallet : List.of(false, true)) {
+                    XmrConnectionService connection = mock(XmrConnectionService.class);
+                    when(connection.isTrustedDaemon()).thenReturn(trustedDaemon);
+                    MoneroDaemonRpc daemon = mock(MoneroDaemonRpc.class);
+                    MoneroRpcConnection rpcConnection = new MoneroRpcConnection(trustedDaemon ? "http://127.0.0.1:18081" : "http://remote:18081");
+                    when(daemon.getRpcConnection()).thenReturn(rpcConnection);
+                    when(connection.getMonerod()).thenReturn(daemon);
+                    when(connection.isTrustedDaemon(rpcConnection)).thenReturn(trustedDaemon);
+                    XmrWalletService walletService = mock(XmrWalletService.class);
+                    when(walletService.getXmrConnectionService()).thenReturn(connection);
+                    MoneroTx daemonTx = new MoneroTx().setHash("payout").setIsConfirmed(true);
+                    MoneroTxWallet walletTx = new MoneroTxWallet().setHash("payout").setIsConfirmed(true);
+                    when(connection.getTx("payout")).thenReturn(daemonTx);
+                    when(walletService.getTx("payout")).thenReturn(seenByMainWallet ? walletTx : null);
+                    Trade trade = spy(new BuyerAsMakerTrade(openOffer("trade", 0).getOffer(), BigInteger.ONE, 100,
+                            walletService, new ProcessModel("trade", "account", keyRing.getPubKeyRing()),
+                            "uid", null, null, null, null));
+                    doNothing().when(trade).persistNow(any());
+                    trade.setPayoutTxId("payout");
+                    MoneroWallet wallet = mock(MoneroWallet.class);
+                    walletField.set(trade, wallet);
+
+                    updatePayout.invoke(trade, List.of(), false);
+                    assertFalse(trade.isPayoutPublished());
+                    verifyNoInteractions(wallet);
+                    updatePayout.invoke(trade, List.of(), true);
+                    assertEquals(trustedDaemon || seenByMainWallet, trade.isPayoutPublished());
+                    assertFalse(trade.isPayoutConfirmed());
+                    verify(wallet).scanTxs(List.of("payout"));
+
+                    trade.setPayoutState(Trade.PayoutState.PAYOUT_PUBLISHED);
+                    missingHeight.set(trade, 1L);
+                    updatePayout.invoke(trade, List.of(), true);
+                    assertTrue(trade.isPayoutPublished()); // an untrusted sighting can hold an existing state
+                    assertNull(missingHeight.get(trade));
+
+                    if (!seenByMainWallet) {
+                        trade.setPayoutState(Trade.PayoutState.PAYOUT_UNPUBLISHED);
+                        when(connection.getTx("payout")).thenAnswer(invocation -> {
+                            when(connection.getMonerod()).thenReturn(mock(MoneroDaemonRpc.class));
+                            when(connection.isTrustedDaemon()).thenReturn(true);
+                            return daemonTx;
+                        });
+                        updatePayout.invoke(trade, List.of(), true);
+                        assertFalse(trade.isPayoutPublished()); // a connection switch cannot lend trust to an in-flight response
+                    }
+                }
+            }
         }
     }
 

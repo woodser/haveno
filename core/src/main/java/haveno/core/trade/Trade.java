@@ -101,6 +101,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import monero.common.MoneroError;
 import monero.common.MoneroRpcConnection;
+import monero.daemon.MoneroDaemonRpc;
 import monero.common.TaskLooper;
 import monero.daemon.MoneroDaemon;
 import monero.daemon.model.MoneroKeyImage;
@@ -4052,13 +4053,19 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
 
         // set payout state
         MoneroTx payoutTxSeenElsewhere;
+        MoneroDaemonRpc payoutDaemon = poolChecked && payoutTx == null ? xmrConnectionService.getMonerod() : null;
         if (payoutTx != null) {
             firstPayoutTxMissingHeight = null;
             setPayoutTx(payoutTx);
         } else if (poolChecked && (payoutTxSeenElsewhere = getPayoutTxSeenElsewhere()) != null) { // trade wallet can lag the main wallet and daemon
-            if (firstPayoutTxMissingHeight != null || !isPayoutPublished()) log.warn("Payout tx {} is missing from the trade wallet but seen by the main wallet or daemon for {} {}, setting payout state published", payoutTxId, getClass().getSimpleName(), getShortId());
+            // untrusted daemon sightings can prompt a scan or hold state, but cannot establish publication
+            // a daemon switch during the lookup must not change the trust of its response
+            boolean isTrustedPayout = payoutTxSeenElsewhere instanceof MoneroTxWallet
+                    || (payoutDaemon != null && payoutDaemon == xmrConnectionService.getMonerod()
+                            && xmrConnectionService.isTrustedDaemon(payoutDaemon.getRpcConnection()));
+            if (isTrustedPayout && (firstPayoutTxMissingHeight != null || !isPayoutPublished())) log.warn("Payout tx {} is missing from the trade wallet but seen by the main wallet or daemon for {} {}, setting payout state published", payoutTxId, getClass().getSimpleName(), getShortId());
             firstPayoutTxMissingHeight = null;
-            if (!isPayoutPublished()) setPayoutState(PayoutState.PAYOUT_PUBLISHED);
+            if (isTrustedPayout && !isPayoutPublished()) setPayoutState(PayoutState.PAYOUT_PUBLISHED);
             maybeScanPayoutTx(payoutTxSeenElsewhere);
         } else if (hasSpentOutputs) {
             firstPayoutTxMissingHeight = null;
