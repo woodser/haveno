@@ -143,7 +143,7 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
     private final CoinFormatter formatter;
     private TableView<OfferListItem> buyOfferTableView;
     private TableView<OfferListItem> sellOfferTableView;
-    private AreaChart<Number, Number> areaChart;
+    private DepthChart areaChart;
     private AnchorPane chartPane;
     private Pane deviationScalePane;
     private Pane gridLinesPane;
@@ -529,6 +529,8 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         seriesBuy.getData().clear();
         areaChart.getData().clear();
 
+        areaChart.setRangeEnds(getRangeEnd(model.getBuyData(), OfferDirection.BUY, chartMarketPrice),
+                getRangeEnd(model.getSellData(), OfferDirection.SELL, chartMarketPrice));
         seriesSell.getData().addAll(filterOutliers(model.getSellData(), OfferDirection.SELL, chartMarketPrice));
         seriesBuy.getData().addAll(filterOutliers(model.getBuyData(), OfferDirection.BUY, chartMarketPrice));
         plottedAsks = getPlottedOffers(model.getTopSellOfferList(), seriesSell);
@@ -1258,46 +1260,71 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         if (offer != null) (isBuyOffer ? buyOfferTableView : sellOfferTableView).getSelectionModel().select(offer);
     }
 
-    // Filter the far tail with a Tukey fence and a 3x cap on the best price, but keep offers within 30% of the
-    // market price, or of the best price without one. The Tukey margin is at least 10% of the outer quartile.
-    private static final double OUTLIER_IQR_FACTOR = 1.5;
-    private static final double OUTLIER_MIN_FENCE_RATIO = 0.1;
-    private static final double OUTLIER_MAX_PRICE_RATIO = 3;
-    private static final double OUTLIER_NEAR_PRICE_RATIO = 0.3;
-    // Use at least two offers per quartile before trimming statistical outliers.
-    private static final int OUTLIER_MIN_OFFERS = 8;
+    // Each side shows from its best price out to its range end. Offers earn the range its width: from any nearer
+    // offer, the offer count and the depth must both grow by at least 5% of the relative widening of the range.
+    private static final double RANGE_GROWTH_RATIO = 0.05;
+    // Distances count from the market price, or the best price without one, and as at least 5% of that price.
+    private static final double RANGE_NEAR_PRICE_RATIO = 0.05;
+    // The range runs on past the farthest earning offer to show its surroundings: by twice that offer's distance
+    // from the market price, or from the best price if that is nearer the other side, at most 6% of its price.
+    private static final double RANGE_CONTEXT_RATIO = 2;
+    private static final double RANGE_CONTEXT_PRICE_RATIO = 0.06;
+    // The range reaches at least the tenth offer of the side, so thin books show in full.
+    private static final int RANGE_MIN_OFFERS = 10;
+    // The range ends short of 3x the farther of the market price and the best price.
+    private static final double RANGE_MAX_PRICE_RATIO = 3;
 
     static List<XYChart.Data<Number, Number>> filterOutliers(List<XYChart.Data<Number, Number>> data, OfferDirection direction, double marketPrice) {
         synchronized (data) {
-            double[] prices = data.stream().mapToDouble(o -> o.getXValue().doubleValue()).sorted().toArray();
-            if (prices.length == 0) return data;
-            double q1 = quantile(prices, 0.25);
-            double q3 = quantile(prices, 0.75);
-            boolean farSideHigh = direction == OfferDirection.SELL;
-            double margin = Math.max((q3 - q1) * OUTLIER_IQR_FACTOR, (farSideHigh ? q3 : q1) * OUTLIER_MIN_FENCE_RATIO);
-            double fence = farSideHigh ? q3 + margin : q1 - margin;
-            boolean hasMarketPrice = Double.isFinite(marketPrice) && marketPrice > 0;
-            double bestPrice = farSideHigh ? prices[0] : prices[prices.length - 1];
-            double outerLimit = farSideHigh ? bestPrice * OUTLIER_MAX_PRICE_RATIO : bestPrice / OUTLIER_MAX_PRICE_RATIO;
-            double nearFence = (hasMarketPrice ? marketPrice : bestPrice) * (farSideHigh ? 1 + OUTLIER_NEAR_PRICE_RATIO : 1 - OUTLIER_NEAR_PRICE_RATIO);
-            // Offer prices round to eight decimal places; allow half a unit plus floating-point error.
-            double nearTolerance = 0.5e-8 + 2 * Math.ulp(nearFence);
+            double rangeEnd = getRangeEnd(data, direction, marketPrice);
             return data.stream()
-                    .filter(o -> {
-                        double price = o.getXValue().doubleValue();
-                        if (farSideHigh ? price <= nearFence + nearTolerance : price >= nearFence - nearTolerance) return true;
-                        if (prices.length >= OUTLIER_MIN_OFFERS && (farSideHigh ? price > fence : price < fence)) return false;
-                        return farSideHigh ? price < outerLimit : price > outerLimit;
-                    })
+                    .filter(o -> direction == OfferDirection.SELL ? o.getXValue().doubleValue() <= rangeEnd : o.getXValue().doubleValue() >= rangeEnd)
                     .collect(Collectors.toList());
         }
     }
 
-    private static double quantile(double[] sorted, double p) {
-        double position = p * (sorted.length - 1);
-        int index = (int) position;
-        if (index + 1 >= sorted.length) return sorted[index];
-        return sorted[index] + (position - index) * (sorted[index + 1] - sorted[index]);
+    // The price out to which a side shows, or NaN without offers.
+    static double getRangeEnd(List<XYChart.Data<Number, Number>> data, OfferDirection direction, double marketPrice) {
+        boolean farSideHigh = direction == OfferDirection.SELL;
+        synchronized (data) {
+            if (data.isEmpty()) return Double.NaN;
+            // The y values accumulate amounts from the best price, so price then depth orders the offers outward.
+            Comparator<XYChart.Data<Number, Number>> byPrice = Comparator.comparingDouble(o -> o.getXValue().doubleValue());
+            List<XYChart.Data<Number, Number>> outward = new ArrayList<>(data);
+            outward.sort((farSideHigh ? byPrice : byPrice.reversed()).thenComparingDouble(o -> o.getYValue().doubleValue()));
+            double bestPrice = outward.get(0).getXValue().doubleValue();
+            double anchorPrice = Double.isFinite(marketPrice) && marketPrice > 0 ? marketPrice : bestPrice;
+            double outerLimit = farSideHigh ? Math.max(bestPrice, anchorPrice) * RANGE_MAX_PRICE_RATIO : Math.min(bestPrice, anchorPrice) / RANGE_MAX_PRICE_RATIO;
+            // Offer prices round to eight decimal places; allow half a unit plus floating-point error.
+            double tolerance = 0.5e-8 / anchorPrice + 1e-12;
+            double[] reach = new double[outward.size()];
+            double[] depth = new double[outward.size()];
+            double earnedPrice = bestPrice;
+            double minOffersPrice = bestPrice;
+            for (int k = 0; k < reach.length; k++) {
+                double price = outward.get(k).getXValue().doubleValue();
+                if (farSideHigh ? price >= outerLimit : price <= outerLimit) break;
+                reach[k] = Math.max((farSideHigh ? price - anchorPrice : anchorPrice - price) / anchorPrice, RANGE_NEAR_PRICE_RATIO);
+                depth[k] = outward.get(k).getYValue().doubleValue();
+                if (earnsWidth(reach, depth, k, tolerance)) earnedPrice = price;
+                if (k < RANGE_MIN_OFFERS) minOffersPrice = price;
+            }
+            double nearPrice = farSideHigh ? Math.min(bestPrice, anchorPrice) : Math.max(bestPrice, anchorPrice);
+            double context = Math.min(RANGE_CONTEXT_RATIO * Math.abs(earnedPrice - nearPrice), earnedPrice * RANGE_CONTEXT_PRICE_RATIO);
+            double rangeEnd = farSideHigh ? earnedPrice + context : earnedPrice - context;
+            return farSideHigh
+                    ? Math.min(Math.max(rangeEnd, minOffersPrice), Math.nextDown(outerLimit))
+                    : Math.max(Math.min(rangeEnd, minOffersPrice), Math.nextUp(outerLimit));
+        }
+    }
+
+    // Whether the range out to offer k earns its width from every nearer offer, by offer count and by depth.
+    private static boolean earnsWidth(double[] reach, double[] depth, int k, double tolerance) {
+        for (int j = 0; j < k; j++) {
+            double growth = 1 + RANGE_GROWTH_RATIO * ((reach[k] - tolerance) / (reach[j] + tolerance) - 1);
+            if (k + 1 < (j + 1) * growth || depth[k] < depth[j] * growth) return false;
+        }
+        return true;
     }
 
     // The price followed by the offer's percent from the market price, as on the offer book.
@@ -1736,11 +1763,29 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
     // Area chart whose bid and ask plateaus run flat to the chart edges, as depth past the outermost offer stays at its total.
     static class DepthChart extends AreaChart<Number, Number> {
         private final XYChart.Series<Number, Number> bids, asks;
+        private double bidRangeEnd = Double.NaN, askRangeEnd = Double.NaN;
 
         DepthChart(NumberAxis xAxis, NumberAxis yAxis, XYChart.Series<Number, Number> bids, XYChart.Series<Number, Number> asks) {
             super(xAxis, yAxis);
             this.bids = bids;
             this.asks = asks;
+        }
+
+        // The prices out to which the bids and the asks show, NaN without offers, for the price axis to keep in view.
+        void setRangeEnds(double bidRangeEnd, double askRangeEnd) {
+            this.bidRangeEnd = bidRangeEnd;
+            this.askRangeEnd = askRangeEnd;
+        }
+
+        @Override
+        protected void updateAxisRange() {
+            super.updateAxisRange();
+            if (!getXAxis().isAutoRanging()) return;
+            List<Number> prices = new ArrayList<>();
+            getData().forEach(series -> series.getData().forEach(item -> prices.add(item.getXValue())));
+            if (!Double.isNaN(bidRangeEnd)) prices.add(bidRangeEnd);
+            if (!Double.isNaN(askRangeEnd)) prices.add(askRangeEnd);
+            getXAxis().invalidateRange(prices);
         }
 
         @Override
