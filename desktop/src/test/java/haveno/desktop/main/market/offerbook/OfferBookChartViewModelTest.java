@@ -18,20 +18,27 @@
 package haveno.desktop.main.market.offerbook;
 
 import haveno.core.locale.GlobalSettings;
+import haveno.core.offer.Offer;
 import haveno.core.offer.OfferDirection;
 import haveno.core.provider.price.MarketPrice;
 import haveno.core.provider.price.PriceFeedService;
+import haveno.core.util.FormattingUtils;
+import haveno.core.util.PriceUtil;
 import haveno.desktop.main.offer.offerbook.OfferBook;
 import haveno.desktop.main.offer.offerbook.OfferBookListItem;
 import haveno.desktop.main.offer.offerbook.OfferBookListItemMaker;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
 import javafx.scene.chart.XYChart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -44,6 +51,8 @@ import static haveno.desktop.main.offer.offerbook.OfferBookListItemMaker.xmrSell
 import static haveno.desktop.maker.PreferenceMakers.empty;
 import static haveno.desktop.maker.TradeCurrencyMakers.usd;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -62,7 +71,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null, null, null);
         assertEquals(0, model.maxPlacesForBuyPrice.intValue());
     }
 
@@ -81,7 +90,7 @@ public class OfferBookChartViewModelTest {
         when(priceFeedService.updateCounterProperty()).thenReturn(new SimpleIntegerProperty());
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null, null, null);
         model.activate();
         assertEquals(0, model.maxPlacesForBuyPrice.intValue());
     }
@@ -95,7 +104,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null, null, null);
         model.activate();
         assertEquals(9, model.maxPlacesForBuyPrice.intValue());
         offerBookListItems.addAll(make(xmrBuyItem.but(with(OfferBookListItemMaker.price, 940164750000L))));
@@ -111,7 +120,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null, null, null);
         assertEquals(0, model.maxPlacesForBuyVolume.intValue());
     }
 
@@ -124,7 +133,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null, null, null);
         model.activate();
         assertEquals(3, model.maxPlacesForBuyVolume.intValue()); //0
         offerBookListItems.addAll(make(xmrBuyItem.but(with(OfferBookListItemMaker.amount, 1000000000000L))));
@@ -140,7 +149,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null, null, null);
         assertEquals(0, model.maxPlacesForSellPrice.intValue());
     }
 
@@ -159,7 +168,7 @@ public class OfferBookChartViewModelTest {
         when(priceFeedService.updateCounterProperty()).thenReturn(new SimpleIntegerProperty());
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null, null, null);
         model.activate();
         assertEquals(0, model.maxPlacesForSellPrice.intValue());
     }
@@ -173,7 +182,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null, null, null);
         model.activate();
         assertEquals(9, model.maxPlacesForSellPrice.intValue()); // 10.0000 default price
         offerBookListItems.addAll(make(xmrSellItem.but(with(OfferBookListItemMaker.price, 940164750000L))));
@@ -189,7 +198,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, null, null, null, null, null);
         assertEquals(0, model.maxPlacesForSellVolume.intValue());
     }
 
@@ -202,7 +211,7 @@ public class OfferBookChartViewModelTest {
 
         when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
 
-        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null);
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null, null, null);
         model.activate();
         assertEquals(3, model.maxPlacesForSellVolume.intValue()); //0
         offerBookListItems.addAll(make(xmrSellItem.but(with(OfferBookListItemMaker.amount, 1000000000000L))));
@@ -392,7 +401,7 @@ public class OfferBookChartViewModelTest {
         PriceFeedService priceFeedService = mock(PriceFeedService.class);
         when(offerBook.getOfferBookListItems()).thenReturn(FXCollections.observableArrayList());
         when(priceFeedService.updateCounterProperty()).thenReturn(new SimpleIntegerProperty());
-        OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null);
+        OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null, null, null);
         long now = System.currentTimeMillis();
 
         when(priceFeedService.getMarketPrice("USD")).thenReturn(new MarketPrice("USD", 100, now, true));
@@ -421,6 +430,179 @@ public class OfferBookChartViewModelTest {
         assertEquals(original, data);
         assertEquals(List.of(original.get(0), original.get(1), original.get(3)), shown);
         assertEquals(List.of(3, 1, 4), shown.stream().map(XYChart.Data::getYValue).collect(Collectors.toList()));
+    }
+
+    @Test
+    public void testSeriesPointsCarryTheirOffers() {
+        OfferBook offerBook = mock(OfferBook.class);
+        PriceFeedService service = mock(PriceFeedService.class);
+        final ObservableList<OfferBookListItem> offerBookListItems = FXCollections.observableArrayList(
+                make(xmrSellItem.but(with(OfferBookListItemMaker.price, 10300000000L))),
+                make(xmrSellItem.but(with(OfferBookListItemMaker.price, 10100000000L))),
+                make(xmrBuyItem.but(with(OfferBookListItemMaker.price, 9700000000L))),
+                make(xmrBuyItem.but(with(OfferBookListItemMaker.price, 9900000000L))));
+        when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
+
+        final OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, service, null, null, null, null);
+        model.activate();
+
+        // asks are plotted in the order of their table list, bids from its far end
+        List<OfferListItem> asks = model.getTopSellOfferList();
+        List<OfferListItem> bids = new ArrayList<>(model.getTopBuyOfferList());
+        Collections.reverse(bids);
+        assertEquals(List.of(101d, 103d), asks.stream().map(item -> item.price).collect(Collectors.toList()));
+        assertEquals(List.of(97d, 99d), bids.stream().map(item -> item.price).collect(Collectors.toList()));
+        assertPointsCarryOffers(asks, model.getSellData());
+        assertPointsCarryOffers(bids, model.getBuyData());
+    }
+
+    private static void assertPointsCarryOffers(List<OfferListItem> items, List<XYChart.Data<Number, Number>> points) {
+        assertEquals(items.size(), points.size());
+        for (int i = 0; i < items.size(); i++) {
+            assertSame(items.get(i).offer, points.get(i).getExtraValue());
+            assertEquals(items.get(i).price, points.get(i).getXValue());
+            assertEquals(items.get(i).accumulated, points.get(i).getYValue());
+        }
+    }
+
+    @Test
+    public void testPriceAsPercentageMatchesOfferBook() {
+        OfferBook offerBook = mock(OfferBook.class);
+        PriceFeedService priceFeedService = mock(PriceFeedService.class);
+        when(offerBook.getOfferBookListItems()).thenReturn(FXCollections.observableArrayList());
+        when(priceFeedService.getMarketPrice("USD")).thenReturn(new MarketPrice("USD", 100, System.currentTimeMillis(), true));
+        PriceUtil priceUtil = new PriceUtil(priceFeedService, null, null);
+        OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null, priceUtil, null);
+
+        // a fixed price is measured against the market price for its taker, so asks above and bids below it are positive
+        Offer fixedAsk = make(xmrSellItem.but(with(OfferBookListItemMaker.price, 10300000000L))).getOffer();
+        Offer fixedBid = make(xmrBuyItem.but(with(OfferBookListItemMaker.price, 9800000000L))).getOffer();
+        Offer cheapAsk = make(xmrSellItem.but(with(OfferBookListItemMaker.price, 9800000000L))).getOffer();
+        assertEquals("3.00%", model.getPriceAsPercentage(fixedAsk));
+        assertEquals("2.00%", model.getPriceAsPercentage(fixedBid));
+        assertEquals("-2.00%", model.getPriceAsPercentage(cheapAsk));
+
+        // a market based price shows its margin
+        Offer marketAsk = make(xmrSellItem.but(with(OfferBookListItemMaker.useMarketBasedPrice, true), with(OfferBookListItemMaker.marketPriceMargin, 0.05))).getOffer();
+        Offer marketBid = make(xmrBuyItem.but(with(OfferBookListItemMaker.useMarketBasedPrice, true), with(OfferBookListItemMaker.marketPriceMargin, -0.01))).getOffer();
+        assertEquals("5.00%", model.getPriceAsPercentage(marketAsk));
+        assertEquals("-1.00%", model.getPriceAsPercentage(marketBid));
+
+        // the Buy tab lists the sell offers and the Sell tab the buy offers, each with its own direction
+        for (Offer ask : List.of(fixedAsk, cheapAsk, marketAsk)) {
+            assertEquals(FormattingUtils.formatPercentagePrice(priceUtil.getMarketBasedPrice(ask, OfferDirection.BUY).get()), model.getPriceAsPercentage(ask));
+        }
+        for (Offer bid : List.of(fixedBid, marketBid)) {
+            assertEquals(FormattingUtils.formatPercentagePrice(priceUtil.getMarketBasedPrice(bid, OfferDirection.SELL).get()), model.getPriceAsPercentage(bid));
+        }
+
+        // without a market price only the margins remain
+        when(priceFeedService.getMarketPrice("USD")).thenReturn(null);
+        assertEquals("", model.getPriceAsPercentage(fixedAsk));
+        assertEquals("5.00%", model.getPriceAsPercentage(marketAsk));
+    }
+
+    @Test
+    public void testOfferNearPointerIsNearestInPrice() {
+        List<OfferListItem> asks = items(101, 1, 102, 3, 105, 6);
+        List<OfferListItem> bids = items(99, 1, 98, 3, 95, 6);
+
+        assertNull(OfferBookChartView.offerNear(asks, bids, 100, 2, 0.01));
+        assertNull(OfferBookChartView.offerNear(List.of(), List.of(), 100, 2, 0.01));
+        assertSame(asks.get(0), OfferBookChartView.offerNear(asks, bids, 101, 2, 0.01));
+        assertSame(asks.get(0), OfferBookChartView.offerNear(asks, bids, 101.4, 6, 0.01));
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 101.6, 0, 0.01));
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 103.4, 100, 0.01));
+        assertSame(asks.get(2), OfferBookChartView.offerNear(asks, bids, 103.6, 0, 0.01));
+        assertSame(asks.get(2), OfferBookChartView.offerNear(asks, bids, 500, 0, 0.01));
+        assertSame(bids.get(0), OfferBookChartView.offerNear(asks, bids, 99, 2, 0.01));
+        assertSame(bids.get(0), OfferBookChartView.offerNear(asks, bids, 98.6, 6, 0.01));
+        assertSame(bids.get(1), OfferBookChartView.offerNear(asks, bids, 98.4, 0, 0.01));
+        assertSame(bids.get(2), OfferBookChartView.offerNear(asks, bids, 96.4, 0, 0.01));
+        assertSame(bids.get(2), OfferBookChartView.offerNear(asks, bids, 1, 0, 0.01));
+        // the gap starts right at the best prices
+        assertNull(OfferBookChartView.offerNear(asks, bids, 100.995, 2, 0.01));
+        assertNull(OfferBookChartView.offerNear(asks, bids, 99.005, 2, 0.01));
+
+        assertEquals(-1, OfferBookChartView.lastAtOrBetter(asks, OfferDirection.SELL, 100.9));
+        assertEquals(1, OfferBookChartView.lastAtOrBetter(asks, OfferDirection.SELL, 102));
+        assertEquals(-1, OfferBookChartView.lastAtOrBetter(bids, OfferDirection.BUY, 99.1));
+        assertEquals(1, OfferBookChartView.lastAtOrBetter(bids, OfferDirection.BUY, 98));
+    }
+
+    @Test
+    public void testOfferNearPointerInStackIsNearestItsHeight() {
+        List<OfferListItem> asks = items(101, 1, 102, 3, 102, 5, 102, 9, 105, 10);
+        List<OfferListItem> bids = items(99, 2, 98, 4, 98, 8);
+
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 102.5, 0, 0.01));
+        assertSame(asks.get(2), OfferBookChartView.offerNear(asks, bids, 102.5, 4.2, 0.01));
+        assertSame(asks.get(3), OfferBookChartView.offerNear(asks, bids, 102.5, 100, 0.01));
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 102.5, 4, 0.01)); // a tie goes to the one first in the list
+        assertSame(asks.get(0), OfferBookChartView.offerNear(asks, bids, 101.4, 100, 0.01)); // other prices stay out of the stack
+        assertSame(bids.get(1), OfferBookChartView.offerNear(asks, bids, 97.5, 5, 0.01));
+        assertSame(bids.get(2), OfferBookChartView.offerNear(asks, bids, 97.5, 7, 0.01));
+        // not the far offer at the pointer's height, however near the midpoint
+        List<OfferListItem> far = items(100, 1, 110, 100);
+        assertSame(far.get(0), OfferBookChartView.offerNear(far, List.of(), 104.999, 100, 0.01));
+        // offers within a pixel of each other stack as well
+        List<OfferListItem> close = items(101, 1, 101.005, 2);
+        assertSame(close.get(0), OfferBookChartView.offerNear(close, List.of(), 101, 1.4, 0.01));
+        assertSame(close.get(1), OfferBookChartView.offerNear(close, List.of(), 101, 1.6, 0.01));
+    }
+
+    @Test
+    public void testOfferNearPointerInCrossedBookIsOnEitherSide() {
+        List<OfferListItem> asks = items(100, 2, 101, 6);
+        List<OfferListItem> bids = items(102, 1, 101, 3, 99, 10);
+
+        // at 101 an ask at 6 and a bid at 3 stack
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 101, 6, 0.01));
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 101, 4.5, 0.01));
+        assertSame(bids.get(1), OfferBookChartView.offerNear(asks, bids, 101, 4.4, 0.01));
+        assertSame(bids.get(1), OfferBookChartView.offerNear(asks, bids, 101, 0, 0.01));
+        // outside the crossed range only one side reaches the price
+        assertSame(asks.get(1), OfferBookChartView.offerNear(asks, bids, 103, 0, 0.01));
+        assertSame(bids.get(2), OfferBookChartView.offerNear(asks, bids, 99.4, 0, 0.01));
+        assertSame(bids.get(2), OfferBookChartView.offerNear(asks, bids, 99, 100, 0.01));
+    }
+
+    @Test
+    public void testLabelPlacedAboveMarkerTowardSpread() {
+        Bounds plot = new BoundingBox(0, 0, 400, 200);
+        Point2D marker = new Point2D(200, 150);
+
+        assertEquals(new Point2D(208, 98), OfferBookChartView.placeLabel(plot, true, marker, 100, 40));
+        assertEquals(new Point2D(92, 98), OfferBookChartView.placeLabel(plot, false, marker, 100, 40));
+        // kept within the plot
+        assertEquals(new Point2D(296, 98), OfferBookChartView.placeLabel(plot, true, new Point2D(390, 150), 100, 40));
+        // a spot which the plot edges push onto the marker is passed over
+        assertEquals(new Point2D(282, 4), OfferBookChartView.placeLabel(plot, true, new Point2D(390, 30), 100, 40));
+        // a riser may cross the label
+        assertEquals(new Point2D(208, 98), OfferBookChartView.placeLabel(plot, true, marker, 100, 40, x -> x < 250 ? 190 : 20));
+    }
+
+    @Test
+    public void testLabelAvoidsLyingAlongOutlines() {
+        Bounds plot = new BoundingBox(0, 0, 400, 200);
+        Point2D marker = new Point2D(200, 150);
+
+        // a plateau toward the spread sends the label away from it
+        assertEquals(new Point2D(92, 98), OfferBookChartView.placeLabel(plot, true, marker, 100, 40, x -> x >= 200 ? 110 : Double.NaN));
+        // plateaus on both sides send it to the top of the guide
+        assertEquals(new Point2D(150, 4), OfferBookChartView.placeLabel(plot, true, marker, 100, 40, x -> 110));
+        assertEquals(new Point2D(150, 4), OfferBookChartView.placeLabel(plot, true, marker, 100, 40, x -> x >= 200 ? 110 : Double.NaN, x -> x <= 200 ? 120 : Double.NaN));
+        // a marker on a plateau near the top leaves room only below it
+        assertEquals(new Point2D(208, 42), OfferBookChartView.placeLabel(plot, true, new Point2D(200, 30), 100, 40, x -> 30));
+        // without a clear spot it lies along the outlines as little as it can
+        assertEquals(new Point2D(92, 98), OfferBookChartView.placeLabel(plot, true, marker, 100, 40, x -> x >= 150 ? 110 : Double.NaN, x -> 20, x -> 180));
+    }
+
+    // Offer list items of one side from pairs of price and accumulated amount, best price first.
+    private static List<OfferListItem> items(double... pricesAndAccumulated) {
+        List<OfferListItem> items = new ArrayList<>();
+        for (int i = 0; i < pricesAndAccumulated.length; i += 2) items.add(new OfferListItem(null, pricesAndAccumulated[i], pricesAndAccumulated[i + 1]));
+        return items;
     }
 
     private static List<Double> filter(OfferDirection direction, double... prices) {

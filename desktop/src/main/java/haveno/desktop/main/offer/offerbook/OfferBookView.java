@@ -108,6 +108,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.math.BigInteger;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -705,6 +706,37 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
         model.setOfferActionHandler(offerActionHandler);
     }
 
+    // Selects the offer and scrolls to it, relaxing the filters which hide it. Leaves the book as it is if the offer is gone.
+    public void showOffer(Offer offer) {
+        // the table gets its items a pulse after activation
+        UserThread.execute(() -> {
+            if (findItem(model.getOfferList(), offer) == null && findItem(model.offerBook.getOfferBookListItems(), offer) != null) {
+                if (model.isMyOffer(offer)) model.preferences.setShowOwnOffersInOfferBook(true);
+                filterInputField.clear();
+                model.onFilterKeyTyped("");
+                model.onSetPaymentMethod(model.getShowAllEntryForPaymentMethod());
+                updatePaymentMethodComboBoxEditor();
+                updateSigningStateColumn();
+                // hidden toggles filter nothing here, or leave no way back
+                if (matchingOffersToggleButton.isSelected()) matchingOffersToggleButton.fire();
+                if (noDepositOffersToggleButton.isVisible() && noDepositOffersToggleButton.isSelected()) noDepositOffersToggleButton.fire();
+                if (privateOffersToggleButton.isVisible() && privateOffersToggleButton.isSelected() != offer.isPrivateOffer()) privateOffersToggleButton.fire();
+            }
+            OfferBookListItem item = findItem(model.getOfferList(), offer);
+            if (item != null) {
+                tableView.getSelectionModel().select(item);
+                tableView.scrollTo(item);
+            }
+        });
+    }
+
+    private static OfferBookListItem findItem(List<OfferBookListItem> items, Offer offer) {
+        return items.stream()
+                .filter(item -> item.getOffer().getId().equals(offer.getId()))
+                .findAny()
+                .orElse(null);
+    }
+
     public void onTabSelected(boolean isSelected) {
         if (model.isTabSelected == isSelected) {
             return;
@@ -1081,14 +1113,14 @@ abstract public class OfferBookView<R extends GridPane, M extends OfferBookViewM
 
                                     Offer offer = item.getOffer();
                                     if (model.isOfferBanned(offer)) {
-                                        setGraphic(new AutoTooltipLabel(model.getPaymentMethod(item)));
+                                        setGraphic(new AutoTooltipLabel(OfferViewUtil.getPaymentMethod(offer)));
                                     } else {
-                                        field = new HyperlinkWithIcon(model.getPaymentMethod(item));
+                                        field = new HyperlinkWithIcon(OfferViewUtil.getPaymentMethod(offer));
                                         field.hideIcon();
                                         field.setOnAction(event -> {
                                             offerDetailsWindow.show(offer);
                                         });
-                                        field.setTooltip(new Tooltip(model.getPaymentMethodToolTip(item)));
+                                        field.setTooltip(new Tooltip(OfferViewUtil.getPaymentMethodToolTip(offer)));
                                         setGraphic(field);
                                     }
                                 } else {
