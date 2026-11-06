@@ -128,6 +128,7 @@ public final class Navigation implements PersistedDataHost {
 
         currentPath = newPath;
         previousPath = currentPath;
+        log.info("Navigating to {}", currentPath.stream().map(Class::getSimpleName).collect(Collectors.joining("/")));
         listeners.forEach((e) -> e.onNavigationRequested(currentPath, data));
         requestPersistence();
     }
