@@ -301,7 +301,9 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
                     if (checked != null) label.setTooltip(new Tooltip(text("checkedAt", DisplayUtils.formatDateTime(new Date(checked)))));
                     return label;
                 });
-        configureColumn(nodeStatusColumn, text("status"), Comparator.comparingInt(MoneroNetworkListItem::getRank), item -> {
+        // nodes with the same status keep their list order
+        configureColumn(nodeStatusColumn, text("status"), Comparator.comparingInt(MoneroNetworkListItem::getRank)
+                .thenComparingInt(item -> nodeOrder.getOrDefault(item.getConnection().getUri(), Integer.MAX_VALUE)), item -> {
             Label label = new Label(item.getStatus());
             label.getStyleClass().add("network-node-status");
             label.pseudoClassStateChanged(ACTIVE, item.isConnected());
