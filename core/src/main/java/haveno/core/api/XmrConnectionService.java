@@ -534,7 +534,7 @@ public final class XmrConnectionService {
             if (wasMonerodSynced) {
                 updatePolling(info); // restart polling off thread after connection established
             } else {
-                tryPollMonerod(info); // poll immediately before connection established
+                tryPollMonerod(info, null); // poll immediately before connection established
                 if (connection != getConnection()) return true; // polling can change connection
                 UserThread.runAfter(() -> updatePolling(null), getInternalRefreshPeriodMs() / 1000);
             }
@@ -1374,13 +1374,7 @@ public final class XmrConnectionService {
             numConsecutiveErrors = 0;
             AtomicBoolean firstPoll = new AtomicBoolean(true);
             MoneroDaemonRpc polledDaemon = monerod;
-            monerodPoller = new TaskLooper(() -> {
-                synchronized (pollLock) {
-                    if (polledDaemon != monerod || !isPolling()) return; // discard a stopped poll waiting behind a connection change
-                    if (!pollInProgress) tryPollMonerod(firstPoll.get() ? applyInfo : null);
-                    firstPoll.set(false);
-                }
-            });
+            monerodPoller = new TaskLooper(() -> pollMonerod(polledDaemon, firstPoll.getAndSet(false) ? applyInfo : null));
             monerodPoller.start(getInternalRefreshPeriodMs());
         }
     }
@@ -1400,9 +1394,29 @@ public final class XmrConnectionService {
         }
     }
 
-    private void tryPollMonerod(MoneroDaemonInfo applyInfo) {
+    // polls for the poll loop, checking the node before taking the poll lock so node edits do not wait for the request
+    private void pollMonerod(MoneroDaemonRpc polledDaemon, MoneroDaemonInfo applyInfo) {
+        MoneroRpcConnection checked = null;
+        if (applyInfo == null) {
+            try {
+                if (isShutDownStarted || polledDaemon != monerod || !isPolling()) return;
+                if (HavenoUtils.xmrWalletService != null && HavenoUtils.xmrWalletService.isSyncingWithProgress()) return; // as the poll skips fetching
+                MoneroRpcConnection connection = getConnection();
+                if (connection != null) checkConnection(connection);
+                checked = connection;
+            } catch (Exception e) {
+                // the poll handles the error
+            }
+        }
+        synchronized (pollLock) {
+            if (polledDaemon != monerod || !isPolling()) return; // discard a stopped poll waiting behind a connection change
+            if (!pollInProgress) tryPollMonerod(applyInfo, checked);
+        }
+    }
+
+    private void tryPollMonerod(MoneroDaemonInfo applyInfo, MoneroRpcConnection checked) {
         try {
-            doPollMonerod(applyInfo);
+            doPollMonerod(applyInfo, checked);
         } catch (Exception e) {
             // error is already handled
         }
@@ -1412,8 +1426,9 @@ public final class XmrConnectionService {
      * Polls monerod for the latest info and updates the connection if necessary.
      * 
      * @param applyInfo applies the given info instead of fetching from monerod
+     * @param checked connection already checked for this poll, which is not fetched again
      */
-    private void doPollMonerod(MoneroDaemonInfo applyInfo) {
+    private void doPollMonerod(MoneroDaemonInfo applyInfo, MoneroRpcConnection checked) {
         synchronized (pollLock) {
             if (isShutDownStarted) return;
             MoneroRpcConnection connection = getConnection();
@@ -1433,7 +1448,7 @@ public final class XmrConnectionService {
 
                     // check the monero connection or use applied info
                     if (applyInfo == null) {
-                        checkConnection(connection);
+                        if (checked == null || checked != connection) checkConnection(connection);
                         if (isShutDownStarted || connection != getConnection()) return; // a normal switch may finish while this probe is waiting
                         MoneroDaemonInfo info = getCachedDaemonInfo(connection);
                         if (info == null) {
