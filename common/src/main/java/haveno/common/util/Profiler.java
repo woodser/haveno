@@ -24,25 +24,39 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
+import javax.management.JMException;
+import javax.management.ObjectName;
 
 @Slf4j
 public class Profiler {
 
     private static final double HIGH_MEMORY_THRESHOLD = 0.9;
+    private static final int CLASS_HISTOGRAM_MAX_CLASSES = 40;
+    private static final int CLASS_HISTOGRAM_MAX_NON_JDK_CLASSES = 60;
+    private static final Pattern JDK_MODULE = Pattern.compile("\\((java|jdk)\\.[^()]*\\)\\s*$");
+    private static final long CLASS_HISTOGRAM_INTERVAL_NANOS = TimeUnit.MINUTES.toNanos(10);
+    private static long lastClassHistogramNanos = System.nanoTime() - CLASS_HISTOGRAM_INTERVAL_NANOS;
+    private static final AtomicBoolean memoryMonitorStarted = new AtomicBoolean();
 
     public static void printSystemLoadPeriodically(long delay, TimeUnit timeUnit) {
         UserThread.runPeriodically(Profiler::printSystemLoad, delay, timeUnit);
     }
 
     public static void warnOnHighMemoryUsagePeriodically(long delay, TimeUnit timeUnit) {
+        if (!memoryMonitorStarted.compareAndSet(false, true)) return; // one monitor per JVM, since the daemon restarts in process
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "MemoryMonitor");
             thread.setDaemon(true);
             return thread;
         });
+        executor.execute(ManagementFactory::getPlatformMBeanServer); // initialize while memory is healthy, for the class histogram
         executor.scheduleWithFixedDelay(Profiler::warnIfMemoryHigh, delay, delay, timeUnit);
     }
 
@@ -63,10 +77,39 @@ public class Profiler {
                 log.warn("Memory usage critically high: {} of {} max ({}%) still used after garbage collection. " +
                         "An OutOfMemoryError may be imminent, which terminates the application immediately.",
                         Utilities.readableFileSize(used), Utilities.readableFileSize(max), Math.round(ratio * 100));
+
+                // name what fills the heap, at most once per interval since the histogram runs a full GC
+                long now = System.nanoTime();
+                if (now - lastClassHistogramNanos >= CLASS_HISTOGRAM_INTERVAL_NANOS) {
+                    lastClassHistogramNanos = now;
+                    log.warn("Classes using the most memory, then the largest non JDK classes:\n{}",
+                            getClassHistogram(CLASS_HISTOGRAM_MAX_CLASSES, CLASS_HISTOGRAM_MAX_NON_JDK_CLASSES));
+                }
             }
         } catch (Throwable t) {
             log.warn("Error checking memory usage", t);
         }
+    }
+
+    // live heap by class with names, instance counts and sizes only; non JDK rows name the owners of generic JDK objects
+    static String getClassHistogram(int maxClasses, int maxNonJdkClasses) throws JMException {
+        String histogram = (String) ManagementFactory.getPlatformMBeanServer().invoke(
+                new ObjectName("com.sun.management:type=DiagnosticCommand"), "gcClassHistogram",
+                new Object[]{null}, new String[]{String[].class.getName()});
+        List<String> lines = new ArrayList<>();
+        int numClasses = 0;
+        int numNonJdkClasses = 0;
+        for (String line : (Iterable<String>) histogram.lines()::iterator) {
+            if (lines.size() < 2 || line.startsWith("Total")) {
+                lines.add(line); // header and total
+            } else if (numClasses++ < maxClasses) {
+                lines.add(line);
+            } else if (numNonJdkClasses < maxNonJdkClasses && !JDK_MODULE.matcher(line).find()) {
+                lines.add(line);
+                numNonJdkClasses++;
+            }
+        }
+        return String.join("\n", lines);
     }
 
     // heap used after the most recent GC, or -1 if the JVM does not report it
