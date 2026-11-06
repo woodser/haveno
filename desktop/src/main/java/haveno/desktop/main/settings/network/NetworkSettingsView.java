@@ -471,7 +471,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             MoneroNetworkListItem selected = moneroConnectionsTableView.getSelectionModel().getSelectedItem();
             List<MoneroNetworkListItem> updated = connections.stream().sorted(Comparator.comparingInt(connection -> nodeOrder.get(connection.getUri())))
                     .map(connection -> new MoneroNetworkListItem(displayConnection(connection, current), current != null && connection.getUri().equals(current.getUri()),
-                            connectionService.isReloadingConnections() ? null : connectionStatus, stagedSource == null && (sourceChange != null || connection.getUri().equals(checkingUri) || checkingUris.contains(connection.getUri()) || addingUris.contains(connection.getUri()) || connectionService.isReloadingConnections()), owner(connection)))
+                            connectionService.isReloadingConnections() ? null : connectionStatus, stagedSource == null && (sourceChange != null || connection.getUri().equals(checkingUri) || checkingUris.contains(connection.getUri()) || connectionService.isReloadingConnections()), owner(connection)))
                     .collect(Collectors.toList());
             if (updated.size() != nodes.size()) nodes.setAll(updated);
             else for (int i = 0; i < updated.size(); i++) {
@@ -804,17 +804,23 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             return;
         }
         editingNodes = true;
-        for (String address : addresses) addingUris.add(nodeUri(address)); // listed at once, before the connection service lists them
+        boolean check = connectionService.getConnection() == null || !Boolean.TRUE.equals(connectionService.isConnected()); // a connected wallet needs no request to the new nodes
+        for (String address : addresses) {
+            addingUris.add(nodeUri(address)); // listed at once, before the connection service lists them
+            if (check) checkingUris.add(nodeUri(address));
+        }
         addInput.setText(String.join(", ", rejected));
         setHint(errors.isEmpty() ? null : String.join("\n", errors));
         refresh();
         long generation = activation;
         ThreadUtils.submitToPool(() -> {
             List<MoneroRpcConnection> added = new ArrayList<>();
+            List<String> failed = new ArrayList<>();
             for (String address : addresses) {
                 try {
                     added.add(connectionService.addCustomNode(address));
                 } catch (Exception e) {
+                    failed.add(nodeUri(address));
                     rejected.add(address);
                     errors.add(address + ": " + nodeErrorMessage(e.getMessage() == null ? e.toString() : e.getMessage()));
                 }
@@ -822,15 +828,15 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             UserThread.execute(() -> {
                 editingNodes = false;
                 addingUris.clear();
+                checkingUris.removeAll(failed);
                 if (active && activation == generation) {
-                    for (MoneroRpcConnection connection : added) checkingUris.add(connection.getUri());
                     addInput.setText(String.join(", ", rejected));
                     setHint(errors.isEmpty() ? null : (added.isEmpty() ? "" : text("added", added.size()) + " ") + String.join("\n", errors));
                 }
                 refresh();
                 if (active && activation == generation) addInput.requestFocus();
             });
-            for (MoneroRpcConnection connection : added) probeNode(connection, generation); // capture settings only after the entire paste is saved
+            if (check) for (MoneroRpcConnection connection : added) probeNode(connection, generation); // capture settings only after the entire paste is saved
         });
     }
 

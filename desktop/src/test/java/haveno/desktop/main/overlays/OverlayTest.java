@@ -952,12 +952,39 @@ public class OverlayTest {
             input.setText("third.example:18081");
             ((Button) controls.get("addButton")).fire();
             assertEquals("", input.getText());
-            assertTrue(nodeRow(third).isChecking());
+            assertTrue(nodeRow(third).isUnchecked());
             verify(connections, never()).addCustomNode(anyString());
             background.remove(0).run();
-            assertTrue(nodeRow(third).isChecking());
+            assertTrue(nodeRow(third).isUnchecked());
+            assertTrue(background.isEmpty());
+            verify(connections, never()).probeConnection(any());
+        }
+
+        @Test
+        void addedNodeIsCheckedOnlyWhileDisconnected() {
+            preferences.applyNodeSettings(MoneroNodesOption.CUSTOM, customAddress);
+            when(connections.isConnected()).thenReturn(false);
+            refresh.run();
+            MoneroRpcConnection added = new MoneroRpcConnection("http://another.example:18081");
+            when(connections.addCustomNode("another.example:18081")).thenAnswer(invocation -> {
+                live.add(added);
+                return added;
+            });
+            doThrow(new IllegalStateException("Connection service is not running")).when(connections).addCustomNode("failed.example:18081");
+
+            ((TextField) controls.get("addInput")).setText("another.example:18081 failed.example:18081");
+            ((Button) controls.get("addButton")).fire();
+            assertTrue(nodeRow(added).isChecking());
+            assertTrue(nodeRow(new MoneroRpcConnection("http://failed.example:18081")).isChecking());
             background.remove(0).run();
-            assertFalse(nodeRow(third).isChecking());
+            assertEquals(2, nodeTable().getItems().size());
+            assertTrue(nodeRow(added).isChecking());
+            background.remove(0).run();
+
+            verify(connections).probeConnection(added);
+            verify(connections).connectToNodeIfDisconnected(eq(added), any());
+            assertFalse(nodeRow(added).isChecking());
+            assertTrue(background.isEmpty());
         }
 
         @Test
