@@ -58,6 +58,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -152,6 +153,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     private final SortedList<MoneroNetworkListItem> sortedNodes = new SortedList<>(nodes);
     private final SortedList<P2pNetworkListItem> sortedPeers = new SortedList<>(peers);
     private final Set<String> checkingUris = new HashSet<>();
+    private final Set<String> addingUris = new LinkedHashSet<>();
     private final Map<String, MoneroRpcConnection> probeResults = new HashMap<>();
     private final Map<String, MoneroRpcConnection> previewConnections = new HashMap<>();
     private final Map<String, Integer> nodeOrder = new HashMap<>();
@@ -429,6 +431,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         activation++;
         checkingUri = null;
         checkingUris.clear();
+        addingUris.clear();
         stagedSource = null;
         previewConnections.clear();
         if (refreshTimer != null) refreshTimer.stop();
@@ -446,7 +449,9 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         boolean changingConnection = switching || connectionService.isReloadingConnections();
         boolean connected = !changingConnection && Boolean.TRUE.equals(connectionStatus);
         List<MoneroRpcConnection> liveConnections = connectionService.getConnections();
-        List<MoneroRpcConnection> connections = stagedSource == null ? liveConnections : sourceConnections(stagedSource, liveConnections);
+        SourceChange shown = shownChange();
+        List<MoneroRpcConnection> connections = toConnections(shown != null ? sourceUris(shown) : // a requested source and added nodes are listed before the connection service lists them
+                Stream.concat(liveConnections.stream().map(MoneroRpcConnection::getUri), addingUris.stream()).distinct().collect(Collectors.toList()), liveConnections);
         for (MoneroRpcConnection connection : connections) nodeOrder.computeIfAbsent(connection.getUri(), key -> nextNodeOrder++);
         if (stagedSource != null && stagedSource.option() == MoneroNodesOption.CUSTOM) {
             Label title = new Label(text("noCustomNodesTitle"));
@@ -464,7 +469,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             MoneroNetworkListItem selected = moneroConnectionsTableView.getSelectionModel().getSelectedItem();
             List<MoneroNetworkListItem> updated = connections.stream().sorted(Comparator.comparingInt(connection -> nodeOrder.get(connection.getUri())))
                     .map(connection -> new MoneroNetworkListItem(displayConnection(connection, current), current != null && connection.getUri().equals(current.getUri()),
-                            connectionService.isReloadingConnections() ? null : connectionStatus, stagedSource == null && (connection.getUri().equals(checkingUri) || checkingUris.contains(connection.getUri()) || connectionService.isReloadingConnections()), owner(connection)))
+                            connectionService.isReloadingConnections() ? null : connectionStatus, stagedSource == null && (sourceChange != null || connection.getUri().equals(checkingUri) || checkingUris.contains(connection.getUri()) || addingUris.contains(connection.getUri()) || connectionService.isReloadingConnections()), owner(connection)))
                     .collect(Collectors.toList());
             if (updated.size() != nodes.size()) nodes.setAll(updated);
             else for (int i = 0; i < updated.size(); i++) {
@@ -582,6 +587,11 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         return switching || editingNodes || checkingUri != null || connectionService.isReloadingConnections();
     }
 
+    // nodes join a previewed or switching source without waiting for the connection service
+    private boolean canAddNodes() {
+        return stagedSource != null || (sourceChange != null ? canSelectSource() : !isChangingNodes());
+    }
+
     private boolean canSelectSource() {
         return !hasStartupOverride() && !editingNodes && checkingUri == null && (sourceChange != null || !connectionService.isReloadingConnections());
     }
@@ -626,10 +636,15 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         return uris;
     }
 
-    // the source's nodes, with unchecked placeholders for those the connection service does not list
-    private List<MoneroRpcConnection> sourceConnections(SourceChange change, List<MoneroRpcConnection> liveConnections) {
+    // change whose nodes the table lists instead of the running nodes
+    private SourceChange shownChange() {
+        return stagedSource != null ? stagedSource : queuedSourceChange != null ? queuedSourceChange : sourceChange;
+    }
+
+    // connections for the uris, with unchecked placeholders for nodes the connection service does not list
+    private List<MoneroRpcConnection> toConnections(List<String> uris, List<MoneroRpcConnection> liveConnections) {
         List<MoneroRpcConnection> connections = new ArrayList<>();
-        for (String uri : sourceUris(change)) {
+        for (String uri : uris) {
             MoneroRpcConnection live = liveConnections.stream().filter(connection -> connection.getUri().equals(uri)).findFirst().orElse(null);
             connections.add(live != null ? live : previewConnections.computeIfAbsent(uri, MoneroRpcConnection::new));
         }
@@ -654,9 +669,9 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
         sourcePending.setVisible(stagedSource != null);
         switchSourceButton.setDisable(stagedSource == null || !canSelectSource() || !sourceAvailable(stagedSource.option()) || sourceUris(stagedSource).isEmpty());
         MoneroNodesOption option = source.getValue();
-        addRow.setVisible(option == MoneroNodesOption.CUSTOM && !hasStartupOverride() && (stagedSource != null || !switching && !connectionService.isReloadingConnections()));
-        addInput.setDisable(stagedSource == null && isChangingNodes());
-        addButton.setDisable(stagedSource == null && isChangingNodes());
+        addRow.setVisible(option == MoneroNodesOption.CUSTOM && !hasStartupOverride());
+        addInput.setDisable(!canAddNodes());
+        addButton.setDisable(!canAddNodes());
         addHint.setVisible(addRow.isVisible());
         remoteNodeLink.setVisible(option == MoneroNodesOption.PUBLIC && !hasStartupOverride());
         sourceHelp.setText(text(hasStartupOverride() ? startupOverrideKey() : option == MoneroNodesOption.CUSTOM ? isPublicBlocked() ? "customHelpTrusted" : "customHelp" :
@@ -753,11 +768,12 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
     }
 
     private void addNodes() {
-        if (!active || stagedSource == null && isChangingNodes() || hasStartupOverride() || source.getValue() != MoneroNodesOption.CUSTOM) return;
+        if (!active || !canAddNodes() || hasStartupOverride() || source.getValue() != MoneroNodesOption.CUSTOM) return;
+        SourceChange shown = shownChange();
         List<String> rejected = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         List<String> addresses = new ArrayList<>();
-        Set<String> uris = (stagedSource != null ? sourceUris(stagedSource).stream() : connectionService.getConnections().stream().map(MoneroRpcConnection::getUri))
+        Set<String> uris = (shown != null ? sourceUris(shown).stream() : connectionService.getConnections().stream().map(MoneroRpcConnection::getUri))
                 .map(uri -> uri.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
         for (String address : addInput.getText().trim().split("[\\s,]+")) {
             if (address.isEmpty()) continue;
@@ -775,16 +791,20 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             setHint(errors.isEmpty() ? null : String.join("\n", errors));
             return;
         }
-        if (stagedSource != null) { // the previewed list is saved when the source is confirmed
-            String customNodes = stagedSource.customNodes();
+        if (shown != null) {
+            String customNodes = shown.customNodes();
             for (String address : addresses) customNodes = XmrNodes.appendAddress(customNodes, address);
-            stagedSource = new SourceChange(MoneroNodesOption.CUSTOM, customNodes, activation);
+            if (stagedSource != null) stagedSource = new SourceChange(MoneroNodesOption.CUSTOM, customNodes, activation); // saved when the source is confirmed
+            else if (!applySource(MoneroNodesOption.CUSTOM, customNodes)) return; // applies after the running check
             addInput.setText(String.join(", ", rejected));
             setHint(errors.isEmpty() ? null : String.join("\n", errors));
             refresh();
             return;
         }
         editingNodes = true;
+        for (String address : addresses) addingUris.add(nodeUri(address)); // listed at once, before the connection service lists them
+        addInput.setText(String.join(", ", rejected));
+        setHint(errors.isEmpty() ? null : String.join("\n", errors));
         refresh();
         long generation = activation;
         ThreadUtils.submitToPool(() -> {
@@ -799,6 +819,7 @@ public class NetworkSettingsView extends ActivatableView<GridPane, Void> {
             }
             UserThread.execute(() -> {
                 editingNodes = false;
+                addingUris.clear();
                 if (active && activation == generation) {
                     for (MoneroRpcConnection connection : added) checkingUris.add(connection.getUri());
                     addInput.setText(String.join(", ", rejected));

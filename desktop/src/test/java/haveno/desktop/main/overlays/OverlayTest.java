@@ -920,6 +920,47 @@ public class OverlayTest {
         }
 
         @Test
+        void confirmedSourceAndAddedNodesAreListedBeforeTheServiceListsThem() {
+            source().setValue(MoneroNodesOption.CUSTOM);
+            ((Button) controls.get("switchSourceButton")).fire();
+            MoneroRpcConnection custom = new MoneroRpcConnection("http://" + customAddress);
+            assertEquals(1, nodeTable().getItems().size());
+            assertTrue(nodeRow(custom).isChecking());
+            assertTrue(((Node) controls.get("addRow")).isVisible());
+
+            TextField input = (TextField) controls.get("addInput");
+            assertFalse(input.isDisabled());
+            input.setText("another.example:18081");
+            ((Button) controls.get("addButton")).fire();
+            MoneroRpcConnection another = new MoneroRpcConnection("http://another.example:18081");
+            assertTrue(nodeRow(another).isChecking());
+            assertEquals(1, background.size());
+            live.set(0, custom);
+            background.remove(0).run();
+            live.add(another);
+            background.remove(0).run();
+            var order = inOrder(connections);
+            order.verify(connections).setNodeSettings(MoneroNodesOption.CUSTOM, customAddress);
+            order.verify(connections).setNodeSettings(MoneroNodesOption.CUSTOM, customAddress + ",another.example:18081");
+            assertFalse(nodeRow(another).isChecking());
+
+            MoneroRpcConnection third = new MoneroRpcConnection("http://third.example:18081");
+            when(connections.addCustomNode("third.example:18081")).thenAnswer(invocation -> {
+                live.add(third);
+                return third;
+            });
+            input.setText("third.example:18081");
+            ((Button) controls.get("addButton")).fire();
+            assertEquals("", input.getText());
+            assertTrue(nodeRow(third).isChecking());
+            verify(connections, never()).addCustomNode(anyString());
+            background.remove(0).run();
+            assertTrue(nodeRow(third).isChecking());
+            background.remove(0).run();
+            assertFalse(nodeRow(third).isChecking());
+        }
+
+        @Test
         void queuedSourceChangesApplyOnlyTheLatestSelection() {
             for (MoneroNodesOption option : List.of(MoneroNodesOption.CUSTOM, MoneroNodesOption.PROVIDED, MoneroNodesOption.PUBLIC)) {
                 source().setValue(option);
