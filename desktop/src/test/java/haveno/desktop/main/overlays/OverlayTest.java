@@ -888,10 +888,43 @@ public class OverlayTest {
         }
 
         @Test
-        void queuedSourceChangesApplyOnlyTheLatestSelection() {
+        void selectedSourceIsPreviewedUntilConfirmed() {
             source().setValue(MoneroNodesOption.CUSTOM);
-            source().setValue(MoneroNodesOption.PROVIDED);
-            source().setValue(MoneroNodesOption.PUBLIC);
+            assertTrue(((Node) controls.get("sourcePending")).isVisible());
+            assertEquals(MoneroNodesOption.PUBLIC, preferences.getMoneroNodesOption());
+            assertTrue(nodeRow(new MoneroRpcConnection("http://" + customAddress)).isUnchecked());
+
+            TextField input = (TextField) controls.get("addInput");
+            input.setText("another.example:18081");
+            ((Button) controls.get("addButton")).fire();
+            assertEquals("", input.getText());
+            assertEquals(2, nodeTable().getItems().size());
+            ((Button) controls.get("cancelSourceButton")).fire();
+            assertFalse(((Node) controls.get("sourcePending")).isVisible());
+            assertEquals(MoneroNodesOption.PUBLIC, source().getValue());
+            assertEquals(1, nodeTable().getItems().size());
+            assertTrue(background.isEmpty());
+
+            source().setValue(MoneroNodesOption.CUSTOM);
+            refresh.run();
+            assertEquals(MoneroNodesOption.CUSTOM, source().getValue());
+            input.setText("another.example:18081");
+            ((Button) controls.get("addButton")).fire();
+            ((Button) controls.get("switchSourceButton")).fire();
+            assertFalse(((Node) controls.get("sourcePending")).isVisible());
+            background.remove(0).run();
+
+            verify(connections).setNodeSettings(MoneroNodesOption.CUSTOM, customAddress + ",another.example:18081");
+            verify(connections, never()).addCustomNode(anyString());
+            assertEquals(MoneroNodesOption.CUSTOM, preferences.getMoneroNodesOption());
+        }
+
+        @Test
+        void queuedSourceChangesApplyOnlyTheLatestSelection() {
+            for (MoneroNodesOption option : List.of(MoneroNodesOption.CUSTOM, MoneroNodesOption.PROVIDED, MoneroNodesOption.PUBLIC)) {
+                source().setValue(option);
+                ((Button) controls.get("switchSourceButton")).fire();
+            }
             assertEquals(1, background.size());
             assertEquals(MoneroNodesOption.PUBLIC, source().getValue());
 
@@ -913,9 +946,10 @@ public class OverlayTest {
             refresh.run();
             source().setValue(MoneroNodesOption.CUSTOM);
             assertEquals(MoneroNodesOption.PUBLIC, preferences.getMoneroNodesOption());
-            assertTrue(((TableView<?>) controls.get("moneroConnectionsTableView")).getItems().isEmpty());
+            assertTrue(nodeTable().getItems().isEmpty());
+            assertTrue(((Button) controls.get("switchSourceButton")).isDisabled());
             source().setValue(MoneroNodesOption.PUBLIC);
-            assertEquals(1, ((TableView<?>) controls.get("moneroConnectionsTableView")).getItems().size());
+            assertEquals(1, nodeTable().getItems().size());
 
             @SuppressWarnings("unchecked")
             ComboBox<UseTorForXmr> tor = (ComboBox<UseTorForXmr>) controls.get("tor");
@@ -1013,10 +1047,13 @@ public class OverlayTest {
             return connection;
         }
 
-        @SuppressWarnings("unchecked")
         private MoneroNetworkListItem nodeRow(MoneroRpcConnection connection) {
-            TableView<MoneroNetworkListItem> table = (TableView<MoneroNetworkListItem>) controls.get("moneroConnectionsTableView");
-            return table.getItems().stream().filter(item -> item.getConnection().getUri().equals(connection.getUri())).findFirst().orElseThrow();
+            return nodeTable().getItems().stream().filter(item -> item.getConnection().getUri().equals(connection.getUri())).findFirst().orElseThrow();
+        }
+
+        @SuppressWarnings("unchecked")
+        private TableView<MoneroNetworkListItem> nodeTable() {
+            return (TableView<MoneroNetworkListItem>) controls.get("moneroConnectionsTableView");
         }
 
         @SuppressWarnings("unchecked")
