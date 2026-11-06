@@ -53,6 +53,7 @@ import static haveno.desktop.main.offer.offerbook.OfferBookListItemMaker.xmrSell
 import static haveno.desktop.maker.PreferenceMakers.empty;
 import static haveno.desktop.maker.TradeCurrencyMakers.usd;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -455,6 +456,27 @@ public class OfferBookChartViewModelTest {
         assertEquals(Optional.empty(), model.getMarketPriceAsDouble());
         when(priceFeedService.getMarketPrice("USD")).thenReturn(new MarketPrice("USD", 100, now - MarketPrice.MARKET_PRICE_MAX_AGE_MS - 1000, true));
         assertEquals(Optional.empty(), model.getMarketPriceAsDouble());
+    }
+
+    @Test
+    public void testAwaitsPricesUntilFirstMarketPrices() {
+        OfferBook offerBook = mock(OfferBook.class);
+        PriceFeedService priceFeedService = mock(PriceFeedService.class);
+        OfferBookListItem marketPricedItem = make(xmrBuyItem.but(with(OfferBookListItemMaker.useMarketBasedPrice, true)));
+        marketPricedItem.getOffer().setPriceFeedService(priceFeedService);
+        ObservableList<OfferBookListItem> offerBookListItems = FXCollections.observableArrayList(marketPricedItem, make(xmrSellItem));
+        when(offerBook.getOfferBookListItems()).thenReturn(offerBookListItems);
+        OfferBookChartViewModel model = new OfferBookChartViewModel(offerBook, null, empty, priceFeedService, null, null, null, null);
+        assertTrue(model.isAwaitingPrices());
+
+        // a feed without this currency's price is not awaited
+        when(priceFeedService.hasExternalPrices()).thenReturn(true);
+        assertFalse(model.isAwaitingPrices());
+
+        // a book of fixed price offers needs no feed
+        when(priceFeedService.hasExternalPrices()).thenReturn(false);
+        offerBookListItems.remove(marketPricedItem);
+        assertFalse(model.isAwaitingPrices());
     }
 
     @Test

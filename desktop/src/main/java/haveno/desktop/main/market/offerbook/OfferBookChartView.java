@@ -147,6 +147,7 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
     private AnchorPane chartPane;
     private Pane deviationScalePane;
     private Pane gridLinesPane;
+    private Label pricesLoadingLabel;
     private Pane focusPane;
     private VBox emptyBookBox;
     private Label emptyBookLabel;
@@ -158,6 +159,7 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
     private final StringProperty amountSellColumnLabel = new SimpleStringProperty();
     private final StringProperty amountBuyColumnLabel = new SimpleStringProperty();
     private final StringProperty priceColumnLabel = new SimpleStringProperty();
+    private final StringProperty placeholderLabel = new SimpleStringProperty();
     private AutoTooltipButton sellButton;
     private AutoTooltipButton buyButton;
     private ChangeListener<Number> selectedTabIndexListener;
@@ -478,6 +480,14 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         AnchorPane.setLeftAnchor(gridLinesPane, 0d);
         AnchorPane.setRightAnchor(gridLinesPane, 0d);
 
+        // shown in place of the deviation scale, which needs a market price
+        pricesLoadingLabel = new Label(Res.get("market.offerBook.loadingPrices"));
+        pricesLoadingLabel.getStyleClass().add("deviation-scale-label");
+        pricesLoadingLabel.setAlignment(Pos.CENTER);
+        AnchorPane.setTopAnchor(pricesLoadingLabel, 13d);
+        AnchorPane.setLeftAnchor(pricesLoadingLabel, 0d);
+        AnchorPane.setRightAnchor(pricesLoadingLabel, 0d);
+
         // Pane for the focus marker, guide, chips and label, above the chart and its scales.
         focusPane = new Pane();
         focusPane.setMouseTransparent(true);
@@ -486,7 +496,7 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         AnchorPane.setLeftAnchor(focusPane, 0d);
         AnchorPane.setRightAnchor(focusPane, 0d);
 
-        chartPane.getChildren().addAll(gridLinesPane, areaChart, deviationScalePane, focusPane, createEmptyBookBox());
+        chartPane.getChildren().addAll(gridLinesPane, areaChart, deviationScalePane, pricesLoadingLabel, focusPane, createEmptyBookBox());
         chartPane.setOnMouseMoved(this::onChartPointer);
         chartPane.setOnMouseDragged(this::onChartPointer);
         chartPane.setOnMouseExited(event -> setChartPointer(null));
@@ -510,6 +520,11 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         chartMarketPrice = model.getMarketPriceAsDouble()
                 .filter(price -> Double.isFinite(price) && price > 0)
                 .orElse(0d);
+
+        // market priced offers are left out until the first market prices arrive
+        boolean awaitingPrices = model.isAwaitingPrices();
+        pricesLoadingLabel.setVisible(awaitingPrices);
+        placeholderLabel.set(awaitingPrices ? pricesLoadingLabel.getText() : Res.get("table.placeholder.noItems", Res.get("shared.multipleOffers")));
 
         // update volume headers
         Volume volumeSell = model.getTotalVolume(OfferDirection.SELL);
@@ -768,6 +783,11 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
     }
 
     private void redrawEmptyNotes() {
+        // a side is not known to be empty while market priced offers await their prices
+        if (pricesLoadingLabel.isVisible()) {
+            emptyBookBox.setVisible(false);
+            return;
+        }
         Bounds plot = getPlotBounds();
         boolean noBids = seriesBuy.getData().isEmpty();
         boolean noAsks = seriesSell.getData().isEmpty();
@@ -1726,7 +1746,8 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         tableView.getColumns().add(avatarColumn);
 
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        Label placeholder = new AutoTooltipLabel(Res.get("table.placeholder.noItems", Res.get("shared.multipleOffers")));
+        Label placeholder = new AutoTooltipLabel();
+        placeholder.textProperty().bind(placeholderLabel);
         placeholder.setWrapText(true);
         tableView.setPlaceholder(placeholder);
 
