@@ -104,6 +104,9 @@ public class TradeInfo implements Payload {
     private final long startTime;
     private final long maxDurationMs;
     private final long deadlineTime;
+    private final String buyerCancelState;
+    private final String sellerCancelState;
+    private final boolean isCanceled;
 
     public TradeInfo(TradeInfoV1Builder builder) {
         this.offer = builder.getOffer();
@@ -150,6 +153,9 @@ public class TradeInfo implements Payload {
         this.startTime = builder.getStartTime();
         this.maxDurationMs = builder.getMaxDurationMs();
         this.deadlineTime = builder.getDeadlineTime();
+        this.buyerCancelState = builder.getBuyerCancelState();
+        this.sellerCancelState = builder.getSellerCancelState();
+        this.isCanceled = builder.isCanceled();
     }
 
     public static TradeInfo toTradeInfo(Trade trade) {
@@ -217,6 +223,9 @@ public class TradeInfo implements Payload {
                 .withStartTime(trade.getStartDate().getTime())
                 .withMaxDurationMs(trade.getMaxTradePeriod())
                 .withDeadlineTime(trade.getMaxTradePeriodDate().getTime())
+                .withBuyerCancelState(trade.getBuyer().getCancelState().name())
+                .withSellerCancelState(trade.getSeller().getCancelState().name())
+                .withIsCanceled(trade.isCanceled())
                 .build();
     }
 
@@ -271,6 +280,9 @@ public class TradeInfo implements Payload {
                 .setStartTime(startTime)
                 .setMaxDurationMs(maxDurationMs)
                 .setDeadlineTime(deadlineTime)
+                .setBuyerCancelState(buyerCancelState)
+                .setSellerCancelState(sellerCancelState)
+                .setIsCanceled(isCanceled)
                 .build();
     }
 
@@ -320,6 +332,9 @@ public class TradeInfo implements Payload {
                 .withStartTime(proto.getStartTime())
                 .withMaxDurationMs(proto.getMaxDurationMs())
                 .withDeadlineTime(proto.getDeadlineTime())
+                .withBuyerCancelState(proto.getBuyerCancelState())
+                .withSellerCancelState(proto.getSellerCancelState())
+                .withIsCanceled(proto.getIsCanceled())
                 .build();
     }
 
@@ -369,6 +384,9 @@ public class TradeInfo implements Payload {
                 ", startTime=" + startTime + "\n" +
                 ", maxDurationMs=" + maxDurationMs + "\n" +
                 ", deadlineTime=" + deadlineTime + "\n" +
+                ", buyerCancelState='" + buyerCancelState + '\'' + "\n" +
+                ", sellerCancelState='" + sellerCancelState + '\'' + "\n" +
+                ", isCanceled=" + isCanceled + "\n" +
                 '}';
     }
 }

@@ -193,6 +193,18 @@ public class PendingTradesDataModel extends ActivatableDataModel {
         ((SellerProtocol) tradeManager.getTradeProtocol(trade)).onPaymentReceived(resultHandler, errorMessageHandler);
     }
 
+    public void onCancelRequested(Trade trade, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {
+        tradeManager.getTradeProtocol(trade).onCancelRequested(resultHandler, errorMessageHandler);
+    }
+
+    public void onCancelConfirmed(Trade trade, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {
+        tradeManager.getTradeProtocol(trade).onCancelConfirmed(resultHandler, errorMessageHandler);
+    }
+
+    public void onCancelDeclined(Trade trade) {
+        tradeManager.getTradeProtocol(trade).onCancelDeclined();
+    }
+
     public void onWithdrawRequest(String toAddress,
                                   Coin amount,
                                   Coin fee,

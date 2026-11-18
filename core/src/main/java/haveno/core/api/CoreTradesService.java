@@ -192,6 +192,29 @@ class CoreTradesService {
         }
     }
 
+    void requestCancelTrade(String tradeId,
+                            ResultHandler resultHandler,
+                            ErrorMessageHandler errorMessageHandler) {
+        verifyTradeIsNotClosed(tradeId);
+        tradeManager.getTradeProtocol(getTrade(tradeId)).onCancelRequested(resultHandler, errorMessageHandler);
+    }
+
+    void confirmCancelTrade(String tradeId,
+                            ResultHandler resultHandler,
+                            ErrorMessageHandler errorMessageHandler) {
+        verifyTradeIsNotClosed(tradeId);
+        tradeManager.getTradeProtocol(getTrade(tradeId)).onCancelConfirmed(resultHandler, errorMessageHandler);
+    }
+
+    void declineCancelTrade(String tradeId) {
+        verifyTradeIsNotClosed(tradeId);
+        var trade = getTrade(tradeId);
+        if (!trade.isCancelActionable() || trade.isCancelAgreed() || trade.isCancelSigned()) {
+            throw new IllegalStateException("there is no request to cancel the trade which can be declined");
+        }
+        tradeManager.getTradeProtocol(trade).onCancelDeclined();
+    }
+
     void closeTrade(String tradeId) {
         coreWalletsService.verifyWalletsAreAvailable();
         coreWalletsService.verifyEncryptedWalletIsUnlocked();

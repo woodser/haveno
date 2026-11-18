@@ -594,6 +594,22 @@ public class CoreApi {
         coreTradesService.confirmPaymentReceived(tradeId, resultHandler, errorMessageHandler);
     }
 
+    public void requestCancelTrade(String tradeId,
+                                   ResultHandler resultHandler,
+                                   ErrorMessageHandler errorMessageHandler) {
+        coreTradesService.requestCancelTrade(tradeId, resultHandler, errorMessageHandler);
+    }
+
+    public void confirmCancelTrade(String tradeId,
+                                   ResultHandler resultHandler,
+                                   ErrorMessageHandler errorMessageHandler) {
+        coreTradesService.confirmCancelTrade(tradeId, resultHandler, errorMessageHandler);
+    }
+
+    public void declineCancelTrade(String tradeId) {
+        coreTradesService.declineCancelTrade(tradeId);
+    }
+
     public void closeTrade(String tradeId) {
         coreTradesService.closeTrade(tradeId);
     }

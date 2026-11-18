@@ -117,6 +117,7 @@ public abstract class TradeStepView extends VBox {
     private VBox sidebar;
     private VBox helpPane;
     private Label helpLabel;
+    private TradeCancelPane cancelPane;
     private final PopOverWrapper durationPopover = new PopOverWrapper();
     private VBox depositsPane;
     private VBox depositDetails;
@@ -253,9 +254,11 @@ public abstract class TradeStepView extends VBox {
                 boolean showHelp = !completed && !trade.isPayoutPublished();
                 helpPane.setVisible(showHelp);
                 helpPane.setManaged(showHelp);
+                if (completed) showPayoutTx();
             }
         }));
         trade.errorMessageProperty().addListener(errorMessageListener);
+        if (cancelPane != null) cancelPane.activate();
 
         tradeStepInfo.setOnAction(e -> {
             if (tradeStepInfo.getState() == TradeStepInfo.State.IN_ARBITRATION_SELF_REQUESTED ||
@@ -432,6 +435,7 @@ public abstract class TradeStepView extends VBox {
         if (peerDeposit != null) peerDeposit.cleanup();
         if (payout != null) payout.cleanup();
         if (payoutSubscription != null) payoutSubscription.unsubscribe();
+        if (cancelPane != null) cancelPane.deactivate();
 
         if (errorMessageListener != null)
             trade.errorMessageProperty().removeListener(errorMessageListener);
@@ -595,14 +599,19 @@ public abstract class TradeStepView extends VBox {
             helpLabel.setWrapText(true);
             helpLabel.getStyleClass().add("trade-secondary");
             helpPane.getChildren().add(helpLabel);
+            cancelPane = new TradeCancelPane(trade, model.dataModel, this::onCancelUpdated);
+            helpPane.getChildren().add(cancelPane.getAskLink());
         }
         Hyperlink communityHelp = new Hyperlink(Res.get("supportInfoWindow.community.link"));
         communityHelp.setWrapText(true);
-        communityHelp.getStyleClass().add("trade-community-link");
         communityHelp.setOnAction(event -> GUIUtil.openWebPage("https://matrix.to/#/#haveno:monero.social"));
         helpPane.getChildren().add(communityHelp);
         helpPane.getStyleClass().add("trade-help");
         sidebar.getChildren().addAll(deadlinePane, depositsPane, helpPane);
+        if (cancelPane != null) {
+            VBox.setMargin(cancelPane, new Insets(0, 0, 18, 0));
+            sidebar.getChildren().add(0, cancelPane);
+        }
     }
 
     public boolean isDepositDetailsExpanded() {
@@ -772,8 +781,9 @@ public abstract class TradeStepView extends VBox {
         return action;
     }
 
-    // brings an active confirmation or support button into view and focuses it
+    // brings the answer to a cancel request or an active confirmation or support button into view and focuses it
     public boolean focusConfirmationButton(ScrollPane scrollPane) {
+        if (cancelPane != null && cancelPane.focusAction(scrollPane)) return true;
         boolean confirmable = confirmationButton != null && confirmationButton.getScene() != null && !confirmationButton.isDisabled();
         Button target = confirmable ? confirmationButton : tradeStepInfo != null ? tradeStepInfo.getActiveButton() : null;
         if (target == null) return false;
@@ -949,6 +959,11 @@ public abstract class TradeStepView extends VBox {
         deadlinePane.setVisible(false);
         deadlinePane.setManaged(false);
         tradeStepInfo.setState(TradeStepInfo.State.TRADE_COMPLETED);
+        showPayoutTx();
+    }
+
+    // a payout published by the peer is first seen as spent funds, before its id is known
+    private void showPayoutTx() {
         String payoutId = trade.getPayoutTxId();
         if (payout == null && payoutId != null && !payoutId.isEmpty()) {
             Label title = new Label(Res.get("portfolio.pending.tradeView.payoutTransaction"));
@@ -979,6 +994,9 @@ public abstract class TradeStepView extends VBox {
     }
 
     protected void applyOnDisputeOpened() {
+    }
+
+    protected void onCancelUpdated() {
     }
 
     protected void updateDisputeState(Trade.DisputeState disputeState) {
