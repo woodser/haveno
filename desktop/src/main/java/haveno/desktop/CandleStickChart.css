@@ -96,26 +96,20 @@
     -fx-background-color: -bs-background-color;
 }
 
-/* In-scene tooltip box shown on candle / volume-bar hover. Replaces the heavyweight JavaFX
-   Tooltip popup, whose appearance caused a full scene re-composite (a "flicker/sharpen" on
-   hover). */
-.chart-tooltip-box {
-    -fx-background-color: -bs-background-color;
-    -fx-background-radius: 6px;
-    -fx-border-color: -bs-color-gray-line;
-    -fx-border-radius: 6px;
-    -fx-border-width: 1px;
-    -fx-padding: 8 10 8 10;
-    -fx-text-fill: -bs-text-color;
+/* Legend of the hovered candle, pinned to the top left corner of the plot area. */
+.chart-hover-legend {
     -fx-font-size: 0.85em;
-    -fx-effect: dropshadow(three-pass-box, -bs-text-color-transparent, 10, 0, 0, 3);
 }
 
-.chart-tooltip-box .label {
+/* the background in the plot color keeps candles off the letters */
+.chart-hover-legend .label {
     -fx-text-fill: -bs-text-color;
+    -fx-background-color: -bs-background-color;
+    -fx-background-insets: 0 -4 0 -4;
+    -fx-background-radius: 3;
 }
 
-/* Crosshair snapped to the hovered candle and cursor price level. */
+/* Crosshair snapped to the hovered candle and the level of the cursor. */
 .chart-crosshair {
     -fx-stroke: -bs-color-gray-4;
     -fx-stroke-width: 0.5;

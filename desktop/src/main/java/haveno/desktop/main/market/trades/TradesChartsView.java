@@ -43,6 +43,7 @@ import haveno.desktop.components.AutoTooltipToggleButton;
 import haveno.desktop.components.AutocompleteComboBox;
 import haveno.desktop.components.ColoredDecimalPlacesWithZerosText;
 import static haveno.desktop.main.market.trades.TradesChartsViewModel.MAX_TICKS;
+import haveno.desktop.main.market.trades.charts.CandleData;
 import haveno.desktop.main.market.trades.charts.price.CandleStickChart;
 import haveno.desktop.main.market.trades.charts.volume.VolumeChart;
 import haveno.desktop.util.Accessibility;
@@ -56,7 +57,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
@@ -162,6 +165,7 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
     private XYChart.Series<Number, Number> priceSeries;
     private final XYChart.Series<Number, Number> volumeSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> volumeInUsdSeries = new XYChart.Series<>();
+    private final ObjectProperty<CandleData> hoveredCandle = new SimpleObjectProperty<>();
     private double priceAxisYWidth;
     private double volumeAxisYWidth;
 
@@ -536,7 +540,7 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
             public Number fromString(String string) {
                 return null;
             }
-        });
+        }, hoveredCandle);
         priceChart.setId("price-chart");
         priceChart.setMinHeight(188);
         priceChart.setPrefHeight(188);
@@ -554,7 +558,6 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
         AnchorPane.setRightAnchor(priceChart, 10d);
 
         priceChartPane.getChildren().add(priceChart);
-        priceChart.setTooltipOverlayPane(root);
 
         volumeAxisX = new NumberAxis(0, MAX_TICKS + 1, 1);
         volumeAxisY = new NumberAxis();
@@ -580,8 +583,6 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
         volumeChartPane = new AnchorPane();
         volumeChartPane.getStyleClass().add("chart-pane");
         volumeChartPane.getChildren().add(vBox);
-        volumeChart.setTooltipOverlayPane(volumeChartPane);
-        volumeInUsdChart.setTooltipOverlayPane(volumeChartPane);
     }
 
     private VolumeChart getVolumeChart(NumberAxis axisX,
@@ -623,7 +624,7 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
                 return null;
             }
         };
-        VolumeChart volumeChart = new VolumeChart(axisX, axisY, xmrStringConverter);
+        VolumeChart volumeChart = new VolumeChart(axisX, axisY, xmrStringConverter, hoveredCandle);
         volumeChart.setId("volume-chart");
         volumeChart.setData(FXCollections.observableArrayList(List.of(series)));
         volumeChart.setMinHeight(138);
@@ -635,6 +636,7 @@ public class TradesChartsView extends ActivatableViewAndModel<VBox, TradesCharts
     }
 
     private void updateChartData() {
+        hoveredCandle.set(null);
         volumeSeries.getData().setAll(model.volumeItems);
         volumeInUsdSeries.getData().setAll(model.volumeInUsdItems);
 
