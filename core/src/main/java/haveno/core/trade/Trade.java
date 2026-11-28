@@ -3154,10 +3154,12 @@ public abstract class Trade extends XmrWalletBase implements Tradable, Model, Xm
         return getBuyer().getCancelPayoutTxHex() != null;
     }
 
+    // only the seller's request creates the cancel payout tx, which the buyer discards on declining
     // opening a dispute cannot revoke a cancel payout; a recorded ruling takes precedence
     private boolean isCancelPayout() {
-        boolean hasCancelRequest = getBuyer().getCancelState() != CancelState.UNDEFINED || getSeller().getCancelState() != CancelState.UNDEFINED;
-        return hasCancelRequest && !isPaymentMarkedSent() && getPaymentSentDate() == 0 && getArbitrationRuling() == null;
+        CancelState sellerState = getSeller().getCancelState();
+        boolean hasCancelPayoutTx = sellerState == CancelState.REQUESTED || (isSeller() && sellerState == CancelState.DECLINED);
+        return hasCancelPayoutTx && !isPaymentMarkedSent() && getPaymentSentDate() == 0 && getArbitrationRuling() == null;
     }
 
     public boolean isCanceled() {

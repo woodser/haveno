@@ -313,8 +313,14 @@ public class TradeTest {
         when(trade.isCancelAgreed()).thenCallRealMethod();
         when(trade.isCanceled()).thenCallRealMethod();
         assertFalse(trade.isCanceled()); // payout without a request to cancel
+        trade.getBuyer().setCancelState(CancelState.REQUESTED);
+        assertFalse(trade.isCanceled()); // only the seller's request creates a payout tx
+        trade.getBuyer().setCancelState(CancelState.UNDEFINED);
         seller.setCancelState(CancelState.DECLINED);
         assertTrue(trade.isCanceled()); // a decline cannot revoke an already delivered payout tx
+        when(trade.isSeller()).thenReturn(false);
+        assertFalse(trade.isCanceled()); // the buyer discarded the payout tx on declining
+        when(trade.isSeller()).thenReturn(true);
         trade.getBuyer().setCancelState(CancelState.REQUESTED);
         assertTrue(trade.isCanceled()); // the seller agreed, known or not
         trade.getBuyer().setCancelState(CancelState.UNDEFINED);
