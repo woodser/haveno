@@ -444,7 +444,6 @@ public class OfferBookChartView extends ActivatableViewAndModel<VBox, OfferBookC
         xAxis.setMinorTickVisible(false);
 
         yAxis = new NumberAxis();
-        yAxis.setForceZeroInRange(false);
         yAxis.setSide(Side.RIGHT);
         yAxis.setAutoRanging(true);
         yAxis.setTickMarkVisible(true);
